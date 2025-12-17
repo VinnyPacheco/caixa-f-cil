@@ -2,95 +2,99 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Noto+Sans:wght@400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap');
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-
+    /* Core Brand Colors */
+    --primary: 0 0% 8%;
+    --primary-foreground: 40 30% 96%;
+    
+    /* Backgrounds */
+    --background: 35 33% 96%;
+    --background-dark: 24 12% 10%;
+    
+    /* Surfaces */
+    --surface: 0 0% 100%;
+    --surface-dark: 24 8% 15%;
+    
+    /* Accent Gold */
+    --accent-gold: 39 51% 56%;
+    --accent-gold-light: 36 50% 85%;
+    --gold-card: 38 50% 93%;
+    
+    /* Text Colors */
+    --text-main: 30 8% 16%;
+    --text-secondary: 20 6% 51%;
+    
+    /* Semantic Colors */
+    --foreground: 30 8% 16%;
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-
+    --card-foreground: 30 8% 16%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
-
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
-
-    --radius: 0.5rem;
-
-    --sidebar-background: 0 0% 98%;
-
-    --sidebar-foreground: 240 5.3% 26.1%;
-
-    --sidebar-primary: 240 5.9% 10%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --popover-foreground: 30 8% 16%;
+    --secondary: 35 33% 96%;
+    --secondary-foreground: 30 8% 16%;
+    --muted: 35 20% 92%;
+    --muted-foreground: 20 6% 51%;
+    --accent: 39 51% 56%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 142 71% 45%;
+    --success-foreground: 0 0% 100%;
+    --border: 30 20% 88%;
+    --input: 30 20% 88%;
+    --ring: 39 51% 56%;
+    --radius: 0.75rem;
+    
+    /* Shadows */
+    --shadow-gold: 0 4px 20px -4px hsl(39 51% 56% / 0.3);
+    --shadow-soft: 0 2px 8px -2px hsl(30 8% 16% / 0.08);
+    
+    /* Sidebar */
+    --sidebar-background: 35 33% 96%;
+    --sidebar-foreground: 30 8% 16%;
+    --sidebar-primary: 39 51% 56%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 36 50% 85%;
+    --sidebar-accent-foreground: 30 8% 16%;
+    --sidebar-border: 30 20% 88%;
+    --sidebar-ring: 39 51% 56%;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
+    --primary: 40 30% 96%;
+    --primary-foreground: 0 0% 8%;
+    --background: 24 12% 10%;
+    --surface: 24 8% 15%;
+    --foreground: 40 30% 96%;
+    --card: 24 8% 15%;
+    --card-foreground: 40 30% 96%;
+    --popover: 24 8% 15%;
+    --popover-foreground: 40 30% 96%;
+    --secondary: 24 8% 20%;
+    --secondary-foreground: 40 30% 96%;
+    --muted: 24 8% 20%;
+    --muted-foreground: 20 6% 65%;
+    --accent: 39 51% 56%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 62% 30%;
+    --destructive-foreground: 40 30% 96%;
+    --success: 142 71% 35%;
+    --success-foreground: 40 30% 96%;
+    --border: 24 8% 20%;
+    --input: 24 8% 20%;
+    --ring: 39 51% 56%;
+    --sidebar-background: 24 12% 10%;
+    --sidebar-foreground: 40 30% 96%;
+    --sidebar-primary: 39 51% 56%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-accent: 24 8% 20%;
+    --sidebar-accent-foreground: 40 30% 96%;
+    --sidebar-border: 24 8% 20%;
+    --sidebar-ring: 39 51% 56%;
   }
 }
 
@@ -98,8 +102,195 @@ All colors MUST be HSL.
   * {
     @apply border-border;
   }
-
+  
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-display antialiased;
+    min-height: 100dvh;
+  }
+  
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+@layer components {
+  /* Material Icons styling */
+  .material-symbols-outlined {
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  }
+  
+  .icon-filled {
+    font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  }
+
+  /* Hide scrollbar */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  /* Gold gradient background */
+  .bg-gold-gradient {
+    background: linear-gradient(135deg, hsl(var(--gold-card)) 0%, hsl(var(--accent-gold-light)) 100%);
+  }
+
+  /* Card with gold accent */
+  .card-gold {
+    @apply relative overflow-hidden bg-gold-card rounded-3xl p-6 shadow-lg border border-accent/20;
+  }
+  
+  .card-gold::before {
+    content: '';
+    @apply absolute -right-10 -top-10 h-40 w-40 rounded-full bg-accent/20 blur-3xl;
+  }
+  
+  .card-gold::after {
+    content: '';
+    @apply absolute -left-10 -bottom-10 h-32 w-32 rounded-full bg-accent/10 blur-2xl;
+  }
+
+  /* Transaction card */
+  .transaction-card {
+    @apply flex items-center justify-between bg-card p-4 rounded-2xl shadow-sm border border-border/50 transition-all duration-200;
+  }
+  
+  .transaction-card:hover {
+    @apply border-accent/30 shadow-md;
+  }
+
+  /* Bottom navigation safe area */
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  /* Input focus ring gold */
+  .input-gold {
+    @apply bg-secondary rounded-2xl border border-transparent transition-all duration-200;
+  }
+  
+  .input-gold:focus-within {
+    @apply border-accent/50 bg-card ring-2 ring-accent/20;
+  }
+
+  /* Button gold */
+  .btn-gold {
+    @apply bg-accent text-accent-foreground font-bold py-4 rounded-2xl shadow-lg transition-all duration-200;
+    box-shadow: var(--shadow-gold);
+  }
+  
+  .btn-gold:hover {
+    @apply brightness-95 scale-[1.01];
+  }
+  
+  .btn-gold:active {
+    @apply scale-[0.98];
+  }
+
+  /* Dragging state */
+  .dragging {
+    @apply opacity-50 scale-[1.02] shadow-xl z-50;
+  }
+  
+  .drag-handle {
+    @apply cursor-grab active:cursor-grabbing;
+  }
+
+  /* Status badge */
+  .status-paid {
+    @apply flex items-center justify-center rounded-full bg-transparent border-2 border-success size-6 text-success;
+  }
+  
+  .status-pending {
+    @apply flex items-center justify-center rounded-full border-2 border-muted-foreground/30 size-6 bg-transparent;
+  }
+
+  /* Filter pill */
+  .filter-pill {
+    @apply px-5 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all duration-200;
+  }
+  
+  .filter-pill-active {
+    @apply bg-accent text-accent-foreground shadow-md;
+    box-shadow: var(--shadow-gold);
+  }
+  
+  .filter-pill-inactive {
+    @apply bg-card border border-border text-muted-foreground hover:border-accent hover:text-accent;
+  }
+
+  /* Month pill */
+  .month-pill {
+    @apply text-sm font-medium text-muted-foreground whitespace-nowrap px-2 opacity-60 transition-colors;
+  }
+  
+  .month-pill-active {
+    @apply font-bold text-accent bg-card px-3 py-1 rounded-full border border-accent/30 shadow-sm opacity-100;
+  }
+
+  /* Navigation item */
+  .nav-item {
+    @apply flex flex-col items-center justify-center gap-1 w-12 transition-colors;
+  }
+  
+  .nav-item-active {
+    @apply text-accent;
+  }
+  
+  .nav-item-inactive {
+    @apply text-muted-foreground hover:text-foreground;
+  }
+
+  /* FAB button */
+  .fab-button {
+    @apply flex items-center justify-center size-14 rounded-full bg-accent text-accent-foreground shadow-lg transition-all duration-200;
+    box-shadow: var(--shadow-gold);
+  }
+  
+  .fab-button:hover {
+    @apply scale-105;
+  }
+  
+  .fab-button:active {
+    @apply scale-95;
+  }
+
+  /* Amount display */
+  .amount-income {
+    @apply text-success font-bold;
+  }
+  
+  .amount-expense {
+    @apply text-foreground font-bold;
+  }
+
+  /* Category icon container */
+  .category-icon {
+    @apply flex items-center justify-center rounded-xl shrink-0 size-12;
+  }
+}
+
+@layer utilities {
+  /* Gold text */
+  .text-gold {
+    color: hsl(var(--accent-gold));
+  }
+  
+  /* Gold background */
+  .bg-gold {
+    background-color: hsl(var(--accent-gold));
+  }
+  
+  /* Surface background */
+  .bg-surface {
+    background-color: hsl(var(--surface));
+  }
+  
+  /* Gold card background */
+  .bg-gold-card {
+    background-color: hsl(var(--gold-card));
   }
 }
