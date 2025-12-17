@@ -1,0 +1,243 @@
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Header } from '@/components/layout/Header';
+import { mockCategories, mockAccounts } from '@/data/mockData';
+import { TransactionType, RecurrenceType } from '@/types/finance';
+import { useToast } from '@/hooks/use-toast';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+
+export default function NewTransaction() {
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  
+  const [type, setType] = useState<TransactionType>('expense');
+  const [amount, setAmount] = useState('');
+  const [description, setDescription] = useState('');
+  const [categoryId, setCategoryId] = useState('');
+  const [accountId, setAccountId] = useState('acc-1');
+  const [date, setDate] = useState(new Date());
+  const [recurrence, setRecurrence] = useState<RecurrenceType>('once');
+  const [autoPay, setAutoPay] = useState(false);
+
+  const filteredCategories = mockCategories.filter((c) => c.type === type);
+
+  const handleAmountChange = (value: string) => {
+    // Remove non-numeric characters except comma and dot
+    const cleaned = value.replace(/[^\d,\.]/g, '');
+    setAmount(cleaned);
+  };
+
+  const handleSubmit = () => {
+    if (!amount || !description) {
+      toast({
+        title: 'Campos obrigatórios',
+        description: 'Preencha o valor e a descrição do lançamento.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Parse amount
+    const numericAmount = parseFloat(amount.replace(',', '.'));
+    
+    if (isNaN(numericAmount) || numericAmount <= 0) {
+      toast({
+        title: 'Valor inválido',
+        description: 'Digite um valor válido para o lançamento.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    toast({
+      title: 'Lançamento salvo!',
+      description: `${type === 'income' ? 'Receita' : 'Despesa'} de R$ ${amount} registrada com sucesso.`,
+    });
+
+    navigate(-1);
+  };
+
+  return (
+    <div className="relative flex min-h-screen w-full flex-col overflow-x-hidden bg-background">
+      <Header title="Novo Lançamento" showBack />
+
+      <main className="flex-1 flex flex-col p-6 gap-6 pb-32">
+        {/* Type Toggle */}
+        <div className="grid grid-cols-2 gap-2 bg-card p-1.5 rounded-full shadow-sm border border-border/50">
+          <button
+            onClick={() => setType('expense')}
+            className={`flex items-center justify-center gap-2 py-2.5 rounded-full font-bold text-sm transition-all ${
+              type === 'expense'
+                ? 'bg-destructive/10 text-destructive shadow-sm border border-destructive/20'
+                : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
+            }`}
+          >
+            <span className="material-symbols-outlined text-[18px]">arrow_downward</span>
+            Despesa
+          </button>
+          <button
+            onClick={() => setType('income')}
+            className={`flex items-center justify-center gap-2 py-2.5 rounded-full font-bold text-sm transition-all ${
+              type === 'income'
+                ? 'bg-success/10 text-success shadow-sm border border-success/20'
+                : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
+            }`}
+          >
+            <span className="material-symbols-outlined text-[18px]">arrow_upward</span>
+            Receita
+          </button>
+        </div>
+
+        {/* Amount Input */}
+        <div className="flex flex-col items-center justify-center py-4">
+          <p className="text-muted-foreground text-sm font-medium mb-1">Valor do lançamento</p>
+          <div className="flex items-center justify-center w-full">
+            <span className="text-3xl font-bold text-foreground mr-1 self-center pb-1">R$</span>
+            <input
+              type="text"
+              inputMode="decimal"
+              value={amount}
+              onChange={(e) => handleAmountChange(e.target.value)}
+              placeholder="0,00"
+              className="w-full max-w-[240px] bg-transparent border-none p-0 text-5xl font-bold text-foreground placeholder-muted-foreground/30 text-center focus:ring-0 focus:outline-none leading-tight"
+            />
+          </div>
+        </div>
+
+        {/* Form Fields */}
+        <div className="flex flex-col gap-5 bg-card p-6 rounded-3xl shadow-sm border border-border/50">
+          {/* Description */}
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">
+              Descrição
+            </label>
+            <div className="input-gold p-4">
+              <div className="flex items-center gap-3">
+                <span className="material-symbols-outlined text-muted-foreground">edit</span>
+                <input
+                  type="text"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Ex: Compras no mercado"
+                  className="w-full bg-transparent border-none p-0 focus:ring-0 focus:outline-none text-foreground placeholder-muted-foreground text-base font-medium"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Date */}
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">
+              Data
+            </label>
+            <div className="input-gold p-4">
+              <div className="flex items-center gap-3">
+                <span className="material-symbols-outlined text-muted-foreground">calendar_today</span>
+                <input
+                  type="date"
+                  value={format(date, 'yyyy-MM-dd')}
+                  onChange={(e) => setDate(new Date(e.target.value))}
+                  className="w-full bg-transparent border-none p-0 focus:ring-0 focus:outline-none text-foreground text-base font-medium"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Category and Account */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">
+                Categoria
+              </label>
+              <div className="input-gold p-4">
+                <select
+                  value={categoryId}
+                  onChange={(e) => setCategoryId(e.target.value)}
+                  className="w-full bg-transparent border-none p-0 focus:ring-0 focus:outline-none text-foreground text-base font-medium appearance-none cursor-pointer"
+                >
+                  <option value="">Selecione</option>
+                  {filteredCategories.map((cat) => (
+                    <option key={cat.id} value={cat.id}>
+                      {cat.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">
+                Conta
+              </label>
+              <div className="input-gold p-4">
+                <select
+                  value={accountId}
+                  onChange={(e) => setAccountId(e.target.value)}
+                  className="w-full bg-transparent border-none p-0 focus:ring-0 focus:outline-none text-foreground text-base font-medium appearance-none cursor-pointer"
+                >
+                  {mockAccounts.map((acc) => (
+                    <option key={acc.id} value={acc.id}>
+                      {acc.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Recurrence */}
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">
+              Recorrência
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              {(['once', 'installment', 'recurring'] as RecurrenceType[]).map((r) => (
+                <button
+                  key={r}
+                  onClick={() => setRecurrence(r)}
+                  className={`py-3 px-2 rounded-xl font-semibold text-sm transition-all ${
+                    recurrence === r
+                      ? 'bg-accent text-accent-foreground shadow-sm'
+                      : 'bg-secondary text-muted-foreground hover:bg-muted'
+                  }`}
+                >
+                  {r === 'once' ? 'Única' : r === 'installment' ? 'Parcelada' : 'Contínua'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Auto Pay Toggle */}
+          <div className="flex items-center justify-between bg-secondary p-4 rounded-2xl">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-full bg-card text-accent">
+                <span className="material-symbols-outlined text-[20px]">task_alt</span>
+              </div>
+              <span className="text-base font-semibold text-foreground">Baixa Automática</span>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={autoPay}
+                onChange={(e) => setAutoPay(e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-muted peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-border after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent"></div>
+            </label>
+          </div>
+        </div>
+      </main>
+
+      {/* Submit Button */}
+      <div className="p-6 bg-background pt-0 fixed bottom-0 left-0 w-full z-20">
+        <button
+          onClick={handleSubmit}
+          className="w-full btn-gold flex items-center justify-center gap-2"
+        >
+          <span className="material-symbols-outlined icon-filled">check_circle</span>
+          Salvar Lançamento
+        </button>
+      </div>
+    </div>
+  );
+}
