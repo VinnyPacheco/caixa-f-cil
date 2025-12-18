@@ -6,9 +6,12 @@ import { FilterPills } from '@/components/finance/FilterPills';
 import { TransactionList } from '@/components/finance/TransactionList';
 import { useTransactions } from '@/hooks/useTransactions';
 import { formatCurrency } from '@/lib/format';
+import { ArrowUpDown } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 export default function Transactions() {
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const {
     transactions,
     monthSummary,
@@ -17,6 +20,16 @@ export default function Transactions() {
     reorderTransactions,
     togglePaid,
   } = useTransactions(selectedDate);
+
+  const sortedTransactions = [...transactions].sort((a, b) => {
+    const dateA = new Date(a.date).getTime();
+    const dateB = new Date(b.date).getTime();
+    return sortOrder === 'desc' ? dateB - dateA : dateA - dateB;
+  });
+
+  const toggleSortOrder = () => {
+    setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+  };
 
   return (
     <AppLayout>
@@ -47,14 +60,25 @@ export default function Transactions() {
           </div>
         </div>
 
-        <FilterPills activeFilter={filter} onChange={setFilter} />
+        <div className="flex items-center gap-3">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={toggleSortOrder}
+            className="shrink-0 h-9 w-9"
+            title={sortOrder === 'desc' ? 'Mais recente primeiro' : 'Mais antigo primeiro'}
+          >
+            <ArrowUpDown className="h-4 w-4" />
+          </Button>
+          <FilterPills activeFilter={filter} onChange={setFilter} />
+        </div>
 
         <p className="text-xs text-muted-foreground">
           Arraste os lançamentos para reorganizar e recalcular o saldo automaticamente
         </p>
 
         <TransactionList
-          transactions={transactions}
+          transactions={sortedTransactions}
           onReorder={reorderTransactions}
           onTogglePaid={togglePaid}
         />

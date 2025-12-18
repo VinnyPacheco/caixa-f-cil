@@ -25,6 +25,10 @@ export function useTransactions(selectedDate: Date) {
   // Apply filter
   const filteredTransactions = useMemo(() => {
     switch (filter) {
+      case 'pending':
+        return monthTransactions.filter((t) => !t.isPaid);
+      case 'paid':
+        return monthTransactions.filter((t) => t.isPaid);
       case 'income':
         return monthTransactions.filter((t) => t.type === 'income');
       case 'expense':
