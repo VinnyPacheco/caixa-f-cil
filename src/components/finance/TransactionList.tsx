@@ -26,6 +26,7 @@ interface TransactionListProps {
   onReorder: (transactions: TransactionWithBalance[], dateChanges?: { id: string; newDate: string }[]) => void;
   onTogglePaid: (id: string) => void;
   onTransactionClick?: (transaction: TransactionWithBalance) => void;
+  sortOrder?: 'asc' | 'desc';
 }
 
 interface DroppableDateGroupProps {
@@ -88,6 +89,7 @@ export function TransactionList({
   onReorder,
   onTogglePaid,
   onTransactionClick,
+  sortOrder = 'desc',
 }: TransactionListProps) {
   const [activeTransaction, setActiveTransaction] = useState<TransactionWithBalance | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -104,7 +106,7 @@ export function TransactionList({
     })
   );
 
-  const groups = useMemo(() => groupTransactionsByDate(transactions), [transactions]);
+  const groups = useMemo(() => groupTransactionsByDate(transactions, sortOrder), [transactions, sortOrder]);
 
   const handleDragStart = (event: DragStartEvent) => {
     const transaction = transactions.find((t) => t.id === event.active.id);
