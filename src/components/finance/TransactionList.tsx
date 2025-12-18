@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import {
   DndContext,
   closestCenter,
@@ -7,7 +7,6 @@ import {
   useSensor,
   useSensors,
   DragEndEvent,
-  DragOverEvent,
   DragOverlay,
   DragStartEvent,
   useDroppable,
@@ -18,9 +17,9 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
-import { TransactionWithBalance, TransactionGroup } from '@/types/finance';
+import { TransactionWithBalance } from '@/types/finance';
 import { SortableTransactionItem, TransactionItem } from './TransactionItem';
-import { formatDateLabel, groupTransactionsByDate } from '@/lib/format';
+import { groupTransactionsByDate } from '@/lib/format';
 
 interface TransactionListProps {
   transactions: TransactionWithBalance[];
@@ -35,6 +34,7 @@ interface DroppableDateGroupProps {
   transactions: TransactionWithBalance[];
   onTogglePaid: (id: string) => void;
   onTransactionClick?: (transaction: TransactionWithBalance) => void;
+  activeId: string | null;
 }
 
 function DroppableDateGroup({
@@ -43,37 +43,42 @@ function DroppableDateGroup({
   transactions,
   onTogglePaid,
   onTransactionClick,
+  activeId,
 }: DroppableDateGroupProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: `date-${date}`,
     data: { date },
   });
 
+  const transactionIds = transactions.map((t) => t.id);
+
   return (
     <div key={date} className="flex flex-col gap-3">
       <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">
         {label}
       </p>
-      <div
-        ref={setNodeRef}
-        className={`flex flex-col gap-3 min-h-[60px] rounded-xl transition-colors ${
-          isOver ? 'bg-primary/10 ring-2 ring-primary/30' : ''
-        }`}
-      >
-        {transactions.map((transaction) => (
-          <SortableTransactionItem
-            key={transaction.id}
-            transaction={transaction}
-            onTogglePaid={onTogglePaid}
-            onClick={() => onTransactionClick?.(transaction)}
-          />
-        ))}
-        {transactions.length === 0 && (
-          <div className="h-16 flex items-center justify-center text-muted-foreground/50 text-sm border-2 border-dashed border-muted-foreground/20 rounded-xl">
-            Solte aqui
-          </div>
-        )}
-      </div>
+      <SortableContext items={transactionIds} strategy={verticalListSortingStrategy}>
+        <div
+          ref={setNodeRef}
+          className={`flex flex-col gap-3 min-h-[60px] rounded-xl transition-colors ${
+            isOver ? 'bg-primary/10 ring-2 ring-primary/30' : ''
+          }`}
+        >
+          {transactions.map((transaction) => (
+            <SortableTransactionItem
+              key={transaction.id}
+              transaction={transaction}
+              onTogglePaid={onTogglePaid}
+              onClick={() => onTransactionClick?.(transaction)}
+            />
+          ))}
+          {transactions.length === 0 && (
+            <div className="h-16 flex items-center justify-center text-muted-foreground/50 text-sm border-2 border-dashed border-muted-foreground/20 rounded-xl">
+              Solte aqui
+            </div>
+          )}
+        </div>
+      </SortableContext>
     </div>
   );
 }
@@ -85,12 +90,8 @@ export function TransactionList({
   onTransactionClick,
 }: TransactionListProps) {
   const [activeTransaction, setActiveTransaction] = useState<TransactionWithBalance | null>(null);
-  const [localTransactions, setLocalTransactions] = useState<TransactionWithBalance[]>(transactions);
-
-  // Sync with props
-  useMemo(() => {
-    setLocalTransactions(transactions);
-  }, [transactions]);
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const pendingDateChangeRef = useRef<string | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -103,89 +104,75 @@ export function TransactionList({
     })
   );
 
-  const groups = useMemo(() => groupTransactionsByDate(localTransactions), [localTransactions]);
-  const allTransactionIds = useMemo(() => localTransactions.map((t) => t.id), [localTransactions]);
+  const groups = useMemo(() => groupTransactionsByDate(transactions), [transactions]);
 
   const handleDragStart = (event: DragStartEvent) => {
-    const transaction = localTransactions.find((t) => t.id === event.active.id);
+    const transaction = transactions.find((t) => t.id === event.active.id);
     setActiveTransaction(transaction || null);
-  };
-
-  const handleDragOver = (event: DragOverEvent) => {
-    const { active, over } = event;
-    if (!over) return;
-
-    const activeId = active.id as string;
-    const overId = over.id as string;
-
-    // Check if dropping over a date group
-    if (overId.startsWith('date-')) {
-      const newDate = over.data.current?.date;
-      if (!newDate) return;
-
-      setLocalTransactions((prev) => {
-        const activeTransaction = prev.find((t) => t.id === activeId);
-        if (!activeTransaction || activeTransaction.date === newDate) return prev;
-
-        // Update the transaction's date
-        return prev.map((t) =>
-          t.id === activeId ? { ...t, date: newDate } : t
-        );
-      });
-      return;
-    }
-
-    // Check if dropping over another transaction
-    const activeTransaction = localTransactions.find((t) => t.id === activeId);
-    const overTransaction = localTransactions.find((t) => t.id === overId);
-
-    if (!activeTransaction || !overTransaction) return;
-
-    // If they're in different date groups, move the active one to the over transaction's date
-    if (activeTransaction.date !== overTransaction.date) {
-      setLocalTransactions((prev) => {
-        return prev.map((t) =>
-          t.id === activeId ? { ...t, date: overTransaction.date } : t
-        );
-      });
-    }
+    setActiveId(event.active.id as string);
+    pendingDateChangeRef.current = null;
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
+    
     setActiveTransaction(null);
-
-    if (!over) return;
-
-    const activeId = active.id as string;
-    const overId = over.id as string;
-
-    // Find the transactions
-    const activeTransaction = localTransactions.find((t) => t.id === activeId);
-    const originalTransaction = transactions.find((t) => t.id === activeId);
-
-    if (!activeTransaction || !originalTransaction) return;
-
-    // Collect date changes
-    const dateChanges: { id: string; newDate: string }[] = [];
-    if (activeTransaction.date !== originalTransaction.date) {
-      dateChanges.push({ id: activeId, newDate: activeTransaction.date });
+    setActiveId(null);
+    
+    if (!over) {
+      pendingDateChangeRef.current = null;
+      return;
     }
 
-    // Handle reordering within the same group
-    if (!overId.startsWith('date-') && activeId !== overId) {
-      const oldIndex = localTransactions.findIndex((t) => t.id === activeId);
-      const newIndex = localTransactions.findIndex((t) => t.id === overId);
+    const activeIdStr = active.id as string;
+    const overIdStr = over.id as string;
 
-      if (oldIndex !== -1 && newIndex !== -1) {
-        const reordered = arrayMove(localTransactions, oldIndex, newIndex);
-        onReorder(reordered, dateChanges.length > 0 ? dateChanges : undefined);
-        return;
+    const activeTransaction = transactions.find((t) => t.id === activeIdStr);
+    if (!activeTransaction) {
+      pendingDateChangeRef.current = null;
+      return;
+    }
+
+    let newTransactions = [...transactions];
+    const dateChanges: { id: string; newDate: string }[] = [];
+
+    // Check if dropping on a date group
+    if (overIdStr.startsWith('date-')) {
+      const newDate = over.data.current?.date;
+      if (newDate && newDate !== activeTransaction.date) {
+        // Update the date
+        dateChanges.push({ id: activeIdStr, newDate });
+        newTransactions = newTransactions.map((t) =>
+          t.id === activeIdStr ? { ...t, date: newDate } : t
+        );
+      }
+    } else {
+      // Dropping on another transaction
+      const overTransaction = transactions.find((t) => t.id === overIdStr);
+      
+      if (overTransaction) {
+        // If different dates, change the active transaction's date first
+        if (activeTransaction.date !== overTransaction.date) {
+          dateChanges.push({ id: activeIdStr, newDate: overTransaction.date });
+          newTransactions = newTransactions.map((t) =>
+            t.id === activeIdStr ? { ...t, date: overTransaction.date } : t
+          );
+        }
+
+        // Now reorder within the list
+        if (activeIdStr !== overIdStr) {
+          const oldIndex = newTransactions.findIndex((t) => t.id === activeIdStr);
+          const newIndex = newTransactions.findIndex((t) => t.id === overIdStr);
+          
+          if (oldIndex !== -1 && newIndex !== -1) {
+            newTransactions = arrayMove(newTransactions, oldIndex, newIndex);
+          }
+        }
       }
     }
 
-    // Just commit the changes (date changes only)
-    onReorder(localTransactions, dateChanges.length > 0 ? dateChanges : undefined);
+    pendingDateChangeRef.current = null;
+    onReorder(newTransactions, dateChanges.length > 0 ? dateChanges : undefined);
   };
 
   return (
@@ -193,23 +180,21 @@ export function TransactionList({
       sensors={sensors}
       collisionDetection={closestCenter}
       onDragStart={handleDragStart}
-      onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
-      <SortableContext items={allTransactionIds} strategy={verticalListSortingStrategy}>
-        <div className="flex flex-col gap-6">
-          {groups.map((group) => (
-            <DroppableDateGroup
-              key={group.date}
-              date={group.date}
-              label={group.label}
-              transactions={group.transactions}
-              onTogglePaid={onTogglePaid}
-              onTransactionClick={onTransactionClick}
-            />
-          ))}
-        </div>
-      </SortableContext>
+      <div className="flex flex-col gap-6">
+        {groups.map((group) => (
+          <DroppableDateGroup
+            key={group.date}
+            date={group.date}
+            label={group.label}
+            transactions={group.transactions}
+            onTogglePaid={onTogglePaid}
+            onTransactionClick={onTransactionClick}
+            activeId={activeId}
+          />
+        ))}
+      </div>
 
       <DragOverlay>
         {activeTransaction && (
