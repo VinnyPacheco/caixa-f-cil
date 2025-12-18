@@ -69,15 +69,23 @@ export function useTransactions(selectedDate: Date) {
     };
   }, [monthTransactions]);
 
-  // Reorder transactions
-  const reorderTransactions = useCallback((newOrder: TransactionWithBalance[]) => {
+  // Reorder transactions and optionally update dates
+  const reorderTransactions = useCallback((
+    newOrder: TransactionWithBalance[],
+    dateChanges?: { id: string; newDate: string }[]
+  ) => {
     setTransactions((prev) => {
       const updatedIds = new Set(newOrder.map((t) => t.id));
+      const dateChangeMap = new Map(dateChanges?.map((d) => [d.id, d.newDate]) || []);
       const unchanged = prev.filter((t) => !updatedIds.has(t.id));
-      const reordered = newOrder.map((t, index) => ({
-        ...prev.find((p) => p.id === t.id)!,
-        orderIndex: index + 1,
-      }));
+      const reordered = newOrder.map((t, index) => {
+        const original = prev.find((p) => p.id === t.id)!;
+        return {
+          ...original,
+          orderIndex: index + 1,
+          date: dateChangeMap.get(t.id) || original.date,
+        };
+      });
       return [...unchanged, ...reordered];
     });
   }, []);
