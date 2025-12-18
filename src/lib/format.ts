@@ -24,13 +24,16 @@ export function formatDateLabel(dateString: string): string {
 }
 
 export function groupTransactionsByDate(
-  transactions: TransactionWithBalance[]
+  transactions: TransactionWithBalance[],
+  sortOrder: 'asc' | 'desc' = 'desc'
 ): TransactionGroup[] {
   const groups: Map<string, TransactionWithBalance[]> = new Map();
 
-  // Sort transactions by date descending, then by orderIndex
+  // Sort transactions by date based on sortOrder, then by orderIndex
   const sorted = [...transactions].sort((a, b) => {
-    const dateCompare = new Date(b.date).getTime() - new Date(a.date).getTime();
+    const dateCompare = sortOrder === 'desc'
+      ? new Date(b.date).getTime() - new Date(a.date).getTime()
+      : new Date(a.date).getTime() - new Date(b.date).getTime();
     if (dateCompare !== 0) return dateCompare;
     return a.orderIndex - b.orderIndex;
   });
