@@ -4,7 +4,9 @@ import { Header } from '@/components/layout/Header';
 import { mockAccounts } from '@/data/mockData';
 import { Account, AccountType } from '@/types/finance';
 import { Button } from '@/components/ui/button';
+import { AccountForm } from '@/components/finance/AccountForm';
 import { Plus } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 const accountTypeLabels: Record<AccountType, string> = {
   checking: 'Conta Corrente',
@@ -21,13 +23,53 @@ const accountTypeIcons: Record<AccountType, string> = {
 };
 
 export default function Accounts() {
-  const [accounts] = useState<Account[]>(mockAccounts);
+  const [accounts, setAccounts] = useState<Account[]>(mockAccounts);
+  const [formOpen, setFormOpen] = useState(false);
+  const [editingAccount, setEditingAccount] = useState<Account | null>(null);
+  const { toast } = useToast();
 
   const formatCurrency = (value: number) => {
     return value.toLocaleString('pt-BR', {
       style: 'currency',
       currency: 'BRL',
     });
+  };
+
+  const handleSaveAccount = (accountData: Omit<Account, 'id'> & { id?: string }) => {
+    if (accountData.id) {
+      // Edit existing
+      setAccounts((prev) =>
+        prev.map((acc) =>
+          acc.id === accountData.id ? { ...acc, ...accountData } as Account : acc
+        )
+      );
+      toast({
+        title: 'Conta atualizada',
+        description: `A conta "${accountData.name}" foi atualizada com sucesso.`,
+      });
+    } else {
+      // Create new
+      const newAccount: Account = {
+        ...accountData,
+        id: `acc-${Date.now()}`,
+      };
+      setAccounts((prev) => [...prev, newAccount]);
+      toast({
+        title: 'Conta criada',
+        description: `A conta "${accountData.name}" foi criada com sucesso.`,
+      });
+    }
+    setEditingAccount(null);
+  };
+
+  const handleEditAccount = (account: Account) => {
+    setEditingAccount(account);
+    setFormOpen(true);
+  };
+
+  const handleNewAccount = () => {
+    setEditingAccount(null);
+    setFormOpen(true);
   };
 
   return (
@@ -41,7 +83,12 @@ export default function Accounts() {
             <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">
               Suas Contas
             </h3>
-            <Button variant="ghost" size="sm" className="text-accent hover:text-accent/80">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-accent hover:text-accent/80"
+              onClick={handleNewAccount}
+            >
               <Plus className="size-4 mr-1" />
               Nova Conta
             </Button>
@@ -51,6 +98,7 @@ export default function Accounts() {
             {accounts.map((account) => (
               <button
                 key={account.id}
+                onClick={() => handleEditAccount(account)}
                 className="w-full flex items-center gap-4 p-4 hover:bg-secondary/50 transition-colors"
               >
                 <div
@@ -103,6 +151,13 @@ export default function Accounts() {
           </div>
         </div>
       </main>
+
+      <AccountForm
+        open={formOpen}
+        onOpenChange={setFormOpen}
+        account={editingAccount}
+        onSave={handleSaveAccount}
+      />
     </AppLayout>
   );
 }
