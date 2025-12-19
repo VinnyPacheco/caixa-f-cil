@@ -113,6 +113,13 @@ export function useTransactions(selectedDate: Date) {
     setTransactions((prev) => [...prev, newTransaction]);
   }, [transactions.length]);
 
+  // Update existing transaction
+  const updateTransaction = useCallback((id: string, updates: Partial<Transaction>) => {
+    setTransactions((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, ...updates } : t))
+    );
+  }, []);
+
   return {
     transactions: transactionsWithBalance,
     categories,
@@ -123,5 +130,6 @@ export function useTransactions(selectedDate: Date) {
     reorderTransactions,
     togglePaid,
     addTransaction,
+    updateTransaction,
   };
 }
