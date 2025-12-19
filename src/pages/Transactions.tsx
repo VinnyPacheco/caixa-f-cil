@@ -4,25 +4,46 @@ import { Header } from '@/components/layout/Header';
 import { MonthSelector } from '@/components/finance/MonthSelector';
 import { FilterPills } from '@/components/finance/FilterPills';
 import { TransactionList } from '@/components/finance/TransactionList';
+import { TransactionForm } from '@/components/finance/TransactionForm';
 import { useTransactions } from '@/hooks/useTransactions';
 import { formatCurrency } from '@/lib/format';
 import { ArrowUpDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { TransactionWithBalance } from '@/types/finance';
 
 export default function Transactions() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [editingTransaction, setEditingTransaction] = useState<TransactionWithBalance | null>(null);
+  const [formOpen, setFormOpen] = useState(false);
+  
   const {
     transactions,
+    categories,
+    accounts,
     monthSummary,
     filter,
     setFilter,
     reorderTransactions,
     togglePaid,
+    addTransaction,
+    updateTransaction,
   } = useTransactions(selectedDate);
 
   const toggleSortOrder = () => {
     setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+  };
+
+  const handleTransactionClick = (transaction: TransactionWithBalance) => {
+    setEditingTransaction(transaction);
+    setFormOpen(true);
+  };
+
+  const handleFormClose = (open: boolean) => {
+    setFormOpen(open);
+    if (!open) {
+      setEditingTransaction(null);
+    }
   };
 
   return (
@@ -75,9 +96,20 @@ export default function Transactions() {
           transactions={transactions}
           onReorder={reorderTransactions}
           onTogglePaid={togglePaid}
+          onTransactionClick={handleTransactionClick}
           sortOrder={sortOrder}
         />
       </main>
+
+      <TransactionForm
+        open={formOpen}
+        onOpenChange={handleFormClose}
+        transaction={editingTransaction}
+        categories={categories}
+        accounts={accounts}
+        onSave={addTransaction}
+        onUpdate={updateTransaction}
+      />
     </AppLayout>
   );
 }
