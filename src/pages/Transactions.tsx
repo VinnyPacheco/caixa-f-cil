@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Header } from '@/components/layout/Header';
 import { MonthSelector } from '@/components/finance/MonthSelector';
@@ -11,9 +11,14 @@ import { ArrowUpDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { TransactionWithBalance } from '@/types/finance';
 
+const SORT_ORDER_KEY = 'transactions-sort-order';
+
 export default function Transactions() {
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>(() => {
+    const saved = localStorage.getItem(SORT_ORDER_KEY);
+    return saved === 'asc' || saved === 'desc' ? saved : 'desc';
+  });
   const [editingTransaction, setEditingTransaction] = useState<TransactionWithBalance | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   
@@ -31,7 +36,11 @@ export default function Transactions() {
   } = useTransactions(selectedDate);
 
   const toggleSortOrder = () => {
-    setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+    setSortOrder((prev) => {
+      const newOrder = prev === 'asc' ? 'desc' : 'asc';
+      localStorage.setItem(SORT_ORDER_KEY, newOrder);
+      return newOrder;
+    });
   };
 
   const handleTransactionClick = (transaction: TransactionWithBalance) => {
