@@ -3,6 +3,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Transaction, TransactionType, RecurrenceType, Category, Account } from '@/types/finance';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { Calendar } from '@/components/ui/calendar';
 
 interface TransactionFormProps {
   open: boolean;
@@ -34,6 +36,7 @@ export function TransactionForm({
   const [date, setDate] = useState(new Date());
   const [recurrence, setRecurrence] = useState<RecurrenceType>('once');
   const [isPaid, setIsPaid] = useState(false);
+  const [autoSettle, setAutoSettle] = useState(false);
 
   useEffect(() => {
     if (transaction) {
@@ -45,6 +48,7 @@ export function TransactionForm({
       setDate(new Date(transaction.date));
       setRecurrence(transaction.recurrenceType);
       setIsPaid(transaction.isPaid);
+      setAutoSettle(false);
     } else {
       setType('expense');
       setAmount('');
@@ -54,6 +58,7 @@ export function TransactionForm({
       setDate(new Date());
       setRecurrence('once');
       setIsPaid(false);
+      setAutoSettle(false);
     }
   }, [transaction, accounts, open]);
 
@@ -182,18 +187,18 @@ export function TransactionForm({
             </div>
           </div>
 
-          {/* Date */}
+          {/* Date with Calendar */}
           <div className="space-y-2">
             <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">
               Data
             </label>
-            <div className="flex items-center gap-3 bg-secondary p-4 rounded-xl">
-              <span className="material-symbols-outlined text-muted-foreground">calendar_today</span>
-              <input
-                type="date"
-                value={format(date, 'yyyy-MM-dd')}
-                onChange={(e) => setDate(new Date(e.target.value))}
-                className="w-full bg-transparent border-none p-0 focus:ring-0 focus:outline-none text-foreground text-base font-medium"
+            <div className="flex justify-center bg-secondary p-3 rounded-xl">
+              <Calendar
+                mode="single"
+                selected={date}
+                onSelect={(d) => d && setDate(d)}
+                locale={ptBR}
+                className="rounded-md"
               />
             </div>
           </div>
@@ -239,27 +244,54 @@ export function TransactionForm({
             </div>
           </div>
 
-          {/* Recurrence */}
+          {/* Recurrence - Read-only when editing */}
           <div className="space-y-2">
             <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">
               Recorrência
             </label>
-            <div className="grid grid-cols-3 gap-2">
-              {(['once', 'installment', 'recurring'] as RecurrenceType[]).map((r) => (
-                <button
-                  key={r}
-                  type="button"
-                  onClick={() => setRecurrence(r)}
-                  className={`py-3 px-2 rounded-xl font-semibold text-sm transition-all ${
-                    recurrence === r
-                      ? 'bg-accent text-accent-foreground shadow-sm'
-                      : 'bg-secondary text-muted-foreground hover:bg-muted'
-                  }`}
-                >
-                  {r === 'once' ? 'Única' : r === 'installment' ? 'Parcelada' : 'Contínua'}
-                </button>
-              ))}
+            {isEditing ? (
+              <div className="bg-secondary/50 p-4 rounded-xl">
+                <span className="text-foreground text-sm font-medium">
+                  {recurrence === 'once' ? 'Única' : recurrence === 'installment' ? 'Parcelada' : 'Contínua'}
+                </span>
+              </div>
+            ) : (
+              <div className="grid grid-cols-3 gap-2">
+                {(['once', 'installment', 'recurring'] as RecurrenceType[]).map((r) => (
+                  <button
+                    key={r}
+                    type="button"
+                    onClick={() => setRecurrence(r)}
+                    className={`py-3 px-2 rounded-xl font-semibold text-sm transition-all ${
+                      recurrence === r
+                        ? 'bg-accent text-accent-foreground shadow-sm'
+                        : 'bg-secondary text-muted-foreground hover:bg-muted'
+                    }`}
+                  >
+                    {r === 'once' ? 'Única' : r === 'installment' ? 'Parcelada' : 'Contínua'}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Auto Settle Toggle */}
+          <div className="flex items-center justify-between bg-secondary p-4 rounded-2xl">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-full bg-card text-accent">
+                <span className="material-symbols-outlined text-[20px]">schedule</span>
+              </div>
+              <span className="text-base font-semibold text-foreground">Baixa Automática</span>
             </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={autoSettle}
+                onChange={(e) => setAutoSettle(e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-muted peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-border after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent"></div>
+            </label>
           </div>
 
           {/* Paid Status Toggle */}
