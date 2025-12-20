@@ -32,6 +32,8 @@ export interface Transaction {
   recurrenceType: RecurrenceType;
   installmentCurrent?: number;
   installmentTotal?: number;
+  notes?: string;
+  autoSettle?: boolean;
 }
 
 export interface MonthlyBalance {
