@@ -6,6 +6,7 @@ import { TransactionType, RecurrenceType } from '@/types/finance';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { Copy } from 'lucide-react';
 
 export default function NewTransaction() {
   const navigate = useNavigate();
@@ -19,6 +20,7 @@ export default function NewTransaction() {
   const [date, setDate] = useState(new Date());
   const [recurrence, setRecurrence] = useState<RecurrenceType>('once');
   const [autoPay, setAutoPay] = useState(false);
+  const [notes, setNotes] = useState('');
 
   const filteredCategories = mockCategories.filter((c) => c.type === type);
 
@@ -224,6 +226,40 @@ export default function NewTransaction() {
               />
               <div className="w-11 h-6 bg-muted peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-border after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent"></div>
             </label>
+          </div>
+
+          {/* Notes */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between ml-1">
+              <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                Observações
+              </label>
+              {notes && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(notes);
+                    toast({
+                      title: 'Copiado!',
+                      description: 'Observações copiadas para a área de transferência.',
+                    });
+                  }}
+                  className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                  title="Copiar observações"
+                >
+                  <Copy className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+            <div className="input-gold p-4">
+              <textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Adicione observações sobre este lançamento..."
+                rows={3}
+                className="w-full bg-transparent border-none p-0 focus:ring-0 focus:outline-none text-foreground placeholder-muted-foreground text-sm font-medium resize-none"
+              />
+            </div>
           </div>
         </div>
       </main>
