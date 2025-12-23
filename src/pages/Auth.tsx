@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -6,19 +6,55 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { z } from 'zod';
+import { Check, X } from 'lucide-react';
 
 const loginSchema = z.object({
   email: z.string().trim().email('Email inválido'),
   password: z.string().min(6, 'A senha deve ter pelo menos 6 caracteres'),
 });
 
-const signUpSchema = loginSchema.extend({
+const passwordCriteria = [
+  { id: 'minLength', label: 'Pelo menos 8 caracteres', test: (pw: string) => pw.length >= 8 },
+  { id: 'lowercase', label: 'Uma letra minúscula', test: (pw: string) => /[a-z]/.test(pw) },
+  { id: 'uppercase', label: 'Uma letra maiúscula', test: (pw: string) => /[A-Z]/.test(pw) },
+  { id: 'number', label: 'Um número', test: (pw: string) => /[0-9]/.test(pw) },
+  { id: 'special', label: 'Um caractere especial (!@#$%...)', test: (pw: string) => /[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\;'/`~]/.test(pw) },
+];
+
+const signUpSchema = z.object({
+  email: z.string().trim().email('Email inválido'),
+  password: z.string()
+    .min(8, 'A senha deve ter pelo menos 8 caracteres')
+    .regex(/[a-z]/, 'A senha deve ter uma letra minúscula')
+    .regex(/[A-Z]/, 'A senha deve ter uma letra maiúscula')
+    .regex(/[0-9]/, 'A senha deve ter um número')
+    .regex(/[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\;'/`~]/, 'A senha deve ter um caractere especial'),
   fullName: z.string().trim().min(2, 'O nome deve ter pelo menos 2 caracteres').optional(),
   confirmPassword: z.string(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: 'As senhas não coincidem',
   path: ['confirmPassword'],
 });
+
+interface PasswordCriteriaItemProps {
+  met: boolean;
+  label: string;
+}
+
+function PasswordCriteriaItem({ met, label }: PasswordCriteriaItemProps) {
+  return (
+    <div className={`flex items-center gap-2 text-xs transition-all duration-200 ${met ? 'text-green-500' : 'text-muted-foreground'}`}>
+      <div className={`size-4 rounded-full flex items-center justify-center transition-all duration-200 ${met ? 'bg-green-500/20' : 'bg-muted'}`}>
+        {met ? (
+          <Check className="size-3" />
+        ) : (
+          <X className="size-3" />
+        )}
+      </div>
+      <span>{label}</span>
+    </div>
+  );
+}
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
@@ -32,6 +68,25 @@ export default function Auth() {
   const { signIn, signUp } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  const passwordStrength = useMemo(() => {
+    return passwordCriteria.map(criterion => ({
+      ...criterion,
+      met: criterion.test(password),
+    }));
+  }, [password]);
+
+  const allCriteriaMet = passwordStrength.every(c => c.met);
+  const metCount = passwordStrength.filter(c => c.met).length;
+  const strengthPercentage = (metCount / passwordCriteria.length) * 100;
+
+  const getStrengthColor = () => {
+    if (strengthPercentage <= 20) return 'bg-destructive';
+    if (strengthPercentage <= 40) return 'bg-orange-500';
+    if (strengthPercentage <= 60) return 'bg-yellow-500';
+    if (strengthPercentage <= 80) return 'bg-lime-500';
+    return 'bg-green-500';
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -172,13 +227,42 @@ export default function Auth() {
             <Input
               id="password"
               type="password"
-              placeholder="••••••"
+              placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className={errors.password ? 'border-destructive' : ''}
             />
             {errors.password && (
               <p className="text-xs text-destructive">{errors.password}</p>
+            )}
+
+            {/* Password Strength Indicator - only for signup */}
+            {!isLogin && password.length > 0 && (
+              <div className="space-y-3 pt-2 animate-in fade-in-0 slide-in-from-top-2 duration-300">
+                {/* Strength bar */}
+                <div className="space-y-1">
+                  <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                    <div 
+                      className={`h-full transition-all duration-300 rounded-full ${getStrengthColor()}`}
+                      style={{ width: `${strengthPercentage}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Força da senha: {metCount}/{passwordCriteria.length} critérios
+                  </p>
+                </div>
+
+                {/* Criteria list */}
+                <div className="grid gap-1.5">
+                  {passwordStrength.map((criterion) => (
+                    <PasswordCriteriaItem 
+                      key={criterion.id}
+                      met={criterion.met}
+                      label={criterion.label}
+                    />
+                  ))}
+                </div>
+              </div>
             )}
           </div>
 
@@ -188,7 +272,7 @@ export default function Auth() {
               <Input
                 id="confirmPassword"
                 type="password"
-                placeholder="••••••"
+                placeholder="••••••••"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 className={errors.confirmPassword ? 'border-destructive' : ''}
@@ -196,13 +280,19 @@ export default function Auth() {
               {errors.confirmPassword && (
                 <p className="text-xs text-destructive">{errors.confirmPassword}</p>
               )}
+              {!isLogin && confirmPassword.length > 0 && password === confirmPassword && (
+                <div className="flex items-center gap-2 text-xs text-green-500 animate-in fade-in-0 duration-200">
+                  <Check className="size-3" />
+                  <span>Senhas coincidem</span>
+                </div>
+              )}
             </div>
           )}
 
           <Button 
             type="submit" 
             className="w-full" 
-            disabled={isLoading}
+            disabled={isLoading || (!isLogin && !allCriteriaMet)}
           >
             {isLoading 
               ? (isLogin ? 'Entrando...' : 'Cadastrando...') 
@@ -217,6 +307,8 @@ export default function Auth() {
             onClick={() => {
               setIsLogin(!isLogin);
               setErrors({});
+              setPassword('');
+              setConfirmPassword('');
             }}
             className="text-sm text-accent hover:underline"
           >
