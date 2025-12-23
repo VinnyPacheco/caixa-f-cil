@@ -1,12 +1,11 @@
 import { useState } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Header } from '@/components/layout/Header';
-import { mockCategories } from '@/data/mockData';
+import { useCategories } from '@/hooks/useCategoriesData';
 import { Category, TransactionType } from '@/types/finance';
 import { Button } from '@/components/ui/button';
 import { CategoryForm } from '@/components/finance/CategoryForm';
 import { Plus } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
 
 type FilterType = 'all' | TransactionType;
 
@@ -17,11 +16,10 @@ const filterLabels: Record<FilterType, string> = {
 };
 
 export default function Categories() {
-  const [categories, setCategories] = useState<Category[]>(mockCategories);
+  const { categories, createCategory, updateCategory, isLoading } = useCategories();
   const [filter, setFilter] = useState<FilterType>('all');
   const [formOpen, setFormOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
-  const { toast } = useToast();
 
   const filteredCategories = categories.filter((category) => {
     if (filter === 'all') return true;
@@ -33,29 +31,12 @@ export default function Categories() {
 
   const handleSaveCategory = (categoryData: Omit<Category, 'id'> & { id?: string }) => {
     if (categoryData.id) {
-      // Edit existing
-      setCategories((prev) =>
-        prev.map((cat) =>
-          cat.id === categoryData.id ? { ...cat, ...categoryData } as Category : cat
-        )
-      );
-      toast({
-        title: 'Categoria atualizada',
-        description: `A categoria "${categoryData.name}" foi atualizada com sucesso.`,
-      });
+      updateCategory({ id: categoryData.id, data: categoryData });
     } else {
-      // Create new
-      const newCategory: Category = {
-        ...categoryData,
-        id: `cat-${Date.now()}`,
-      };
-      setCategories((prev) => [...prev, newCategory]);
-      toast({
-        title: 'Categoria criada',
-        description: `A categoria "${categoryData.name}" foi criada com sucesso.`,
-      });
+      createCategory(categoryData);
     }
     setEditingCategory(null);
+    setFormOpen(false);
   };
 
   const handleEditCategory = (category: Category) => {

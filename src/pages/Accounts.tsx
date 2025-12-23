@@ -1,12 +1,11 @@
 import { useState } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Header } from '@/components/layout/Header';
-import { mockAccounts } from '@/data/mockData';
+import { useAccounts } from '@/hooks/useAccounts';
 import { Account, AccountType } from '@/types/finance';
 import { Button } from '@/components/ui/button';
 import { AccountForm } from '@/components/finance/AccountForm';
 import { Plus } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
 
 const accountTypeLabels: Record<AccountType, string> = {
   checking: 'Conta Corrente',
@@ -23,10 +22,9 @@ const accountTypeIcons: Record<AccountType, string> = {
 };
 
 export default function Accounts() {
-  const [accounts, setAccounts] = useState<Account[]>(mockAccounts);
+  const { accounts, createAccount, updateAccount, isLoading } = useAccounts();
   const [formOpen, setFormOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
-  const { toast } = useToast();
 
   const formatCurrency = (value: number) => {
     return value.toLocaleString('pt-BR', {
@@ -37,29 +35,12 @@ export default function Accounts() {
 
   const handleSaveAccount = (accountData: Omit<Account, 'id'> & { id?: string }) => {
     if (accountData.id) {
-      // Edit existing
-      setAccounts((prev) =>
-        prev.map((acc) =>
-          acc.id === accountData.id ? { ...acc, ...accountData } as Account : acc
-        )
-      );
-      toast({
-        title: 'Conta atualizada',
-        description: `A conta "${accountData.name}" foi atualizada com sucesso.`,
-      });
+      updateAccount({ id: accountData.id, data: accountData });
     } else {
-      // Create new
-      const newAccount: Account = {
-        ...accountData,
-        id: `acc-${Date.now()}`,
-      };
-      setAccounts((prev) => [...prev, newAccount]);
-      toast({
-        title: 'Conta criada',
-        description: `A conta "${accountData.name}" foi criada com sucesso.`,
-      });
+      createAccount(accountData);
     }
     setEditingAccount(null);
+    setFormOpen(false);
   };
 
   const handleEditAccount = (account: Account) => {
