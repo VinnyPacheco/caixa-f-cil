@@ -3,6 +3,39 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { TransactionWithBalance } from '@/types/finance';
 import { formatCurrency } from '@/lib/format';
+import { differenceInDays, parseISO, startOfDay } from 'date-fns';
+import { cn } from '@/lib/utils';
+
+type DueStatus = 'overdue' | 'due-soon' | 'normal';
+
+function getDueStatus(transaction: TransactionWithBalance): DueStatus {
+  // Only check unpaid transactions
+  if (transaction.isPaid) return 'normal';
+  
+  const today = startOfDay(new Date());
+  const dueDate = startOfDay(parseISO(transaction.date));
+  const daysUntilDue = differenceInDays(dueDate, today);
+  
+  if (daysUntilDue < 0) return 'overdue';
+  if (daysUntilDue <= 3) return 'due-soon';
+  return 'normal';
+}
+
+function DueBadge({ status }: { status: DueStatus }) {
+  if (status === 'normal') return null;
+  
+  return (
+    <span
+      className={cn(
+        "text-[10px] font-semibold px-1.5 py-0.5 rounded-full",
+        status === 'overdue' && "bg-destructive/15 text-destructive",
+        status === 'due-soon' && "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+      )}
+    >
+      {status === 'overdue' ? 'Vencido' : 'Vence em breve'}
+    </span>
+  );
+}
 
 interface TransactionItemProps {
   transaction: TransactionWithBalance;
@@ -16,11 +49,16 @@ export const TransactionItem = forwardRef<HTMLDivElement, TransactionItemProps>(
   ({ transaction, showDragHandle = true, showBalance = true, onTogglePaid, onClick }, ref) => {
     const isIncome = transaction.type === 'income';
     const category = transaction.category;
+    const dueStatus = getDueStatus(transaction);
 
     return (
       <div
         ref={ref}
-        className="transaction-card cursor-pointer"
+        className={cn(
+          "transaction-card cursor-pointer",
+          dueStatus === 'overdue' && "border-l-4 border-l-destructive",
+          dueStatus === 'due-soon' && "border-l-4 border-l-amber-500"
+        )}
         onClick={onClick}
       >
         <div className="flex items-center gap-3">
@@ -41,9 +79,12 @@ export const TransactionItem = forwardRef<HTMLDivElement, TransactionItemProps>(
             )}
           </button>
           <div className="flex flex-col justify-center">
-            <p className="text-foreground text-base font-bold line-clamp-1">
-              {transaction.description}
-            </p>
+            <div className="flex items-center gap-2">
+              <p className="text-foreground text-base font-bold line-clamp-1">
+                {transaction.description}
+              </p>
+              <DueBadge status={dueStatus} />
+            </div>
             <p className="text-muted-foreground text-sm font-normal">
               {category?.name || 'Sem categoria'}
             </p>
@@ -92,12 +133,18 @@ export function SortableTransactionItem({
 
   const isIncome = transaction.type === 'income';
   const category = transaction.category;
+  const dueStatus = getDueStatus(transaction);
 
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className={`transaction-card ${isDragging ? 'shadow-xl scale-[1.02]' : ''}`}
+      className={cn(
+        "transaction-card",
+        isDragging ? 'shadow-xl scale-[1.02]' : '',
+        dueStatus === 'overdue' && "border-l-4 border-l-destructive",
+        dueStatus === 'due-soon' && "border-l-4 border-l-amber-500"
+      )}
       onClick={onClick}
     >
       <div className="flex items-center gap-3">
@@ -120,9 +167,12 @@ export function SortableTransactionItem({
           )}
         </button>
         <div className="flex flex-col justify-center">
-          <p className="text-foreground text-base font-bold line-clamp-1">
-            {transaction.description}
-          </p>
+          <div className="flex items-center gap-2">
+            <p className="text-foreground text-base font-bold line-clamp-1">
+              {transaction.description}
+            </p>
+            <DueBadge status={dueStatus} />
+          </div>
           <p className="text-muted-foreground text-sm font-normal">
             {category?.name || 'Sem categoria'}
           </p>
