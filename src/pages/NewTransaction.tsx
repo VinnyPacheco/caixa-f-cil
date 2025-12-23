@@ -7,32 +7,54 @@ import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Copy } from 'lucide-react';
+import { Calendar } from '@/components/ui/calendar';
 
 export default function NewTransaction() {
   const navigate = useNavigate();
   const { toast } = useToast();
   
   const [type, setType] = useState<TransactionType>('expense');
-  const [amount, setAmount] = useState('');
+  const [amountCents, setAmountCents] = useState(0);
   const [description, setDescription] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [accountId, setAccountId] = useState('acc-1');
-  const [date, setDate] = useState(new Date());
+  const [date, setDate] = useState<Date | undefined>(new Date());
   const [recurrence, setRecurrence] = useState<RecurrenceType>('once');
-  const [installmentCount, setInstallmentCount] = useState('2');
+  const [installmentCount, setInstallmentCount] = useState(2);
   const [autoPay, setAutoPay] = useState(false);
   const [notes, setNotes] = useState('');
 
   const filteredCategories = mockCategories.filter((c) => c.type === type);
 
-  const handleAmountChange = (value: string) => {
-    // Remove non-numeric characters except comma and dot
-    const cleaned = value.replace(/[^\d,\.]/g, '');
-    setAmount(cleaned);
+  // Format amount from cents to display string with thousand separators
+  const formatAmountDisplay = (cents: number): string => {
+    const value = cents / 100;
+    return new Intl.NumberFormat('pt-BR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(value);
+  };
+
+  const handleAmountKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    // Allow only digits and backspace/delete
+    if (e.key === 'Backspace' || e.key === 'Delete') {
+      e.preventDefault();
+      setAmountCents((prev) => Math.floor(prev / 10));
+      return;
+    }
+    
+    if (!/^\d$/.test(e.key)) {
+      e.preventDefault();
+      return;
+    }
+    
+    e.preventDefault();
+    const digit = parseInt(e.key, 10);
+    setAmountCents((prev) => prev * 10 + digit);
   };
 
   const handleSubmit = () => {
-    if (!amount || !description) {
+    if (amountCents === 0 || !description) {
       toast({
         title: 'Campos obrigatórios',
         description: 'Preencha o valor e a descrição do lançamento.',
@@ -41,21 +63,11 @@ export default function NewTransaction() {
       return;
     }
 
-    // Parse amount
-    const numericAmount = parseFloat(amount.replace(',', '.'));
-    
-    if (isNaN(numericAmount) || numericAmount <= 0) {
-      toast({
-        title: 'Valor inválido',
-        description: 'Digite um valor válido para o lançamento.',
-        variant: 'destructive',
-      });
-      return;
-    }
+    const numericAmount = amountCents / 100;
 
     toast({
       title: 'Lançamento salvo!',
-      description: `${type === 'income' ? 'Receita' : 'Despesa'} de R$ ${amount} registrada com sucesso.`,
+      description: `${type === 'income' ? 'Receita' : 'Despesa'} de R$ ${formatAmountDisplay(amountCents)} registrada com sucesso.`,
     });
 
     navigate(-1);
@@ -99,11 +111,11 @@ export default function NewTransaction() {
             <span className="text-3xl font-bold text-foreground mr-1 self-center pb-1">R$</span>
             <input
               type="text"
-              inputMode="decimal"
-              value={amount}
-              onChange={(e) => handleAmountChange(e.target.value)}
-              placeholder="0,00"
-              className="w-full max-w-[240px] bg-transparent border-none p-0 text-5xl font-bold text-foreground placeholder-muted-foreground/30 text-center focus:ring-0 focus:outline-none leading-tight"
+              inputMode="numeric"
+              value={formatAmountDisplay(amountCents)}
+              onKeyDown={handleAmountKeyDown}
+              readOnly
+              className="w-full max-w-[280px] bg-transparent border-none p-0 text-5xl font-bold text-foreground text-center focus:ring-0 focus:outline-none leading-tight cursor-text caret-transparent"
             />
           </div>
         </div>
@@ -129,21 +141,19 @@ export default function NewTransaction() {
             </div>
           </div>
 
-          {/* Date */}
+          {/* Date - Exposed Calendar */}
           <div className="space-y-2">
             <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">
               Data
             </label>
-            <div className="input-gold p-4">
-              <div className="flex items-center gap-3">
-                <span className="material-symbols-outlined text-muted-foreground">calendar_today</span>
-                <input
-                  type="date"
-                  value={format(date, 'yyyy-MM-dd')}
-                  onChange={(e) => setDate(new Date(e.target.value))}
-                  className="w-full bg-transparent border-none p-0 focus:ring-0 focus:outline-none text-foreground text-base font-medium"
-                />
-              </div>
+            <div className="flex justify-center">
+              <Calendar
+                mode="single"
+                selected={date}
+                onSelect={setDate}
+                locale={ptBR}
+                className="rounded-xl border border-border/50 bg-card p-3"
+              />
             </div>
           </div>
 
@@ -216,20 +226,21 @@ export default function NewTransaction() {
               <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">
                 Número de Parcelas
               </label>
-              <div className="input-gold p-4">
-                <div className="flex items-center gap-3">
-                  <span className="material-symbols-outlined text-muted-foreground">format_list_numbered</span>
-                  <input
-                    type="number"
-                    min="2"
-                    max="60"
-                    value={installmentCount}
-                    onChange={(e) => setInstallmentCount(e.target.value)}
-                    placeholder="Ex: 12"
-                    className="w-full bg-transparent border-none p-0 focus:ring-0 focus:outline-none text-foreground placeholder-muted-foreground text-base font-medium"
-                  />
-                  <span className="text-muted-foreground text-sm">parcelas</span>
-                </div>
+              <div className="flex flex-wrap gap-2">
+                {[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((num) => (
+                  <button
+                    key={num}
+                    type="button"
+                    onClick={() => setInstallmentCount(num)}
+                    className={`w-12 h-12 rounded-xl font-bold text-base transition-all ${
+                      installmentCount === num
+                        ? 'bg-accent text-accent-foreground shadow-sm'
+                        : 'bg-secondary text-muted-foreground hover:bg-muted'
+                    }`}
+                  >
+                    {num}x
+                  </button>
+                ))}
               </div>
             </div>
           )}
