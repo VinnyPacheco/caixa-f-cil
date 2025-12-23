@@ -234,47 +234,85 @@ function extractRecurrence(text: string): { type: RecurrenceType; installments?:
   return { type: 'once' };
 }
 
+// Stop-words to remove from description
+const stopWords = new Set([
+  // Prepositions and connectors
+  'a', 'o', 'e', 'é', 'de', 'do', 'da', 'dos', 'das', 'em', 'no', 'na', 'nos', 'nas',
+  'para', 'por', 'pelo', 'pela', 'pelos', 'pelas', 'com', 'sem', 'sobre', 'entre',
+  'um', 'uma', 'uns', 'umas', 'ao', 'aos', 'à', 'às', 'que', 'se',
+  
+  // Date-related words
+  'data', 'dia', 'hoje', 'ontem', 'anteontem', 'amanhã', 'amanha', 'semana', 'mês', 'mes', 'ano',
+  'segunda', 'terça', 'terca', 'quarta', 'quinta', 'sexta', 'sábado', 'sabado', 'domingo',
+  'janeiro', 'fevereiro', 'março', 'marco', 'abril', 'maio', 'junho',
+  'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro',
+  'próximo', 'proximo', 'próxima', 'proxima', 'passado', 'passada', 'último', 'ultimo', 'última', 'ultima',
+  
+  // Value-related words
+  'reais', 'real', 'r$', 'valor', 'total', 'preço', 'preco', 'custo', 'quantia',
+  'centavos', 'mil', 'milhão', 'milhao', 'bilhão', 'bilhao',
+  
+  // Transaction action words
+  'gastei', 'gasto', 'paguei', 'pago', 'pagamento', 'comprei', 'compra', 'comprado',
+  'recebi', 'recebido', 'recebimento', 'ganhei', 'ganho', 'tirei', 'descontei',
+  'depositei', 'depósito', 'deposito', 'transferi', 'transferência', 'transferencia',
+  
+  // Recurrence words
+  'parcela', 'parcelas', 'parcelado', 'parcelada', 'vezes', 'mensal', 'mensalmente',
+  'recorrente', 'fixo', 'fixa', 'todo', 'toda', 'todos', 'todas',
+  
+  // Account-related words
+  'cartão', 'cartao', 'banco', 'conta', 'débito', 'debito', 'crédito', 'credito',
+  'pix', 'dinheiro', 'espécie', 'especie', 'poupança', 'poupanca',
+  
+  // Auto-pay words
+  'baixa', 'automática', 'automatica', 'auto',
+  
+  // Common filler words
+  'foi', 'ser', 'será', 'sera', 'estava', 'estou', 'tenho', 'tinha', 'vai', 'vou',
+  'fazer', 'feito', 'fiz', 'isso', 'isso', 'esse', 'essa', 'este', 'esta',
+  'meu', 'minha', 'meus', 'minhas', 'seu', 'sua', 'seus', 'suas',
+  'aqui', 'ali', 'lá', 'la', 'agora', 'já', 'ja', 'ainda', 'só', 'so', 'apenas',
+]);
+
+function normalizeDescription(text: string): string {
+  // Split into words
+  const words = text
+    .toLowerCase()
+    .replace(/[.,!?;:()[\]{}""'']/g, ' ')
+    .split(/\s+/)
+    .filter(word => word.length > 0);
+  
+  // Remove stop-words and numbers
+  const filteredWords = words.filter(word => {
+    // Skip stop-words
+    if (stopWords.has(word)) return false;
+    
+    // Skip pure numbers
+    if (/^\d+([.,]\d+)?$/.test(word)) return false;
+    
+    return true;
+  });
+  
+  // Take only the first relevant word(s) - prioritize the main subject
+  const result = filteredWords.slice(0, 2).join(' ');
+  
+  // Capitalize first letter of each word
+  return result
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
+
 function extractDescription(text: string, parsed: Partial<ParsedTransaction>): string {
-  let description = text;
-
-  // Remove common prefixes
-  description = description
-    .replace(/^(?:gastei|gasto|paguei|comprei|recebi|ganhei)\s*/i, '')
-    .replace(/^(?:de|com|no|na|em|para|por)\s*/i, '');
-
-  // Remove amount patterns
-  description = description
-    .replace(/R\$\s*[\d.,]+/gi, '')
-    .replace(/[\d.,]+\s*(?:reais?|real)/gi, '')
-    .replace(/\b\d+(?:[.,]\d{1,2})?\b/g, '');
-
-  // Remove date patterns
-  description = description
-    .replace(/(?:hoje|ontem|anteontem|amanhã|amanha)/gi, '')
-    .replace(/dia\s*\d{1,2}/gi, '')
-    .replace(/\d{1,2}[\/\-]\d{1,2}(?:[\/\-]\d{2,4})?/g, '');
-
-  // Remove recurrence patterns
-  description = description
-    .replace(/\d+\s*(?:x|vezes|parcelas?)/gi, '')
-    .replace(/parcelado?\s*em\s*\d+/gi, '')
-    .replace(/(?:todo\s*mês|mensal(?:mente)?|recorrente|fixo)/gi, '');
-
-  // Remove account patterns
-  description = description
-    .replace(/(?:no|na|pelo|pela)\s*(?:cartão|banco|débito|crédito|pix)/gi, '');
-
-  // Clean up
-  description = description
-    .replace(/\s+/g, ' ')
-    .trim();
-
-  // Capitalize first letter
-  if (description.length > 0) {
-    description = description.charAt(0).toUpperCase() + description.slice(1);
+  // First, normalize the text by removing stop-words
+  const normalized = normalizeDescription(text);
+  
+  if (normalized.length > 0) {
+    return normalized;
   }
-
-  return description || 'Lançamento por voz';
+  
+  return 'Lançamento por voz';
 }
 
 export function parseVoiceTransaction(
