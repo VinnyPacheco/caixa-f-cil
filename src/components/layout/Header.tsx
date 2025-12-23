@@ -44,14 +44,17 @@ export function Header({
         </button>
       ) : showAvatar ? (
         <div className="flex items-center gap-3">
-          <div className="relative">
+          <button
+            onClick={() => navigate('/settings')}
+            className="relative rounded-full focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background"
+          >
             <div
-              className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-12 border-2 border-accent bg-muted flex items-center justify-center"
+              className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-12 border-2 border-accent bg-muted flex items-center justify-center hover:border-primary transition-colors"
             >
               <span className="material-symbols-outlined text-muted-foreground">person</span>
             </div>
             <div className="absolute bottom-0 right-0 size-3 bg-success rounded-full border-2 border-background" />
-          </div>
+          </button>
           <div className="flex flex-col">
             <p className="text-muted-foreground text-sm font-medium leading-none">
               {subtitle || 'Bem-vindo de volta,'}
