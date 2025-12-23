@@ -1,6 +1,5 @@
 import { useState, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
 import {
   Popover,
   PopoverContent,
@@ -8,16 +7,6 @@ import {
 } from '@/components/ui/popover';
 import { useVoiceInput } from '@/hooks/useVoiceInput';
 import { useToast } from '@/hooks/use-toast';
-import { useVoiceSettings } from '@/contexts/VoiceSettingsContext';
-import { useAccounts } from '@/hooks/useAccounts';
-import { useCategories } from '@/hooks/useCategoriesData';
-import { useTransactions } from '@/hooks/useTransactions';
-import { 
-  parseVoiceTransaction, 
-  matchCategoryByName, 
-  matchAccountByName 
-} from '@/utils/parseVoiceTransaction';
-import { format } from 'date-fns';
 
 interface NavItem {
   path: string;
@@ -40,94 +29,18 @@ const cadastroItems = [
 export function BottomNav() {
   const location = useLocation();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const { toast } = useToast();
   const [cadastroOpen, setCadastroOpen] = useState(false);
-  
-  const { autoSaveVoiceTransaction } = useVoiceSettings();
-  const { accounts } = useAccounts();
-  const { categories } = useCategories();
-  const { addTransaction } = useTransactions(new Date());
 
   const handleVoiceResult = useCallback((transcript: string) => {
     console.log('Voice transcript:', transcript);
-    
-    // Check if auto-save is enabled and we have the required data
-    if (autoSaveVoiceTransaction && categories.length > 0 && accounts.length > 0) {
-      const parsed = parseVoiceTransaction(transcript, categories, accounts);
-      console.log('Parsed transaction for auto-save:', parsed);
-      
-      // Get parsed values
-      const typeToUse = parsed.type || 'expense';
-      const parsedAmountCents = parsed.amount !== undefined ? Math.round(parsed.amount * 100) : 0;
-      const parsedDescription = parsed.description || '';
-      
-      // Match category
-      let parsedCategoryId = '';
-      if (parsed.categoryName) {
-        const matched = matchCategoryByName(parsed.categoryName, categories, typeToUse);
-        if (matched) parsedCategoryId = matched;
-      }
-      if (!parsedCategoryId) {
-        const defaultCategory = categories.find(
-          (c) => c.isSystem && c.name === 'Outros' && c.type === typeToUse
-        );
-        if (defaultCategory) parsedCategoryId = defaultCategory.id;
-      }
-      
-      // Match account
-      let parsedAccountId = '';
-      if (parsed.accountName) {
-        const matched = matchAccountByName(parsed.accountName, accounts);
-        if (matched) parsedAccountId = matched;
-      }
-      if (!parsedAccountId) {
-        const primaryAccount = accounts.find((acc) => acc.isPrimary);
-        parsedAccountId = primaryAccount ? primaryAccount.id : accounts[0]?.id || '';
-      }
-      
-      // Check if all required fields are filled
-      const allRequiredFilled = parsedAmountCents > 0 && parsedDescription && parsedCategoryId && parsedAccountId;
-      
-      if (allRequiredFilled) {
-        const numericAmount = parsedAmountCents / 100;
-        
-        addTransaction({
-          accountId: parsedAccountId,
-          categoryId: parsedCategoryId,
-          description: parsedDescription,
-          amount: numericAmount,
-          date: parsed.date ? format(parsed.date, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
-          type: typeToUse,
-          isPaid: false,
-          recurrenceType: parsed.recurrence || 'once',
-          installmentTotal: parsed.recurrence === 'installment' && parsed.installmentCount ? parsed.installmentCount : undefined,
-          installmentCurrent: parsed.recurrence === 'installment' ? 1 : undefined,
-          autoSettle: parsed.autoPay || false,
-          notes: undefined,
-          startDate: parsed.date ? format(parsed.date, 'yyyy-MM-dd') : undefined,
-        });
-        
-        // Invalidate transactions query to refresh the list
-        queryClient.invalidateQueries({ queryKey: ['transactions'] });
-        
-        toast({
-          title: 'Lançamento salvo automaticamente',
-          description: `${parsedDescription} - R$ ${numericAmount.toFixed(2)}`,
-        });
-        
-        // Don't navigate to new-transaction, stay on current page
-        return;
-      }
-    }
-    
-    // If auto-save is disabled or required fields are missing, navigate to form
     toast({
       title: 'Áudio capturado',
       description: transcript,
     });
+    // Navigate to new-transaction with the voice data
     navigate('/new-transaction', { state: { voiceText: transcript } });
-  }, [navigate, toast, autoSaveVoiceTransaction, categories, accounts, addTransaction, queryClient]);
+  }, [navigate, toast]);
 
   const { isListening, isHolding, isSupported, startHold, endHold } = useVoiceInput(handleVoiceResult);
 
