@@ -36,6 +36,7 @@ export function TransactionForm({
   const [accountId, setAccountId] = useState('');
   const [date, setDate] = useState(new Date());
   const [recurrence, setRecurrence] = useState<RecurrenceType>('once');
+  const [installmentCount, setInstallmentCount] = useState('2');
   const [isPaid, setIsPaid] = useState(false);
   const [autoSettle, setAutoSettle] = useState(false);
   const [notes, setNotes] = useState('');
@@ -49,6 +50,7 @@ export function TransactionForm({
       setAccountId(transaction.accountId);
       setDate(new Date(transaction.date));
       setRecurrence(transaction.recurrenceType);
+      setInstallmentCount(transaction.installmentTotal?.toString() || '2');
       setIsPaid(transaction.isPaid);
       setAutoSettle(transaction.autoSettle || false);
       setNotes(transaction.notes || '');
@@ -60,6 +62,7 @@ export function TransactionForm({
       setAccountId(accounts[0]?.id || '');
       setDate(new Date());
       setRecurrence('once');
+      setInstallmentCount('2');
       setIsPaid(false);
       setAutoSettle(false);
       setNotes('');
@@ -94,6 +97,8 @@ export function TransactionForm({
       return;
     }
 
+    const installments = recurrence === 'installment' ? parseInt(installmentCount) || 2 : undefined;
+
     const transactionData = {
       type,
       amount: numericAmount,
@@ -105,6 +110,9 @@ export function TransactionForm({
       isPaid,
       autoSettle,
       notes: notes.trim() || undefined,
+      installmentTotal: installments,
+      installmentCurrent: installments ? 1 : undefined,
+      startDate: recurrence !== 'once' ? format(date, 'yyyy-MM-dd') : undefined,
     };
 
     if (isEditing && onUpdate) {
@@ -280,6 +288,28 @@ export function TransactionForm({
               </div>
             )}
           </div>
+
+          {/* Installment Count - Only show when installment is selected and not editing */}
+          {recurrence === 'installment' && !isEditing && (
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">
+                Número de Parcelas
+              </label>
+              <div className="flex items-center gap-3 bg-secondary p-4 rounded-xl">
+                <span className="material-symbols-outlined text-muted-foreground">format_list_numbered</span>
+                <input
+                  type="number"
+                  min="2"
+                  max="60"
+                  value={installmentCount}
+                  onChange={(e) => setInstallmentCount(e.target.value)}
+                  placeholder="Ex: 12"
+                  className="w-full bg-transparent border-none p-0 focus:ring-0 focus:outline-none text-foreground placeholder-muted-foreground text-base font-medium"
+                />
+                <span className="text-muted-foreground text-sm">parcelas</span>
+              </div>
+            </div>
+          )}
 
           {/* Auto Settle Toggle */}
           <div className="flex items-center justify-between bg-secondary p-4 rounded-2xl">
