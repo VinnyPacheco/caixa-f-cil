@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Header } from '@/components/layout/Header';
 import { TransactionType, RecurrenceType } from '@/types/finance';
@@ -6,6 +6,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAccounts } from '@/hooks/useAccounts';
 import { useCategories } from '@/hooks/useCategoriesData';
 import { useTransactions } from '@/hooks/useTransactions';
+import { useVoiceSettings } from '@/contexts/VoiceSettingsContext';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Copy, Loader2 } from 'lucide-react';
@@ -27,6 +28,7 @@ export default function NewTransaction() {
   const { accounts, isLoading: isLoadingAccounts } = useAccounts();
   const { categories, isLoading: isLoadingCategories } = useCategories();
   const { addTransaction } = useTransactions(new Date());
+  const { autoSaveVoiceTransaction } = useVoiceSettings();
   
   const [type, setType] = useState<TransactionType>('expense');
   const [amountCents, setAmountCents] = useState(0);
@@ -41,6 +43,7 @@ export default function NewTransaction() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [categoryInitialized, setCategoryInitialized] = useState(false);
   const [voiceProcessed, setVoiceProcessed] = useState(false);
+  const autoSaveTriggeredRef = useRef(false);
 
   const filteredCategories = categories.filter((c) => c.type === type);
 
@@ -53,17 +56,25 @@ export default function NewTransaction() {
       const parsed = parseVoiceTransaction(state.voiceText, categories, accounts);
       console.log('Parsed transaction:', parsed);
       
+      // Track parsed values for auto-save check
+      let parsedAmountCents = 0;
+      let parsedDescription = '';
+      let parsedCategoryId = '';
+      let parsedAccountId = '';
+      
       // Apply parsed values
       if (parsed.type) {
         setType(parsed.type);
       }
       
       if (parsed.amount !== undefined) {
-        setAmountCents(Math.round(parsed.amount * 100));
+        parsedAmountCents = Math.round(parsed.amount * 100);
+        setAmountCents(parsedAmountCents);
       }
       
       if (parsed.description) {
-        setDescription(parsed.description);
+        parsedDescription = parsed.description;
+        setDescription(parsedDescription);
       }
       
       if (parsed.date) {
@@ -87,7 +98,20 @@ export default function NewTransaction() {
       if (parsed.categoryName) {
         const matchedCategory = matchCategoryByName(parsed.categoryName, categories, typeToUse);
         if (matchedCategory) {
+          parsedCategoryId = matchedCategory;
           setCategoryId(matchedCategory);
+          setCategoryInitialized(true);
+        }
+      }
+      
+      // If no category matched, use default
+      if (!parsedCategoryId) {
+        const defaultCategory = categories.find(
+          (c) => c.isSystem && c.name === 'Outros' && c.type === typeToUse
+        );
+        if (defaultCategory) {
+          parsedCategoryId = defaultCategory.id;
+          setCategoryId(defaultCategory.id);
           setCategoryInitialized(true);
         }
       }
@@ -96,18 +120,62 @@ export default function NewTransaction() {
       if (parsed.accountName) {
         const matchedAccount = matchAccountByName(parsed.accountName, accounts);
         if (matchedAccount) {
+          parsedAccountId = matchedAccount;
           setAccountId(matchedAccount);
         }
       }
       
+      // If no account matched, use primary or first
+      if (!parsedAccountId) {
+        const primaryAccount = accounts.find((acc) => acc.isPrimary);
+        parsedAccountId = primaryAccount ? primaryAccount.id : accounts[0]?.id || '';
+        if (parsedAccountId) {
+          setAccountId(parsedAccountId);
+        }
+      }
+      
       setVoiceProcessed(true);
+      
+      // Check if all required fields are filled and auto-save is enabled
+      const allRequiredFilled = parsedAmountCents > 0 && parsedDescription && parsedCategoryId && parsedAccountId;
+      
+      if (autoSaveVoiceTransaction && allRequiredFilled && !autoSaveTriggeredRef.current) {
+        autoSaveTriggeredRef.current = true;
+        
+        // Auto-save the transaction
+        const numericAmount = parsedAmountCents / 100;
+        
+        addTransaction({
+          accountId: parsedAccountId,
+          categoryId: parsedCategoryId,
+          description: parsedDescription,
+          amount: numericAmount,
+          date: parsed.date ? format(parsed.date, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
+          type: typeToUse,
+          isPaid: false,
+          recurrenceType: parsed.recurrence || 'once',
+          installmentTotal: parsed.recurrence === 'installment' && parsed.installmentCount ? parsed.installmentCount : undefined,
+          installmentCurrent: parsed.recurrence === 'installment' ? 1 : undefined,
+          autoSettle: parsed.autoPay || false,
+          notes: undefined,
+          startDate: parsed.date ? format(parsed.date, 'yyyy-MM-dd') : undefined,
+        });
+        
+        toast({
+          title: 'Lançamento salvo automaticamente',
+          description: `${parsedDescription} - R$ ${numericAmount.toFixed(2)}`,
+        });
+        
+        navigate(-1);
+        return;
+      }
       
       toast({
         title: 'Lançamento por voz',
         description: 'Campos preenchidos a partir do áudio. Revise antes de salvar.',
       });
     }
-  }, [location.state, voiceProcessed, categories, accounts, toast]);
+  }, [location.state, voiceProcessed, categories, accounts, toast, autoSaveVoiceTransaction, addTransaction, navigate]);
 
   // Set default category "Outros" when categories load or type changes
   useEffect(() => {

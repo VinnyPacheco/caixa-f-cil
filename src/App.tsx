@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { NotificationProvider } from "@/contexts/NotificationContext";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { VoiceSettingsProvider } from "@/contexts/VoiceSettingsContext";
 import Home from "./pages/Home";
 import Auth from "./pages/Auth";
 import Transactions from "./pages/Transactions";
@@ -72,11 +73,13 @@ const App = () => (
     <TooltipProvider>
       <AuthProvider>
         <NotificationProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <AppRoutes />
-          </BrowserRouter>
+          <VoiceSettingsProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <AppRoutes />
+            </BrowserRouter>
+          </VoiceSettingsProvider>
         </NotificationProvider>
       </AuthProvider>
     </TooltipProvider>
