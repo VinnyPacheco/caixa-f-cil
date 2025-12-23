@@ -115,11 +115,14 @@ export function BottomNav() {
               </>
             )}
             
-            <span className={`material-symbols-outlined text-3xl transition-transform ${
-              isListening ? 'text-accent' : ''
-            }`}>
-              {isListening ? 'mic' : 'add'}
-            </span>
+            {isListening ? (
+              <span className="material-symbols-outlined text-3xl text-accent">mic</span>
+            ) : (
+              <div className="flex items-center gap-0.5">
+                <span className="material-symbols-outlined text-2xl">add</span>
+                <span className="material-symbols-outlined text-lg opacity-70">mic</span>
+              </div>
+            )}
           </button>
         </div>
 
