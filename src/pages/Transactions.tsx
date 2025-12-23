@@ -95,9 +95,9 @@ export default function Transactions() {
         {isMobile && (
           <div className="flex items-center justify-between bg-card p-4 rounded-2xl border border-border/50">
             <div>
-              <p className="text-xs text-muted-foreground font-medium">Saldo Inicial</p>
-              <p className="text-lg font-bold text-foreground">
-                {formatCurrency(currentMonth.summary.openingBalance)}
+              <p className="text-xs text-muted-foreground font-medium">Orçamento</p>
+              <p className={`text-lg font-bold ${(currentMonth.summary.totalIncome - currentMonth.summary.totalExpense) >= 0 ? 'text-success' : 'text-destructive'}`}>
+                {formatCurrency(currentMonth.summary.totalIncome - currentMonth.summary.totalExpense)}
               </p>
             </div>
             <div className="text-right">
@@ -153,9 +153,9 @@ export default function Transactions() {
               
               <div className="flex items-center justify-between bg-card p-3 rounded-xl border border-border/50">
                 <div>
-                  <p className="text-[10px] text-muted-foreground font-medium">Saldo Inicial</p>
-                  <p className="text-sm font-bold text-foreground">
-                    {formatCurrency(currentMonth.summary.openingBalance)}
+                  <p className="text-[10px] text-muted-foreground font-medium">Orçamento</p>
+                  <p className={`text-sm font-bold ${(currentMonth.summary.totalIncome - currentMonth.summary.totalExpense) >= 0 ? 'text-success' : 'text-destructive'}`}>
+                    {formatCurrency(currentMonth.summary.totalIncome - currentMonth.summary.totalExpense)}
                   </p>
                 </div>
                 <div className="text-right">

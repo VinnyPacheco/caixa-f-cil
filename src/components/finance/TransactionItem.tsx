@@ -51,7 +51,7 @@ export const TransactionItem = forwardRef<HTMLDivElement, TransactionItemProps>(
       >
         {/* Left column: check + drag handle */}
         {showDragHandle && (
-          <div className="flex flex-col items-center justify-between gap-1 shrink-0">
+          <div className="flex flex-col items-center justify-between gap-1 shrink-0 mr-3">
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -151,7 +151,7 @@ export function SortableTransactionItem({
       onClick={onClick}
     >
       {/* Left column: check + drag handle */}
-      <div className="flex flex-col items-center justify-between gap-1 shrink-0">
+      <div className="flex flex-col items-center justify-between gap-1 shrink-0 mr-3">
         <button
           onClick={(e) => {
             e.stopPropagation();
