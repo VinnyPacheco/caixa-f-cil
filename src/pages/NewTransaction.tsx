@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Header } from '@/components/layout/Header';
 import { TransactionType, RecurrenceType } from '@/types/finance';
 import { useToast } from '@/hooks/use-toast';
@@ -10,9 +10,19 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Copy, Loader2 } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
+import { 
+  parseVoiceTransaction, 
+  matchCategoryByName, 
+  matchAccountByName 
+} from '@/utils/parseVoiceTransaction';
+
+interface LocationState {
+  voiceText?: string;
+}
 
 export default function NewTransaction() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const { accounts, isLoading: isLoadingAccounts } = useAccounts();
   const { categories, isLoading: isLoadingCategories } = useCategories();
@@ -30,8 +40,74 @@ export default function NewTransaction() {
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [categoryInitialized, setCategoryInitialized] = useState(false);
+  const [voiceProcessed, setVoiceProcessed] = useState(false);
 
   const filteredCategories = categories.filter((c) => c.type === type);
+
+  // Process voice input when available
+  useEffect(() => {
+    const state = location.state as LocationState | null;
+    if (state?.voiceText && !voiceProcessed && categories.length > 0 && accounts.length > 0) {
+      console.log('Processing voice text:', state.voiceText);
+      
+      const parsed = parseVoiceTransaction(state.voiceText, categories, accounts);
+      console.log('Parsed transaction:', parsed);
+      
+      // Apply parsed values
+      if (parsed.type) {
+        setType(parsed.type);
+      }
+      
+      if (parsed.amount !== undefined) {
+        setAmountCents(Math.round(parsed.amount * 100));
+      }
+      
+      if (parsed.description) {
+        setDescription(parsed.description);
+      }
+      
+      if (parsed.date) {
+        setDate(parsed.date);
+      }
+      
+      if (parsed.recurrence) {
+        setRecurrence(parsed.recurrence);
+      }
+      
+      if (parsed.installmentCount) {
+        setInstallmentCount(parsed.installmentCount);
+      }
+      
+      if (parsed.autoPay !== undefined) {
+        setAutoPay(parsed.autoPay);
+      }
+      
+      // Match category by name - need to use the correct type
+      const typeToUse = parsed.type || 'expense';
+      if (parsed.categoryName) {
+        const matchedCategory = matchCategoryByName(parsed.categoryName, categories, typeToUse);
+        if (matchedCategory) {
+          setCategoryId(matchedCategory);
+          setCategoryInitialized(true);
+        }
+      }
+      
+      // Match account by name
+      if (parsed.accountName) {
+        const matchedAccount = matchAccountByName(parsed.accountName, accounts);
+        if (matchedAccount) {
+          setAccountId(matchedAccount);
+        }
+      }
+      
+      setVoiceProcessed(true);
+      
+      toast({
+        title: 'Lançamento por voz',
+        description: 'Campos preenchidos a partir do áudio. Revise antes de salvar.',
+      });
+    }
+  }, [location.state, voiceProcessed, categories, accounts, toast]);
 
   // Set default category "Outros" when categories load or type changes
   useEffect(() => {
@@ -46,15 +122,17 @@ export default function NewTransaction() {
     }
   }, [categories, type, categoryId, categoryInitialized]);
 
-  // Update category when type changes
+  // Update category when type changes (only if not from voice input or no match)
   useEffect(() => {
-    const defaultCategory = categories.find(
-      (c) => c.isSystem && c.name === 'Outros' && c.type === type
-    );
-    if (defaultCategory) {
-      setCategoryId(defaultCategory.id);
+    if (!voiceProcessed || !categoryId) {
+      const defaultCategory = categories.find(
+        (c) => c.isSystem && c.name === 'Outros' && c.type === type
+      );
+      if (defaultCategory) {
+        setCategoryId(defaultCategory.id);
+      }
     }
-  }, [type, categories]);
+  }, [type, categories, voiceProcessed, categoryId]);
 
   // Set default account when accounts load (prefer primary account)
   useEffect(() => {

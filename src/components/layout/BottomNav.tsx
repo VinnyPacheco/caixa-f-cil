@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import { useVoiceInput } from '@/hooks/useVoiceInput';
+import { useToast } from '@/hooks/use-toast';
 
 interface NavItem {
   path: string;
@@ -27,14 +29,30 @@ const cadastroItems = [
 export function BottomNav() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [cadastroOpen, setCadastroOpen] = useState(false);
+
+  const handleVoiceResult = useCallback((transcript: string) => {
+    console.log('Voice transcript:', transcript);
+    toast({
+      title: 'Áudio capturado',
+      description: transcript,
+    });
+    // Navigate to new-transaction with the voice data
+    navigate('/new-transaction', { state: { voiceText: transcript } });
+  }, [navigate, toast]);
+
+  const { isListening, isHolding, isSupported, startHold, endHold } = useVoiceInput(handleVoiceResult);
 
   const handleNavClick = (path: string) => {
     navigate(path);
   };
 
   const handleAddClick = () => {
-    navigate('/new-transaction');
+    // Only navigate on click if not listening/holding for voice
+    if (!isListening && !isHolding) {
+      navigate('/new-transaction');
+    }
   };
 
   const handleCadastroItemClick = (path: string) => {
@@ -65,14 +83,43 @@ export function BottomNav() {
           );
         })}
 
-        {/* FAB Button */}
+        {/* FAB Button with Voice Input */}
         <div className="absolute left-1/2 -translate-x-1/2 -top-6">
           <button
             onClick={handleAddClick}
-            className="fab-button"
-            aria-label="Novo lançamento"
+            onMouseDown={isSupported ? startHold : undefined}
+            onMouseUp={isSupported ? endHold : undefined}
+            onMouseLeave={isSupported ? endHold : undefined}
+            onTouchStart={isSupported ? startHold : undefined}
+            onTouchEnd={isSupported ? endHold : undefined}
+            onTouchCancel={isSupported ? endHold : undefined}
+            className={`fab-button relative transition-all duration-200 ${
+              isListening 
+                ? 'scale-110 ring-4 ring-accent/50 animate-pulse' 
+                : isHolding 
+                  ? 'scale-105 ring-2 ring-accent/30' 
+                  : ''
+            }`}
+            aria-label={isListening ? 'Gravando áudio...' : 'Novo lançamento (segure para voz)'}
           >
-            <span className="material-symbols-outlined text-3xl">add</span>
+            {/* Ripple effect when holding */}
+            {isHolding && !isListening && (
+              <span className="absolute inset-0 rounded-full bg-accent/20 animate-ping" />
+            )}
+            
+            {/* Listening indicator rings */}
+            {isListening && (
+              <>
+                <span className="absolute inset-[-8px] rounded-full border-2 border-accent/40 animate-ping" />
+                <span className="absolute inset-[-4px] rounded-full border-2 border-accent/60 animate-pulse" />
+              </>
+            )}
+            
+            <span className={`material-symbols-outlined text-3xl transition-transform ${
+              isListening ? 'text-accent' : ''
+            }`}>
+              {isListening ? 'mic' : 'add'}
+            </span>
           </button>
         </div>
 
@@ -135,6 +182,16 @@ export function BottomNav() {
         </Popover>
       </div>
       <div className="h-5 w-full" />
+      
+      {/* Voice listening overlay indicator */}
+      {isListening && (
+        <div className="fixed inset-x-0 bottom-28 flex justify-center pointer-events-none z-50">
+          <div className="bg-card/95 backdrop-blur-sm px-6 py-3 rounded-full shadow-lg border border-border/50 flex items-center gap-3">
+            <span className="material-symbols-outlined text-accent animate-pulse">mic</span>
+            <span className="text-sm font-medium text-foreground">Ouvindo...</span>
+          </div>
+        </div>
+      )}
     </nav>
   );
 }
