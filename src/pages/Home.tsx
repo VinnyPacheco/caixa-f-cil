@@ -6,12 +6,14 @@ import { BalanceCard } from '@/components/finance/BalanceCard';
 import { SummaryCards } from '@/components/finance/SummaryCards';
 import { TransactionItem } from '@/components/finance/TransactionItem';
 import { useTransactions } from '@/hooks/useTransactions';
-import { formatCurrency } from '@/lib/format';
+import { useAuth } from '@/contexts/AuthContext';
+import { Loader2 } from 'lucide-react';
 
 export default function Home() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [selectedDate] = useState(new Date());
-  const { transactions, monthSummary, togglePaid } = useTransactions(selectedDate);
+  const { transactions, monthSummary, togglePaid, isLoading } = useTransactions(selectedDate);
 
   // Get recent transactions (last 4)
   const recentTransactions = transactions.slice(0, 4);
@@ -19,12 +21,26 @@ export default function Home() {
   // Calculate percentage change (mock for now)
   const percentChange = monthSummary.balance > 0 ? 2.5 : -1.8;
 
+  // Get user's name from profile or email
+  const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Usuário';
+
+  if (isLoading) {
+    return (
+      <AppLayout>
+        <Header showAvatar showNotification userName={userName} />
+        <div className="flex-1 flex items-center justify-center p-6">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      </AppLayout>
+    );
+  }
+
   return (
     <AppLayout>
       <Header
         showAvatar
         showNotification
-        userName="Usuário"
+        userName={userName}
       />
       
       <main className="flex flex-col gap-6 p-6">
@@ -52,16 +68,28 @@ export default function Home() {
         </div>
 
         <div className="flex flex-col gap-3">
-          {recentTransactions.map((transaction) => (
-            <TransactionItem
-              key={transaction.id}
-              transaction={transaction}
-              showDragHandle={false}
-              showBalance={false}
-              onTogglePaid={togglePaid}
-              onClick={() => navigate('/transactions')}
-            />
-          ))}
+          {recentTransactions.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <p>Nenhuma transação encontrada</p>
+              <button
+                onClick={() => navigate('/new-transaction')}
+                className="mt-2 text-accent hover:underline"
+              >
+                Criar primeira transação
+              </button>
+            </div>
+          ) : (
+            recentTransactions.map((transaction) => (
+              <TransactionItem
+                key={transaction.id}
+                transaction={transaction}
+                showDragHandle={false}
+                showBalance={false}
+                onTogglePaid={togglePaid}
+                onClick={() => navigate('/transactions')}
+              />
+            ))
+          )}
         </div>
       </main>
     </AppLayout>

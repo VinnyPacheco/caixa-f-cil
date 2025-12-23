@@ -1,30 +1,43 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Header } from '@/components/layout/Header';
-import { mockCategories, mockAccounts } from '@/data/mockData';
 import { TransactionType, RecurrenceType } from '@/types/finance';
 import { useToast } from '@/hooks/use-toast';
+import { useAccounts } from '@/hooks/useAccounts';
+import { useCategories } from '@/hooks/useCategoriesData';
+import { useTransactions } from '@/hooks/useTransactions';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Copy } from 'lucide-react';
+import { Copy, Loader2 } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 
 export default function NewTransaction() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { accounts, isLoading: isLoadingAccounts } = useAccounts();
+  const { categories, isLoading: isLoadingCategories } = useCategories();
+  const { addTransaction } = useTransactions(new Date());
   
   const [type, setType] = useState<TransactionType>('expense');
   const [amountCents, setAmountCents] = useState(0);
   const [description, setDescription] = useState('');
   const [categoryId, setCategoryId] = useState('');
-  const [accountId, setAccountId] = useState('acc-1');
+  const [accountId, setAccountId] = useState('');
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [recurrence, setRecurrence] = useState<RecurrenceType>('once');
   const [installmentCount, setInstallmentCount] = useState(2);
   const [autoPay, setAutoPay] = useState(false);
   const [notes, setNotes] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const filteredCategories = mockCategories.filter((c) => c.type === type);
+  const filteredCategories = categories.filter((c) => c.type === type);
+
+  // Set default account when accounts load
+  useState(() => {
+    if (accounts.length > 0 && !accountId) {
+      setAccountId(accounts[0].id);
+    }
+  });
 
   // Format amount from cents to display string with thousand separators
   const formatAmountDisplay = (cents: number): string => {
@@ -53,25 +66,61 @@ export default function NewTransaction() {
     setAmountCents((prev) => prev * 10 + digit);
   };
 
-  const handleSubmit = () => {
-    if (amountCents === 0 || !description) {
+  const handleSubmit = async () => {
+    if (amountCents === 0 || !description || !categoryId || !accountId) {
       toast({
         title: 'Campos obrigatórios',
-        description: 'Preencha o valor e a descrição do lançamento.',
+        description: 'Preencha todos os campos obrigatórios.',
         variant: 'destructive',
       });
       return;
     }
 
+    setIsSubmitting(true);
+
     const numericAmount = amountCents / 100;
 
-    toast({
-      title: 'Lançamento salvo!',
-      description: `${type === 'income' ? 'Receita' : 'Despesa'} de R$ ${formatAmountDisplay(amountCents)} registrada com sucesso.`,
-    });
+    try {
+      addTransaction({
+        accountId,
+        categoryId,
+        description,
+        amount: numericAmount,
+        date: date ? format(date, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
+        type,
+        isPaid: false,
+        recurrenceType: recurrence,
+        installmentTotal: recurrence === 'installment' ? installmentCount : undefined,
+        installmentCurrent: recurrence === 'installment' ? 1 : undefined,
+        autoSettle: autoPay,
+        notes: notes || undefined,
+        startDate: date ? format(date, 'yyyy-MM-dd') : undefined,
+      });
 
-    navigate(-1);
+      navigate(-1);
+    } catch (error) {
+      toast({
+        title: 'Erro ao salvar',
+        description: 'Não foi possível salvar a transação.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
+
+  const isLoading = isLoadingAccounts || isLoadingCategories;
+
+  if (isLoading) {
+    return (
+      <div className="relative flex min-h-screen w-full flex-col overflow-x-hidden bg-background">
+        <Header title="Novo Lançamento" showBack />
+        <div className="flex-1 flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="relative flex min-h-screen w-full flex-col overflow-x-hidden bg-background">
@@ -188,7 +237,8 @@ export default function NewTransaction() {
                   onChange={(e) => setAccountId(e.target.value)}
                   className="w-full bg-transparent border-none p-0 focus:ring-0 focus:outline-none text-foreground text-base font-medium appearance-none cursor-pointer"
                 >
-                  {mockAccounts.map((acc) => (
+                  <option value="">Selecione</option>
+                  {accounts.map((acc) => (
                     <option key={acc.id} value={acc.id}>
                       {acc.name}
                     </option>
@@ -304,10 +354,15 @@ export default function NewTransaction() {
       <div className="p-6 bg-background pt-0 fixed bottom-0 left-0 w-full z-20">
         <button
           onClick={handleSubmit}
-          className="w-full btn-gold flex items-center justify-center gap-2"
+          disabled={isSubmitting}
+          className="w-full btn-gold flex items-center justify-center gap-2 disabled:opacity-50"
         >
-          <span className="material-symbols-outlined icon-filled">check_circle</span>
-          Salvar Lançamento
+          {isSubmitting ? (
+            <Loader2 className="h-5 w-5 animate-spin" />
+          ) : (
+            <span className="material-symbols-outlined icon-filled">check_circle</span>
+          )}
+          {isSubmitting ? 'Salvando...' : 'Salvar Lançamento'}
         </button>
       </div>
     </div>
