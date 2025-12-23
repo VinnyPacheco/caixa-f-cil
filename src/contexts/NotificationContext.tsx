@@ -1,6 +1,9 @@
 import { createContext, useContext, ReactNode } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useNotifications, AppNotification } from '@/hooks/useNotifications';
-import { mockTransactions, mockCategories } from '@/data/mockData';
+import { fetchTransactions } from '@/services/transactionsService';
+import { fetchCategories } from '@/services/categoriesService';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface NotificationContextValue {
   notifications: AppNotification[];
@@ -14,6 +17,20 @@ interface NotificationContextValue {
 const NotificationContext = createContext<NotificationContextValue | null>(null);
 
 export function NotificationProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
+
+  const transactionsQuery = useQuery({
+    queryKey: ['transactions'],
+    queryFn: fetchTransactions,
+    enabled: !!user,
+  });
+
+  const categoriesQuery = useQuery({
+    queryKey: ['categories'],
+    queryFn: fetchCategories,
+    enabled: !!user,
+  });
+
   const {
     notifications,
     unreadCount,
@@ -22,8 +39,8 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     pushPermission,
     requestPushPermission,
   } = useNotifications({
-    transactions: mockTransactions,
-    categories: mockCategories,
+    transactions: transactionsQuery.data || [],
+    categories: categoriesQuery.data || [],
   });
 
   return (
