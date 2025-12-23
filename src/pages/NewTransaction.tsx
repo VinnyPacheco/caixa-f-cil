@@ -293,6 +293,9 @@ export default function NewTransaction() {
         startDate: date ? format(date, 'yyyy-MM-dd') : undefined,
       });
 
+      // Play confirmation sound
+      playConfirmationSound();
+
       navigate(-1);
     } catch (error) {
       toast({
