@@ -61,8 +61,13 @@ export default function Categories() {
           {items.map((category) => (
             <button
               key={category.id}
-              onClick={() => handleEditCategory(category)}
-              className="w-full flex items-center gap-4 p-4 hover:bg-secondary/50 transition-colors"
+              onClick={() => !category.isSystem && handleEditCategory(category)}
+              disabled={category.isSystem}
+              className={`w-full flex items-center gap-4 p-4 transition-colors ${
+                category.isSystem 
+                  ? 'opacity-60 cursor-not-allowed' 
+                  : 'hover:bg-secondary/50'
+              }`}
             >
               <div
                 className="size-12 rounded-xl flex items-center justify-center"
@@ -76,14 +81,23 @@ export default function Categories() {
                 </span>
               </div>
               <div className="flex-1 text-left">
-                <p className="font-semibold text-foreground">{category.name}</p>
+                <div className="flex items-center gap-2">
+                  <p className="font-semibold text-foreground">{category.name}</p>
+                  {category.isSystem && (
+                    <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full">
+                      Sistema
+                    </span>
+                  )}
+                </div>
                 <p className="text-sm text-muted-foreground">
                   {category.type === 'expense' ? 'Despesa' : 'Receita'}
                 </p>
               </div>
-              <span className="material-symbols-outlined text-muted-foreground">
-                chevron_right
-              </span>
+              {!category.isSystem && (
+                <span className="material-symbols-outlined text-muted-foreground">
+                  chevron_right
+                </span>
+              )}
             </button>
           ))}
         </div>
