@@ -48,12 +48,13 @@ export function BottomNav() {
     navigate(path);
   };
 
-  const handleAddClick = () => {
-    // Only navigate on click if not listening/holding for voice
-    if (!isListening && !isHolding) {
+  const handleHoldEnd = useCallback(() => {
+    const wasShortClick = endHold();
+    // Navigate if it was a short click (less than 0.5s)
+    if (wasShortClick) {
       navigate('/new-transaction');
     }
-  };
+  }, [endHold, navigate]);
 
   const handleCadastroItemClick = (path: string) => {
     setCadastroOpen(false);
@@ -86,13 +87,12 @@ export function BottomNav() {
         {/* FAB Button with Voice Input */}
         <div className="absolute left-1/2 -translate-x-1/2 -top-6">
           <button
-            onClick={handleAddClick}
             onMouseDown={isSupported ? startHold : undefined}
-            onMouseUp={isSupported ? endHold : undefined}
-            onMouseLeave={isSupported ? endHold : undefined}
+            onMouseUp={isSupported ? handleHoldEnd : () => navigate('/new-transaction')}
+            onMouseLeave={isSupported ? handleHoldEnd : undefined}
             onTouchStart={isSupported ? startHold : undefined}
-            onTouchEnd={isSupported ? endHold : undefined}
-            onTouchCancel={isSupported ? endHold : undefined}
+            onTouchEnd={isSupported ? handleHoldEnd : () => navigate('/new-transaction')}
+            onTouchCancel={isSupported ? handleHoldEnd : undefined}
             className={`fab-button relative transition-all duration-200 ${
               isListening 
                 ? 'scale-110 ring-4 ring-accent/50 animate-pulse' 

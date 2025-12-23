@@ -128,8 +128,11 @@ export function useVoiceInput(onResult: (transcript: string) => void) {
     }, 500);
   }, [isSupported]);
 
-  const endHold = useCallback(() => {
+  const endHold = useCallback((): boolean => {
     isHoldingRef.current = false;
+    
+    // Check if the hold was short (timeout still pending = less than 0.5s)
+    const wasShortClick = holdTimeoutRef.current !== null;
     
     if (holdTimeoutRef.current) {
       clearTimeout(holdTimeoutRef.current);
@@ -145,6 +148,9 @@ export function useVoiceInput(onResult: (transcript: string) => void) {
         console.error('Error stopping recognition:', e);
       }
     }
+    
+    // Return true if it was a short click (should navigate)
+    return wasShortClick && !state.isListening;
   }, [state.isListening]);
 
   return {
