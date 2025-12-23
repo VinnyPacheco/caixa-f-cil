@@ -51,8 +51,8 @@ export function BottomNav() {
   };
 
   return (
-    <nav className="fixed bottom-0 w-full bg-[hsl(45,30%,94%)] pb-safe pt-2 px-4 z-50">
-      <div className="flex items-center justify-around h-16 relative max-w-lg mx-auto">
+    <nav className="fixed bottom-0 w-full bg-[hsl(45,30%,94%)]/80 backdrop-blur-xl pb-safe pt-1 px-4 z-50 rounded-t-3xl">
+      <div className="flex items-center justify-around h-14 relative max-w-lg mx-auto">
         {/* First two nav items */}
         {navItems.slice(0, 2).map((item) => {
           const active = isActive(item.path);
@@ -79,7 +79,7 @@ export function BottomNav() {
         })}
 
         {/* FAB Button with Voice Input */}
-        <div className="relative -mt-10">
+        <div className="relative -mt-8">
           <button
             onMouseDown={isSupported ? startHold : undefined}
             onMouseUp={isSupported ? handleHoldEnd : () => navigate('/new-transaction')}
@@ -146,7 +146,7 @@ export function BottomNav() {
           );
         })}
       </div>
-      <div className="h-4 w-full" />
+      <div className="h-2 w-full" />
       
       {/* Voice listening overlay indicator */}
       {isListening && (
