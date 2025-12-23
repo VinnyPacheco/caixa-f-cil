@@ -264,7 +264,7 @@
   }
   
   .amount-expense {
-    @apply text-foreground font-bold;
+    @apply text-destructive font-bold;
   }
 
   /* Category icon container */

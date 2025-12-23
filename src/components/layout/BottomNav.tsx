@@ -51,7 +51,7 @@ export function BottomNav() {
   };
 
   return (
-    <nav className="fixed bottom-0 w-full bg-background/40 backdrop-blur-xl pb-safe pt-1 px-4 z-50 rounded-t-[28px] shadow-[0_-4px_30px_rgba(0,0,0,0.1)]">
+    <nav className="fixed bottom-0 w-full bg-white/10 backdrop-blur-sm pb-safe pt-1 px-4 z-50 rounded-t-[28px] shadow-[0_-4px_30px_rgba(0,0,0,0.1)]">
       <div className="flex items-center justify-around h-14 relative max-w-lg mx-auto">
         {/* First two nav items */}
         {navItems.slice(0, 2).map((item) => {
@@ -79,7 +79,7 @@ export function BottomNav() {
         })}
 
         {/* FAB Button with Voice Input */}
-        <div className="absolute left-1/2 -translate-x-1/2 -top-12">
+        <div className="absolute left-1/2 -translate-x-1/2 -top-10">
           <button
             onMouseDown={isSupported ? startHold : undefined}
             onMouseUp={isSupported ? handleHoldEnd : () => navigate('/new-transaction')}

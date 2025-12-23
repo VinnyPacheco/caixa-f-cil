@@ -190,14 +190,14 @@ export function TransactionForm({
           <div className="flex flex-col items-center justify-center py-2">
             <p className="text-muted-foreground text-sm font-medium mb-1">Valor do lançamento</p>
             <div className="flex items-center justify-center w-full">
-              <span className="text-2xl font-bold text-foreground mr-1 self-center pb-1">R$</span>
+              <span className={`text-2xl font-bold mr-1 self-center pb-1 ${type === 'expense' ? 'text-destructive' : 'text-success'}`}>R$</span>
               <input
                 type="text"
                 inputMode="numeric"
                 value={formatAmountDisplay(amountCents)}
                 onKeyDown={handleAmountKeyDown}
                 readOnly
-                className="w-full max-w-[200px] bg-transparent border-none p-0 text-4xl font-bold text-foreground text-center focus:ring-0 focus:outline-none leading-tight cursor-text caret-transparent"
+                className={`w-full max-w-[200px] bg-transparent border-none p-0 text-4xl font-bold text-center focus:ring-0 focus:outline-none leading-tight cursor-text caret-transparent ${type === 'expense' ? 'text-destructive' : 'text-success'}`}
               />
             </div>
           </div>
