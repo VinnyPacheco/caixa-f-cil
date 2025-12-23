@@ -41,12 +41,13 @@ interface TransactionItemProps {
   transaction: TransactionWithBalance;
   showDragHandle?: boolean;
   showBalance?: boolean;
+  isReadOnly?: boolean;
   onTogglePaid?: (id: string) => void;
   onClick?: () => void;
 }
 
 export const TransactionItem = forwardRef<HTMLDivElement, TransactionItemProps>(
-  ({ transaction, showDragHandle = true, showBalance = true, onTogglePaid, onClick }, ref) => {
+  ({ transaction, showDragHandle = true, showBalance = true, isReadOnly = false, onTogglePaid, onClick }, ref) => {
     const isIncome = transaction.type === 'income';
     const category = transaction.category;
     const dueStatus = getDueStatus(transaction);
@@ -55,11 +56,13 @@ export const TransactionItem = forwardRef<HTMLDivElement, TransactionItemProps>(
       <div
         ref={ref}
         className={cn(
-          "transaction-card cursor-pointer",
+          "transaction-card",
+          !isReadOnly && "cursor-pointer",
+          isReadOnly && "opacity-75",
           dueStatus === 'overdue' && "border-l-4 border-l-destructive",
           dueStatus === 'due-soon' && "border-l-4 border-l-amber-500"
         )}
-        onClick={onClick}
+        onClick={!isReadOnly ? onClick : undefined}
       >
         <div className="flex items-center gap-3">
           {showDragHandle && (

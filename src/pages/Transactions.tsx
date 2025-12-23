@@ -1,11 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Header } from '@/components/layout/Header';
 import { MonthSelector } from '@/components/finance/MonthSelector';
 import { FilterPills } from '@/components/finance/FilterPills';
 import { TransactionList } from '@/components/finance/TransactionList';
 import { TransactionForm } from '@/components/finance/TransactionForm';
-import { useTransactions } from '@/hooks/useTransactions';
+import { MonthColumn } from '@/components/finance/MonthColumn';
+import { useMultiMonthTransactions } from '@/hooks/useMultiMonthTransactions';
+import { useDeviceType } from '@/hooks/use-responsive';
 import { formatCurrency } from '@/lib/format';
 import { ArrowUpDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -21,19 +23,22 @@ export default function Transactions() {
   });
   const [editingTransaction, setEditingTransaction] = useState<TransactionWithBalance | null>(null);
   const [formOpen, setFormOpen] = useState(false);
-  
+
+  const deviceType = useDeviceType();
+  const additionalMonths = deviceType === 'desktop' ? 2 : deviceType === 'tablet' ? 1 : 0;
+
   const {
-    transactions,
+    monthsData,
+    currentMonth,
     categories,
     accounts,
-    monthSummary,
     filter,
     setFilter,
     reorderTransactions,
     togglePaid,
     addTransaction,
     updateTransaction,
-  } = useTransactions(selectedDate);
+  } = useMultiMonthTransactions(selectedDate, additionalMonths);
 
   const toggleSortOrder = () => {
     setSortOrder((prev) => {
@@ -55,6 +60,8 @@ export default function Transactions() {
     }
   };
 
+  const isMobile = deviceType === 'mobile';
+
   return (
     <AppLayout>
       <Header showAvatar showNotification userName="Usuário" />
@@ -68,21 +75,23 @@ export default function Transactions() {
           />
         </div>
 
-        {/* Month Summary */}
-        <div className="flex items-center justify-between bg-card p-4 rounded-2xl border border-border/50">
-          <div>
-            <p className="text-xs text-muted-foreground font-medium">Saldo Inicial</p>
-            <p className="text-lg font-bold text-foreground">
-              {formatCurrency(monthSummary.openingBalance)}
-            </p>
+        {/* Month Summary - Only on mobile */}
+        {isMobile && (
+          <div className="flex items-center justify-between bg-card p-4 rounded-2xl border border-border/50">
+            <div>
+              <p className="text-xs text-muted-foreground font-medium">Saldo Inicial</p>
+              <p className="text-lg font-bold text-foreground">
+                {formatCurrency(currentMonth.summary.openingBalance)}
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-xs text-muted-foreground font-medium">Saldo Final</p>
+              <p className={`text-lg font-bold ${currentMonth.summary.closingBalance >= 0 ? 'text-success' : 'text-destructive'}`}>
+                {formatCurrency(currentMonth.summary.closingBalance)}
+              </p>
+            </div>
           </div>
-          <div className="text-right">
-            <p className="text-xs text-muted-foreground font-medium">Saldo Final</p>
-            <p className={`text-lg font-bold ${monthSummary.closingBalance >= 0 ? 'text-success' : 'text-destructive'}`}>
-              {formatCurrency(monthSummary.closingBalance)}
-            </p>
-          </div>
-        </div>
+        )}
 
         <div className="flex items-center gap-3">
           <Button
@@ -97,17 +106,71 @@ export default function Transactions() {
           <FilterPills activeFilter={filter} onChange={setFilter} />
         </div>
 
-        <p className="text-xs text-muted-foreground">
-          Arraste os lançamentos para reorganizar e recalcular o saldo automaticamente
-        </p>
+        {isMobile && (
+          <p className="text-xs text-muted-foreground">
+            Arraste os lançamentos para reorganizar e recalcular o saldo automaticamente
+          </p>
+        )}
 
-        <TransactionList
-          transactions={transactions}
-          onReorder={reorderTransactions}
-          onTogglePaid={togglePaid}
-          onTransactionClick={handleTransactionClick}
-          sortOrder={sortOrder}
-        />
+        {/* Mobile Layout - Single Column */}
+        {isMobile && (
+          <TransactionList
+            transactions={currentMonth.transactions}
+            onReorder={reorderTransactions}
+            onTogglePaid={togglePaid}
+            onTransactionClick={handleTransactionClick}
+            sortOrder={sortOrder}
+          />
+        )}
+
+        {/* Tablet/Desktop Layout - Multi Column */}
+        {!isMobile && (
+          <div className="grid gap-6" style={{ gridTemplateColumns: `repeat(${additionalMonths + 1}, minmax(0, 1fr))` }}>
+            {/* Current Month - Editable */}
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-bold text-foreground">Mês Atual</h3>
+                  <p className="text-xs text-muted-foreground">Editável • Arraste para reorganizar</p>
+                </div>
+              </div>
+              
+              <div className="flex items-center justify-between bg-card p-3 rounded-xl border border-border/50">
+                <div>
+                  <p className="text-[10px] text-muted-foreground font-medium">Saldo Inicial</p>
+                  <p className="text-sm font-bold text-foreground">
+                    {formatCurrency(currentMonth.summary.openingBalance)}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-[10px] text-muted-foreground font-medium">Saldo Final</p>
+                  <p className={`text-sm font-bold ${currentMonth.summary.closingBalance >= 0 ? 'text-success' : 'text-destructive'}`}>
+                    {formatCurrency(currentMonth.summary.closingBalance)}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-y-auto max-h-[calc(100vh-350px)]">
+                <TransactionList
+                  transactions={currentMonth.transactions}
+                  onReorder={reorderTransactions}
+                  onTogglePaid={togglePaid}
+                  onTransactionClick={handleTransactionClick}
+                  sortOrder={sortOrder}
+                />
+              </div>
+            </div>
+
+            {/* Future Months - Read Only */}
+            {monthsData.slice(1).map((monthData) => (
+              <MonthColumn
+                key={monthData.date.toISOString()}
+                monthData={monthData}
+                sortOrder={sortOrder}
+              />
+            ))}
+          </div>
+        )}
       </main>
 
       <TransactionForm
