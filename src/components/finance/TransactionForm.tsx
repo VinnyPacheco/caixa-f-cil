@@ -68,6 +68,12 @@ export function TransactionForm({
     setAmountCents((prev) => prev * 10 + digit);
   };
 
+  // Parse date string (yyyy-MM-dd) to Date without timezone issues
+  const parseDateString = (dateStr: string): Date => {
+    const [year, month, day] = dateStr.split('-').map(Number);
+    return new Date(year, month - 1, day);
+  };
+
   useEffect(() => {
     if (transaction) {
       setType(transaction.type);
@@ -75,7 +81,7 @@ export function TransactionForm({
       setDescription(transaction.description);
       setCategoryId(transaction.categoryId);
       setAccountId(transaction.accountId);
-      setDate(new Date(transaction.date));
+      setDate(parseDateString(transaction.date));
       setRecurrence(transaction.recurrenceType);
       setInstallmentCount(transaction.installmentTotal?.toString() || '2');
       setIsPaid(transaction.isPaid);
