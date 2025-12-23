@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Header } from '@/components/layout/Header';
 import { useAuth } from '@/contexts/AuthContext';
+import { useVoiceSettings } from '@/contexts/VoiceSettingsContext';
 
 interface SettingItem {
   icon: string;
@@ -39,6 +40,7 @@ const settingsGroups: { title: string; items: SettingItem[] }[] = [
 export default function Settings() {
   const navigate = useNavigate();
   const { signOut } = useAuth();
+  const { autoSaveVoiceTransaction, setAutoSaveVoiceTransaction } = useVoiceSettings();
 
   const handleItemClick = (item: SettingItem) => {
     if (item.path) {
@@ -84,6 +86,30 @@ export default function Settings() {
             </div>
           </div>
         ))}
+
+        {/* Voice Auto-Save Toggle */}
+        <div className="bg-card rounded-2xl border border-border/50 overflow-hidden p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="size-10 rounded-xl bg-accent/10 flex items-center justify-center">
+                <span className="material-symbols-outlined text-accent">mic</span>
+              </div>
+              <div className="flex-1">
+                <p className="font-semibold text-foreground">Lançamento automático por áudio</p>
+                <p className="text-sm text-muted-foreground">Salvar automaticamente quando usar voz</p>
+              </div>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={autoSaveVoiceTransaction}
+                onChange={(e) => setAutoSaveVoiceTransaction(e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-muted peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-border after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent"></div>
+            </label>
+          </div>
+        </div>
 
         {/* Logout Button */}
         <button
