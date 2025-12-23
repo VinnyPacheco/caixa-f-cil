@@ -3,6 +3,7 @@ import { Account, AccountType } from '@/types/finance';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import {
   Dialog,
   DialogContent,
@@ -62,6 +63,7 @@ export function AccountForm({ open, onOpenChange, account, onSave }: AccountForm
   const [initialBalance, setInitialBalance] = useState('');
   const [color, setColor] = useState(accountColors[0]);
   const [icon, setIcon] = useState(accountIcons[0]);
+  const [isPrimary, setIsPrimary] = useState(false);
 
   const isEditing = !!account;
 
@@ -72,12 +74,14 @@ export function AccountForm({ open, onOpenChange, account, onSave }: AccountForm
       setInitialBalance(account.initialBalance.toString());
       setColor(account.color);
       setIcon(account.icon);
+      setIsPrimary(account.isPrimary ?? false);
     } else {
       setName('');
       setType('checking');
       setInitialBalance('');
       setColor(accountColors[0]);
       setIcon(accountIcons[0]);
+      setIsPrimary(false);
     }
   }, [account, open]);
 
@@ -91,6 +95,7 @@ export function AccountForm({ open, onOpenChange, account, onSave }: AccountForm
       initialBalance: parseFloat(initialBalance) || 0,
       color,
       icon,
+      isPrimary,
     });
     
     onOpenChange(false);
@@ -180,6 +185,23 @@ export function AccountForm({ open, onOpenChange, account, onSave }: AccountForm
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* Primary Account Toggle */}
+          <div className="flex items-center justify-between bg-secondary p-4 rounded-2xl">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-full bg-card text-accent">
+                <span className="material-symbols-outlined text-[20px]">star</span>
+              </div>
+              <div>
+                <span className="text-base font-semibold text-foreground">Conta Principal</span>
+                <p className="text-xs text-muted-foreground">Selecionada por padrão nos lançamentos</p>
+              </div>
+            </div>
+            <Switch
+              checked={isPrimary}
+              onCheckedChange={setIsPrimary}
+            />
           </div>
 
           <DialogFooter className="gap-2 pt-4">

@@ -9,6 +9,7 @@ export interface DbAccount {
   initial_balance: number;
   color: string;
   icon: string;
+  is_primary: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -22,6 +23,7 @@ export function dbToAccount(dbAccount: DbAccount): Account {
     initialBalance: Number(dbAccount.initial_balance),
     color: dbAccount.color,
     icon: dbAccount.icon,
+    isPrimary: dbAccount.is_primary,
   };
 }
 
@@ -34,6 +36,7 @@ export function accountToDb(account: Omit<Account, 'id'>, userId: string) {
     initial_balance: account.initialBalance,
     color: account.color,
     icon: account.icon,
+    is_primary: account.isPrimary ?? false,
   };
 }
 
@@ -65,6 +68,7 @@ export async function updateAccount(id: string, account: Partial<Omit<Account, '
   if (account.initialBalance !== undefined) updates.initial_balance = account.initialBalance;
   if (account.color !== undefined) updates.color = account.color;
   if (account.icon !== undefined) updates.icon = account.icon;
+  if (account.isPrimary !== undefined) updates.is_primary = account.isPrimary;
 
   const { data, error } = await supabase
     .from('accounts')

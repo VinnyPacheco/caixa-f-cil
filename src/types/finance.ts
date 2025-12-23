@@ -9,6 +9,7 @@ export interface Account {
   initialBalance: number;
   color: string;
   icon: string;
+  isPrimary?: boolean;
 }
 
 export interface Category {

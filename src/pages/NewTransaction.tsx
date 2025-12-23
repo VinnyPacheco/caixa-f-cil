@@ -56,10 +56,11 @@ export default function NewTransaction() {
     }
   }, [type, categories]);
 
-  // Set default account when accounts load
+  // Set default account when accounts load (prefer primary account)
   useEffect(() => {
     if (accounts.length > 0 && !accountId) {
-      setAccountId(accounts[0].id);
+      const primaryAccount = accounts.find((acc) => acc.isPrimary);
+      setAccountId(primaryAccount ? primaryAccount.id : accounts[0].id);
     }
   }, [accounts, accountId]);
 
