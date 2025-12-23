@@ -21,6 +21,7 @@ export type Database = {
           icon: string
           id: string
           initial_balance: number
+          is_primary: boolean
           name: string
           type: Database["public"]["Enums"]["account_type"]
           updated_at: string
@@ -32,6 +33,7 @@ export type Database = {
           icon?: string
           id?: string
           initial_balance?: number
+          is_primary?: boolean
           name: string
           type?: Database["public"]["Enums"]["account_type"]
           updated_at?: string
@@ -43,6 +45,7 @@ export type Database = {
           icon?: string
           id?: string
           initial_balance?: number
+          is_primary?: boolean
           name?: string
           type?: Database["public"]["Enums"]["account_type"]
           updated_at?: string
