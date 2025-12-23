@@ -30,7 +30,7 @@ export function TransactionForm({
   const isEditing = !!transaction;
 
   const [type, setType] = useState<TransactionType>('expense');
-  const [amount, setAmount] = useState('');
+  const [amountCents, setAmountCents] = useState(0);
   const [description, setDescription] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [accountId, setAccountId] = useState('');
@@ -41,10 +41,37 @@ export function TransactionForm({
   const [autoSettle, setAutoSettle] = useState(false);
   const [notes, setNotes] = useState('');
 
+  // Format amount from cents to display string with thousand separators
+  const formatAmountDisplay = (cents: number): string => {
+    const value = cents / 100;
+    return new Intl.NumberFormat('pt-BR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(value);
+  };
+
+  const handleAmountKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    // Allow only digits and backspace/delete
+    if (e.key === 'Backspace' || e.key === 'Delete') {
+      e.preventDefault();
+      setAmountCents((prev) => Math.floor(prev / 10));
+      return;
+    }
+    
+    if (!/^\d$/.test(e.key)) {
+      e.preventDefault();
+      return;
+    }
+    
+    e.preventDefault();
+    const digit = parseInt(e.key, 10);
+    setAmountCents((prev) => prev * 10 + digit);
+  };
+
   useEffect(() => {
     if (transaction) {
       setType(transaction.type);
-      setAmount(transaction.amount.toString().replace('.', ','));
+      setAmountCents(Math.round(transaction.amount * 100));
       setDescription(transaction.description);
       setCategoryId(transaction.categoryId);
       setAccountId(transaction.accountId);
@@ -56,7 +83,7 @@ export function TransactionForm({
       setNotes(transaction.notes || '');
     } else {
       setType('expense');
-      setAmount('');
+      setAmountCents(0);
       setDescription('');
       setCategoryId('');
       setAccountId(accounts[0]?.id || '');
@@ -71,13 +98,8 @@ export function TransactionForm({
 
   const filteredCategories = categories.filter((c) => c.type === type);
 
-  const handleAmountChange = (value: string) => {
-    const cleaned = value.replace(/[^\d,\.]/g, '');
-    setAmount(cleaned);
-  };
-
   const handleSubmit = () => {
-    if (!amount || !description) {
+    if (amountCents === 0 || !description) {
       toast({
         title: 'Campos obrigatórios',
         description: 'Preencha o valor e a descrição do lançamento.',
@@ -86,17 +108,7 @@ export function TransactionForm({
       return;
     }
 
-    const numericAmount = parseFloat(amount.replace(',', '.'));
-
-    if (isNaN(numericAmount) || numericAmount <= 0) {
-      toast({
-        title: 'Valor inválido',
-        description: 'Digite um valor válido para o lançamento.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
+    const numericAmount = amountCents / 100;
     const installments = recurrence === 'installment' ? parseInt(installmentCount) || 2 : undefined;
 
     const transactionData = {
@@ -125,7 +137,7 @@ export function TransactionForm({
       onSave(transactionData);
       toast({
         title: 'Lançamento salvo!',
-        description: `${type === 'income' ? 'Receita' : 'Despesa'} de R$ ${amount} registrada com sucesso.`,
+        description: `${type === 'income' ? 'Receita' : 'Despesa'} de R$ ${formatAmountDisplay(amountCents)} registrada com sucesso.`,
       });
     }
 
@@ -175,11 +187,11 @@ export function TransactionForm({
               <span className="text-2xl font-bold text-foreground mr-1 self-center pb-1">R$</span>
               <input
                 type="text"
-                inputMode="decimal"
-                value={amount}
-                onChange={(e) => handleAmountChange(e.target.value)}
-                placeholder="0,00"
-                className="w-full max-w-[180px] bg-transparent border-none p-0 text-4xl font-bold text-foreground placeholder-muted-foreground/30 text-center focus:ring-0 focus:outline-none leading-tight"
+                inputMode="numeric"
+                value={formatAmountDisplay(amountCents)}
+                onKeyDown={handleAmountKeyDown}
+                readOnly
+                className="w-full max-w-[200px] bg-transparent border-none p-0 text-4xl font-bold text-foreground text-center focus:ring-0 focus:outline-none leading-tight cursor-text caret-transparent"
               />
             </div>
           </div>
