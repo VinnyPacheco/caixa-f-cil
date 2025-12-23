@@ -17,6 +17,7 @@ export interface Category {
   type: TransactionType;
   icon: string;
   color: string;
+  isSystem?: boolean;
 }
 
 export interface Transaction {

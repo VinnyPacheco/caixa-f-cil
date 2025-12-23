@@ -56,6 +56,7 @@ export type Database = {
           created_at: string
           icon: string
           id: string
+          is_system: boolean
           name: string
           type: Database["public"]["Enums"]["transaction_type"]
           updated_at: string
@@ -66,6 +67,7 @@ export type Database = {
           created_at?: string
           icon?: string
           id?: string
+          is_system?: boolean
           name: string
           type?: Database["public"]["Enums"]["transaction_type"]
           updated_at?: string
@@ -76,6 +78,7 @@ export type Database = {
           created_at?: string
           icon?: string
           id?: string
+          is_system?: boolean
           name?: string
           type?: Database["public"]["Enums"]["transaction_type"]
           updated_at?: string

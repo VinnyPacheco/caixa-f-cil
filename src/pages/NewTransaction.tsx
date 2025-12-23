@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Header } from '@/components/layout/Header';
 import { TransactionType, RecurrenceType } from '@/types/finance';
@@ -29,15 +29,39 @@ export default function NewTransaction() {
   const [autoPay, setAutoPay] = useState(false);
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [categoryInitialized, setCategoryInitialized] = useState(false);
 
   const filteredCategories = categories.filter((c) => c.type === type);
 
+  // Set default category "Outros" when categories load or type changes
+  useEffect(() => {
+    if (categories.length > 0 && (!categoryId || !categoryInitialized)) {
+      const defaultCategory = categories.find(
+        (c) => c.isSystem && c.name === 'Outros' && c.type === type
+      );
+      if (defaultCategory) {
+        setCategoryId(defaultCategory.id);
+        setCategoryInitialized(true);
+      }
+    }
+  }, [categories, type, categoryId, categoryInitialized]);
+
+  // Update category when type changes
+  useEffect(() => {
+    const defaultCategory = categories.find(
+      (c) => c.isSystem && c.name === 'Outros' && c.type === type
+    );
+    if (defaultCategory) {
+      setCategoryId(defaultCategory.id);
+    }
+  }, [type, categories]);
+
   // Set default account when accounts load
-  useState(() => {
+  useEffect(() => {
     if (accounts.length > 0 && !accountId) {
       setAccountId(accounts[0].id);
     }
-  });
+  }, [accounts, accountId]);
 
   // Format amount from cents to display string with thousand separators
   const formatAmountDisplay = (cents: number): string => {

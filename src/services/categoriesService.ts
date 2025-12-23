@@ -8,6 +8,7 @@ export interface DbCategory {
   type: string;
   icon: string;
   color: string;
+  is_system: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -20,6 +21,7 @@ export function dbToCategory(dbCategory: DbCategory): Category {
     type: dbCategory.type as TransactionType,
     icon: dbCategory.icon,
     color: dbCategory.color,
+    isSystem: dbCategory.is_system,
   };
 }
 
