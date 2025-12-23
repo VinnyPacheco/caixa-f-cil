@@ -3,7 +3,7 @@ import { Transaction, TransactionWithBalance, Category, Account, MonthSummary } 
 import { mockTransactions, mockCategories, mockAccounts, mockOpeningBalance } from '@/data/mockData';
 import { calculateRunningBalances } from '@/lib/format';
 import { FilterType } from '@/components/finance/FilterPills';
-import { format, startOfMonth, endOfMonth, isWithinInterval, parseISO } from 'date-fns';
+import { format, startOfMonth, endOfMonth, isWithinInterval, parseISO, addMonths, isBefore, isAfter } from 'date-fns';
 
 export function useTransactions(selectedDate: Date) {
   const [transactions, setTransactions] = useState<Transaction[]>(mockTransactions);
@@ -11,16 +11,80 @@ export function useTransactions(selectedDate: Date) {
   const [accounts] = useState<Account[]>(mockAccounts);
   const [filter, setFilter] = useState<FilterType>('all');
 
-  // Get transactions for the selected month
-  const monthTransactions = useMemo(() => {
+  // Generate recurring transaction instances for the selected month
+  const expandedTransactions = useMemo(() => {
     const start = startOfMonth(selectedDate);
     const end = endOfMonth(selectedDate);
+    const result: Transaction[] = [];
 
-    return transactions.filter((t) => {
-      const date = parseISO(t.date);
-      return isWithinInterval(date, { start, end });
+    transactions.forEach((t) => {
+      const transactionDate = parseISO(t.date);
+      const transactionStartDate = t.startDate ? parseISO(t.startDate) : transactionDate;
+      
+      // For one-time transactions, include if in range
+      if (t.recurrenceType === 'once') {
+        if (isWithinInterval(transactionDate, { start, end })) {
+          result.push(t);
+        }
+        return;
+      }
+
+      // For recurring (continuous) transactions
+      if (t.recurrenceType === 'recurring') {
+        // Calculate the instance date for this month
+        const dayOfMonth = transactionStartDate.getDate();
+        const instanceDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), dayOfMonth);
+        
+        // Only show if the start date is before or in this month
+        if (!isAfter(transactionStartDate, end)) {
+          // Check if this transaction already exists for this month (original or generated)
+          if (isWithinInterval(transactionDate, { start, end })) {
+            result.push(t);
+          } else if (!isBefore(instanceDate, transactionStartDate)) {
+            // Generate instance for this month
+            const instanceId = `${t.parentId || t.id}-${format(instanceDate, 'yyyy-MM')}`;
+            result.push({
+              ...t,
+              id: instanceId,
+              parentId: t.parentId || t.id,
+              date: format(instanceDate, 'yyyy-MM-dd'),
+              isPaid: false, // New instances start unpaid
+            });
+          }
+        }
+        return;
+      }
+
+      // For installment transactions
+      if (t.recurrenceType === 'installment' && t.installmentTotal) {
+        const totalInstallments = t.installmentTotal;
+        
+        for (let i = 0; i < totalInstallments; i++) {
+          const installmentDate = addMonths(transactionStartDate, i);
+          
+          if (isWithinInterval(installmentDate, { start, end })) {
+            const instanceId = i === 0 ? t.id : `${t.parentId || t.id}-inst-${i + 1}`;
+            result.push({
+              ...t,
+              id: instanceId,
+              parentId: t.parentId || t.id,
+              date: format(installmentDate, 'yyyy-MM-dd'),
+              installmentCurrent: i + 1,
+              isPaid: i === 0 ? t.isPaid : false,
+              description: `${t.description} (${i + 1}/${totalInstallments})`,
+            });
+          }
+        }
+      }
     });
+
+    return result;
   }, [transactions, selectedDate]);
+
+  // Get transactions for the selected month (already filtered by expandedTransactions)
+  const monthTransactions = useMemo(() => {
+    return expandedTransactions;
+  }, [expandedTransactions]);
 
   // Apply filter
   const filteredTransactions = useMemo(() => {

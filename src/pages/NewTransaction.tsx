@@ -19,6 +19,7 @@ export default function NewTransaction() {
   const [accountId, setAccountId] = useState('acc-1');
   const [date, setDate] = useState(new Date());
   const [recurrence, setRecurrence] = useState<RecurrenceType>('once');
+  const [installmentCount, setInstallmentCount] = useState('2');
   const [autoPay, setAutoPay] = useState(false);
   const [notes, setNotes] = useState('');
 
@@ -208,6 +209,30 @@ export default function NewTransaction() {
               ))}
             </div>
           </div>
+
+          {/* Installment Count - Only show when installment is selected */}
+          {recurrence === 'installment' && (
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">
+                Número de Parcelas
+              </label>
+              <div className="input-gold p-4">
+                <div className="flex items-center gap-3">
+                  <span className="material-symbols-outlined text-muted-foreground">format_list_numbered</span>
+                  <input
+                    type="number"
+                    min="2"
+                    max="60"
+                    value={installmentCount}
+                    onChange={(e) => setInstallmentCount(e.target.value)}
+                    placeholder="Ex: 12"
+                    className="w-full bg-transparent border-none p-0 focus:ring-0 focus:outline-none text-foreground placeholder-muted-foreground text-base font-medium"
+                  />
+                  <span className="text-muted-foreground text-sm">parcelas</span>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Auto Pay Toggle */}
           <div className="flex items-center justify-between bg-secondary p-4 rounded-2xl">

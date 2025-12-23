@@ -34,6 +34,10 @@ export interface Transaction {
   installmentTotal?: number;
   notes?: string;
   autoSettle?: boolean;
+  // For recurring transactions - the parent ID to link instances
+  parentId?: string;
+  // Original start date for recurring transactions
+  startDate?: string;
 }
 
 export interface MonthlyBalance {
