@@ -21,21 +21,6 @@ function getDueStatus(transaction: TransactionWithBalance): DueStatus {
   return 'normal';
 }
 
-function DueBadge({ status }: { status: DueStatus }) {
-  if (status === 'normal') return null;
-  
-  return (
-    <span
-      className={cn(
-        "text-[10px] font-semibold px-1.5 py-0.5 rounded-full",
-        status === 'overdue' && "bg-destructive/15 text-destructive",
-        status === 'due-soon' && "bg-amber-500/15 text-amber-600 dark:text-amber-400"
-      )}
-    >
-      {status === 'overdue' ? 'Vencido' : 'Vence em breve'}
-    </span>
-  );
-}
 
 interface TransactionItemProps {
   transaction: TransactionWithBalance;
@@ -64,12 +49,26 @@ export const TransactionItem = forwardRef<HTMLDivElement, TransactionItemProps>(
         )}
         onClick={!isReadOnly ? onClick : undefined}
       >
-        <div className="flex items-center gap-3">
-          {showDragHandle && (
-            <span className="material-symbols-outlined text-muted-foreground/40 drag-handle">
+        {/* Left column: check + drag handle */}
+        {showDragHandle && (
+          <div className="flex flex-col items-center justify-between gap-1 shrink-0">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onTogglePaid?.(transaction.id);
+              }}
+              className={transaction.isPaid ? 'status-paid' : 'status-pending'}
+            >
+              {transaction.isPaid && (
+                <span className="material-symbols-outlined text-sm font-bold">check</span>
+              )}
+            </button>
+            <span className="material-symbols-outlined text-muted-foreground/40 drag-handle text-lg">
               drag_indicator
             </span>
-          )}
+          </div>
+        )}
+        {!showDragHandle && (
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -81,18 +80,19 @@ export const TransactionItem = forwardRef<HTMLDivElement, TransactionItemProps>(
               <span className="material-symbols-outlined text-sm font-bold">check</span>
             )}
           </button>
-          <div className="flex flex-col justify-center">
-            <div className="flex items-center gap-2">
-              <p className="text-foreground text-base font-bold line-clamp-1">
-                {transaction.description}
-              </p>
-              <DueBadge status={dueStatus} />
-            </div>
-            <p className="text-muted-foreground text-sm font-normal">
-              {category?.name || 'Sem categoria'}
-            </p>
-          </div>
+        )}
+        
+        {/* Middle: description + category */}
+        <div className="flex flex-col justify-center flex-1 min-w-0">
+          <p className="text-foreground text-base font-bold line-clamp-1">
+            {transaction.description}
+          </p>
+          <p className="text-muted-foreground text-sm font-normal">
+            {category?.name || 'Sem categoria'}
+          </p>
         </div>
+        
+        {/* Right: amount + balance */}
         <div className="shrink-0 text-right">
           <p className={isIncome ? 'amount-income' : 'amount-expense'}>
             {isIncome ? '+ ' : '- '}
@@ -150,14 +150,8 @@ export function SortableTransactionItem({
       )}
       onClick={onClick}
     >
-      <div className="flex items-center gap-3">
-        <span
-          {...attributes}
-          {...listeners}
-          className="material-symbols-outlined text-muted-foreground/40 drag-handle touch-none"
-        >
-          drag_indicator
-        </span>
+      {/* Left column: check + drag handle */}
+      <div className="flex flex-col items-center justify-between gap-1 shrink-0">
         <button
           onClick={(e) => {
             e.stopPropagation();
@@ -169,18 +163,26 @@ export function SortableTransactionItem({
             <span className="material-symbols-outlined text-sm font-bold">check</span>
           )}
         </button>
-        <div className="flex flex-col justify-center">
-          <div className="flex items-center gap-2">
-            <p className="text-foreground text-base font-bold line-clamp-1">
-              {transaction.description}
-            </p>
-            <DueBadge status={dueStatus} />
-          </div>
-          <p className="text-muted-foreground text-sm font-normal">
-            {category?.name || 'Sem categoria'}
-          </p>
-        </div>
+        <span
+          {...attributes}
+          {...listeners}
+          className="material-symbols-outlined text-muted-foreground/40 drag-handle touch-none text-lg"
+        >
+          drag_indicator
+        </span>
       </div>
+      
+      {/* Middle: description + category */}
+      <div className="flex flex-col justify-center flex-1 min-w-0">
+        <p className="text-foreground text-base font-bold line-clamp-1">
+          {transaction.description}
+        </p>
+        <p className="text-muted-foreground text-sm font-normal">
+          {category?.name || 'Sem categoria'}
+        </p>
+      </div>
+      
+      {/* Right: amount + balance */}
       <div className="shrink-0 text-right">
         <p className={isIncome ? 'amount-income' : 'amount-expense'}>
           {isIncome ? '+ ' : '- '}
