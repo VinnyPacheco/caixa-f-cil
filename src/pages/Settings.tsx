@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Header } from '@/components/layout/Header';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface SettingItem {
   icon: string;
@@ -37,6 +38,7 @@ const settingsGroups: { title: string; items: SettingItem[] }[] = [
 
 export default function Settings() {
   const navigate = useNavigate();
+  const { signOut } = useAuth();
 
   const handleItemClick = (item: SettingItem) => {
     if (item.path) {
@@ -44,6 +46,10 @@ export default function Settings() {
     } else if (item.action) {
       item.action();
     }
+  };
+
+  const handleLogout = async () => {
+    await signOut();
   };
 
   return (
@@ -81,7 +87,7 @@ export default function Settings() {
 
         {/* Logout Button */}
         <button
-          onClick={() => navigate('/login')}
+          onClick={handleLogout}
           className="flex items-center justify-center gap-2 w-full py-4 rounded-2xl bg-destructive/10 text-destructive font-semibold hover:bg-destructive/20 transition-colors"
         >
           <span className="material-symbols-outlined">logout</span>
