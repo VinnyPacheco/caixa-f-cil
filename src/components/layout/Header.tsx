@@ -1,4 +1,6 @@
 import { useNavigate } from 'react-router-dom';
+import { NotificationList } from '@/components/notifications/NotificationList';
+import { useNotificationContext } from '@/contexts/NotificationContext';
 
 interface HeaderProps {
   title?: string;
@@ -18,6 +20,18 @@ export function Header({
   userName = 'Usuário',
 }: HeaderProps) {
   const navigate = useNavigate();
+  const { 
+    notifications, 
+    unreadCount, 
+    markAsRead, 
+    markAllAsRead, 
+    pushPermission, 
+    requestPushPermission 
+  } = useNotificationContext();
+
+  const handleNotificationClick = (transactionId: string) => {
+    navigate('/transactions');
+  };
 
   return (
     <header className="flex items-center px-6 pt-6 pb-2 justify-between sticky top-0 z-10 bg-background/95 backdrop-blur-sm">
@@ -65,9 +79,15 @@ export function Header({
       )}
 
       {showNotification ? (
-        <button className="flex items-center justify-center rounded-full size-10 bg-card shadow-sm text-accent transition-transform active:scale-95">
-          <span className="material-symbols-outlined icon-filled">notifications</span>
-        </button>
+        <NotificationList
+          notifications={notifications}
+          unreadCount={unreadCount}
+          onMarkAsRead={markAsRead}
+          onMarkAllAsRead={markAllAsRead}
+          onNotificationClick={handleNotificationClick}
+          pushPermission={pushPermission}
+          onRequestPushPermission={requestPushPermission}
+        />
       ) : showBack ? (
         <div className="w-10" />
       ) : null}
