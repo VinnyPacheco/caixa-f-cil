@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Header } from '@/components/layout/Header';
 import { MonthSelector } from '@/components/finance/MonthSelector';
@@ -9,13 +10,18 @@ import { MonthColumn } from '@/components/finance/MonthColumn';
 import { useMultiMonthTransactions } from '@/hooks/useMultiMonthTransactions';
 import { useDeviceType } from '@/hooks/use-responsive';
 import { formatCurrency } from '@/lib/format';
-import { ArrowUpDown } from 'lucide-react';
+import { ArrowUpDown, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { TransactionWithBalance } from '@/types/finance';
 
 const SORT_ORDER_KEY = 'transactions-sort-order';
 
+interface LocationState {
+  newTransaction?: boolean;
+}
+
 export default function Transactions() {
+  const location = useLocation();
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>(() => {
     const saved = localStorage.getItem(SORT_ORDER_KEY);
@@ -23,6 +29,7 @@ export default function Transactions() {
   });
   const [editingTransaction, setEditingTransaction] = useState<TransactionWithBalance | null>(null);
   const [formOpen, setFormOpen] = useState(false);
+  const [showNewTransactionFeedback, setShowNewTransactionFeedback] = useState(false);
 
   const deviceType = useDeviceType();
   const additionalMonths = deviceType === 'desktop' ? 2 : deviceType === 'tablet' ? 1 : 0;
@@ -39,6 +46,21 @@ export default function Transactions() {
     addTransaction,
     updateTransaction,
   } = useMultiMonthTransactions(selectedDate, additionalMonths);
+
+  // Check if we came from auto-save voice transaction
+  useEffect(() => {
+    const state = location.state as LocationState | null;
+    if (state?.newTransaction) {
+      setShowNewTransactionFeedback(true);
+      // Hide the feedback after 3 seconds
+      const timer = setTimeout(() => {
+        setShowNewTransactionFeedback(false);
+      }, 3000);
+      // Clean up the state
+      window.history.replaceState({}, document.title);
+      return () => clearTimeout(timer);
+    }
+  }, [location.state]);
 
   const toggleSortOrder = () => {
     setSortOrder((prev) => {
@@ -67,6 +89,16 @@ export default function Transactions() {
       <Header showAvatar showNotification userName="Usuário" />
 
       <main className="flex flex-col gap-6 p-6">
+        {/* New Transaction Success Feedback */}
+        {showNewTransactionFeedback && (
+          <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 animate-fade-in">
+            <div className="flex items-center gap-2 bg-success text-success-foreground px-4 py-3 rounded-full shadow-lg">
+              <CheckCircle className="h-5 w-5" />
+              <span className="font-medium text-sm">Lançamento incluído com sucesso!</span>
+            </div>
+          </div>
+        )}
+
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold text-foreground">Extrato</h1>
           <MonthSelector

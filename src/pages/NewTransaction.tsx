@@ -1,5 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { Header } from '@/components/layout/Header';
 import { TransactionType, RecurrenceType } from '@/types/finance';
 import { useToast } from '@/hooks/use-toast';
@@ -9,7 +10,7 @@ import { useTransactions } from '@/hooks/useTransactions';
 import { useVoiceSettings } from '@/contexts/VoiceSettingsContext';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Copy, Loader2 } from 'lucide-react';
+import { Copy, Loader2, CheckCircle } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { 
   parseVoiceTransaction, 
@@ -21,9 +22,25 @@ interface LocationState {
   voiceText?: string;
 }
 
+// Confirmation sound as base64 (short beep)
+const CONFIRMATION_SOUND_URL = 'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU4GAACBhYqFbF1fdH2Onp6TgXBndYKRoZ+XiHlwa3yKl6CdkYN0bHqGk5ycmIx+dHN+iZKYl5KId3R1fIeQlZWRiXx2dXyFjpKSkIx/eHd8hIyQkI2JgXp4fIOMjo6LhoB7eH2DioqKh4R/fXx/goaHh4WDgX99foGDhYWEg4GAfn+AgoSDg4KBgH9/gIGCgoKBgIB/f4CAgYGBgICAf3+AgIGBgYCAgH9/gICBgYGAgIB/f4CAgYGBgICAfn+AgIGBgYCAgH5/gICBgQ==';
+
+const playConfirmationSound = () => {
+  try {
+    const audio = new Audio(CONFIRMATION_SOUND_URL);
+    audio.volume = 0.5;
+    audio.play().catch(() => {
+      // Ignore errors (user may not have interacted with page yet)
+    });
+  } catch (error) {
+    console.log('Could not play sound:', error);
+  }
+};
+
 export default function NewTransaction() {
   const navigate = useNavigate();
   const location = useLocation();
+  const queryClient = useQueryClient();
   const { toast } = useToast();
   const { accounts, isLoading: isLoadingAccounts } = useAccounts();
   const { categories, isLoading: isLoadingCategories } = useCategories();
@@ -161,12 +178,20 @@ export default function NewTransaction() {
           startDate: parsed.date ? format(parsed.date, 'yyyy-MM-dd') : undefined,
         });
         
+        // Play confirmation sound
+        playConfirmationSound();
+        
+        // Invalidate transactions query to refresh the list
+        queryClient.invalidateQueries({ queryKey: ['transactions'] });
+        
+        // Show success toast with visual feedback
         toast({
-          title: 'Lançamento salvo automaticamente',
+          title: '✓ Lançamento salvo',
           description: `${parsedDescription} - R$ ${numericAmount.toFixed(2)}`,
         });
         
-        navigate(-1);
+        // Navigate to transactions page to show the new transaction
+        navigate('/transactions', { state: { newTransaction: true } });
         return;
       }
       
@@ -175,7 +200,7 @@ export default function NewTransaction() {
         description: 'Campos preenchidos a partir do áudio. Revise antes de salvar.',
       });
     }
-  }, [location.state, voiceProcessed, categories, accounts, toast, autoSaveVoiceTransaction, addTransaction, navigate]);
+  }, [location.state, voiceProcessed, categories, accounts, toast, autoSaveVoiceTransaction, addTransaction, navigate, queryClient]);
 
   // Set default category "Outros" when categories load or type changes
   useEffect(() => {
