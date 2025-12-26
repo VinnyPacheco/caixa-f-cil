@@ -87,13 +87,15 @@ export function BottomNav() {
             onTouchStart={isSupported ? startHold : undefined}
             onTouchEnd={isSupported ? handleHoldEnd : () => navigate('/new-transaction')}
             onTouchCancel={isSupported ? handleHoldEnd : undefined}
-            className={`size-16 rounded-full bg-accent shadow-lg shadow-accent/30 flex items-center justify-center text-accent-foreground transition-all duration-200 ${
+            onContextMenu={(e) => e.preventDefault()}
+            className={`size-16 rounded-full bg-accent shadow-lg shadow-accent/30 flex items-center justify-center text-accent-foreground transition-all duration-200 select-none touch-none ${
               isListening 
                 ? 'scale-110 ring-4 ring-accent/50 animate-pulse' 
                 : isHolding 
                   ? 'scale-105 ring-2 ring-accent/30' 
                   : ''
             }`}
+            style={{ WebkitTouchCallout: 'none', WebkitUserSelect: 'none' }}
             aria-label={isListening ? 'Gravando áudio...' : 'Novo lançamento (segure para voz)'}
           >
             {/* Ripple effect when holding */}
