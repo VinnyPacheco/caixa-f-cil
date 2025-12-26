@@ -359,7 +359,7 @@ export default function NewTransaction() {
             <span className={`text-3xl font-bold mr-1 self-center pb-1 ${type === 'expense' ? 'text-destructive' : 'text-success'}`}>R$</span>
             <input
               type="text"
-              inputMode="numeric"
+              inputMode="decimal"
               value={formatAmountDisplay(amountCents)}
               onKeyDown={handleAmountKeyDown}
               readOnly
