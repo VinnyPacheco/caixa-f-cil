@@ -179,11 +179,8 @@ export default function Settings() {
             }`}>
               <span 
                 className={`material-symbols-outlined ${
-                  notificationsEnabled 
-                    ? 'text-green-500 font-bold' 
-                    : 'text-destructive font-normal'
+                  notificationsEnabled ? 'text-green-500' : 'text-destructive'
                 }`}
-                style={{ fontVariationSettings: notificationsEnabled ? "'wght' 700" : "'wght' 400" }}
               >
                 notifications
               </span>
@@ -192,11 +189,6 @@ export default function Settings() {
               <p className="font-semibold text-foreground">Notificações</p>
               <p className="text-sm text-muted-foreground">Alertas e lembretes</p>
             </div>
-            <span className={`text-sm font-medium ${
-              notificationsEnabled ? 'text-green-500' : 'text-destructive'
-            }`}>
-              {notificationsEnabled ? 'Ativado' : 'Desativado'}
-            </span>
           </button>
 
           {/* Voice Auto-Save Toggle */}
@@ -209,11 +201,8 @@ export default function Settings() {
             }`}>
               <span 
                 className={`material-symbols-outlined ${
-                  autoSaveVoiceTransaction 
-                    ? 'text-green-500 font-bold' 
-                    : 'text-destructive font-normal'
+                  autoSaveVoiceTransaction ? 'text-green-500' : 'text-destructive'
                 }`}
-                style={{ fontVariationSettings: autoSaveVoiceTransaction ? "'wght' 700" : "'wght' 400" }}
               >
                 mic
               </span>
@@ -222,11 +211,6 @@ export default function Settings() {
               <p className="font-semibold text-foreground">Lançamento automático por áudio</p>
               <p className="text-sm text-muted-foreground">Salvar automaticamente quando usar voz</p>
             </div>
-            <span className={`text-sm font-medium ${
-              autoSaveVoiceTransaction ? 'text-green-500' : 'text-destructive'
-            }`}>
-              {autoSaveVoiceTransaction ? 'Ativado' : 'Desativado'}
-            </span>
           </button>
 
           {/* Security */}
