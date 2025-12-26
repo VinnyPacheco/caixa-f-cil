@@ -1,12 +1,14 @@
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Header } from '@/components/layout/Header';
 import { useTransactions } from '@/hooks/useTransactions';
+import { useProfile } from '@/hooks/useProfile';
 import { formatCurrency } from '@/lib/format';
 import { useState } from 'react';
 
 export default function Reports() {
   const [selectedDate] = useState(new Date());
   const { monthSummary, categories, transactions } = useTransactions(selectedDate);
+  const { displayName } = useProfile();
 
   // Group expenses by category
   const expensesByCategory = transactions
@@ -25,7 +27,7 @@ export default function Reports() {
 
   return (
     <AppLayout>
-      <Header title="Relatórios" showBack />
+      <Header showAvatar showNotification userName={displayName} />
 
       <main className="flex flex-col gap-6 p-6">
         {/* Summary */}

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Header } from '@/components/layout/Header';
 import { useCategories } from '@/hooks/useCategoriesData';
+import { useProfile } from '@/hooks/useProfile';
 import { Category, TransactionType } from '@/types/finance';
 import { Button } from '@/components/ui/button';
 import { CategoryForm } from '@/components/finance/CategoryForm';
@@ -17,6 +18,7 @@ const filterLabels: Record<FilterType, string> = {
 
 export default function Categories() {
   const { categories, createCategory, updateCategory, isLoading } = useCategories();
+  const { displayName } = useProfile();
   const [filter, setFilter] = useState<FilterType>('all');
   const [formOpen, setFormOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
@@ -107,7 +109,7 @@ export default function Categories() {
 
   return (
     <AppLayout>
-      <Header title="Categorias" showBack />
+      <Header showAvatar showNotification userName={displayName} />
 
       <main className="flex flex-col gap-6 p-6">
         {/* Filter Pills */}

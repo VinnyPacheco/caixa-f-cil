@@ -5,16 +5,17 @@ import { Header } from '@/components/layout/Header';
 import { useAuth } from '@/contexts/AuthContext';
 import { useVoiceSettings } from '@/contexts/VoiceSettingsContext';
 import { useNotificationSettings } from '@/contexts/NotificationSettingsContext';
+import { useProfile } from '@/hooks/useProfile';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { fetchProfile, updateProfile, uploadAvatar } from '@/services/profileService';
-
 export default function Settings() {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const { autoSaveVoiceTransaction, setAutoSaveVoiceTransaction } = useVoiceSettings();
   const { notificationsEnabled, setNotificationsEnabled } = useNotificationSettings();
+  const { displayName } = useProfile();
   
   const [fullName, setFullName] = useState('');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -90,7 +91,7 @@ export default function Settings() {
 
   return (
     <AppLayout>
-      <Header title="Perfil" showBack />
+      <Header showAvatar showNotification userName={displayName} />
 
       <main className="flex flex-col gap-6 p-6">
         {/* Profile Photo */}
