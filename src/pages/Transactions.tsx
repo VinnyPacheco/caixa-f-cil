@@ -9,6 +9,7 @@ import { TransactionForm } from '@/components/finance/TransactionForm';
 import { MonthColumn } from '@/components/finance/MonthColumn';
 import { useMultiMonthTransactions } from '@/hooks/useMultiMonthTransactions';
 import { useDeviceType } from '@/hooks/use-responsive';
+import { useProfile } from '@/hooks/useProfile';
 import { formatCurrency } from '@/lib/format';
 import { ArrowUpDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -22,6 +23,7 @@ interface LocationState {
 
 export default function Transactions() {
   const location = useLocation();
+  const { displayName } = useProfile();
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>(() => {
     const saved = localStorage.getItem(SORT_ORDER_KEY);
@@ -29,7 +31,6 @@ export default function Transactions() {
   });
   const [editingTransaction, setEditingTransaction] = useState<TransactionWithBalance | null>(null);
   const [formOpen, setFormOpen] = useState(false);
-  
 
   const deviceType = useDeviceType();
   const additionalMonths = deviceType === 'desktop' ? 2 : deviceType === 'tablet' ? 1 : 0;
@@ -79,7 +80,7 @@ export default function Transactions() {
 
   return (
     <AppLayout>
-      <Header showAvatar showNotification userName="Usuário" />
+      <Header showAvatar showNotification userName={displayName} />
 
       <main className="flex flex-col gap-6 p-6">
 
