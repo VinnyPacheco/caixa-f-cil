@@ -1,9 +1,16 @@
-import { useCallback } from 'react';
+import { useCallback, useState, useRef, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useVoiceInput } from '@/hooks/useVoiceInput';
 import { useToast } from '@/hooks/use-toast';
 
 interface NavItem {
+  path: string;
+  icon: string;
+  label: string;
+  hasSubmenu?: boolean;
+}
+
+interface SubMenuItem {
   path: string;
   icon: string;
   label: string;
@@ -13,13 +20,20 @@ const navItems: NavItem[] = [
   { path: '/', icon: 'home', label: 'Início' },
   { path: '/transactions', icon: 'receipt_long', label: 'Transações' },
   { path: '/reports', icon: 'bar_chart', label: 'Relatórios' },
-  { path: '/accounts', icon: 'folder', label: 'Cadastros' },
+  { path: '/cadastros', icon: 'folder', label: 'Cadastros', hasSubmenu: true },
+];
+
+const cadastrosSubmenu: SubMenuItem[] = [
+  { path: '/accounts', icon: 'account_balance_wallet', label: 'Contas' },
+  { path: '/categories', icon: 'category', label: 'Categorias' },
 ];
 
 export function BottomNav() {
   const location = useLocation();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [showCadastrosMenu, setShowCadastrosMenu] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   const handleVoiceResult = useCallback((transcript: string) => {
     console.log('Voice transcript:', transcript);
@@ -32,7 +46,34 @@ export function BottomNav() {
 
   const { isListening, isHolding, isSupported, startHold, endHold } = useVoiceInput(handleVoiceResult);
 
-  const handleNavClick = (path: string) => {
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setShowCadastrosMenu(false);
+      }
+    };
+
+    if (showCadastrosMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showCadastrosMenu]);
+
+  const handleNavClick = (item: NavItem) => {
+    if (item.hasSubmenu) {
+      setShowCadastrosMenu(!showCadastrosMenu);
+    } else {
+      setShowCadastrosMenu(false);
+      navigate(item.path);
+    }
+  };
+
+  const handleSubmenuClick = (path: string) => {
+    setShowCadastrosMenu(false);
     navigate(path);
   };
 
@@ -44,39 +85,86 @@ export function BottomNav() {
   }, [endHold, navigate]);
 
   const isActive = (path: string) => {
-    if (path === '/accounts') {
+    if (path === '/cadastros') {
       return location.pathname === '/accounts' || location.pathname === '/categories';
     }
     return location.pathname === path;
+  };
+
+  const renderNavButton = (item: NavItem) => {
+    const active = isActive(item.path);
+    
+    if (item.hasSubmenu) {
+      return (
+        <div key={item.path} className="relative" ref={menuRef}>
+          {/* Drop-up Menu */}
+          {showCadastrosMenu && (
+            <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-card border border-border/50 rounded-xl shadow-lg overflow-hidden z-50 min-w-[140px]">
+              {cadastrosSubmenu.map((subItem) => (
+                <button
+                  key={subItem.path}
+                  onClick={() => handleSubmenuClick(subItem.path)}
+                  className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-secondary/50 transition-colors ${
+                    location.pathname === subItem.path ? 'bg-accent/10 text-accent' : 'text-foreground'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-xl">
+                    {subItem.icon}
+                  </span>
+                  <span className="text-sm font-medium">{subItem.label}</span>
+                </button>
+              ))}
+            </div>
+          )}
+          
+          <button
+            onClick={() => handleNavClick(item)}
+            className="flex flex-col items-center justify-center gap-1 min-w-[60px]"
+          >
+            <span 
+              className={`material-symbols-outlined text-2xl ${
+                active ? 'text-accent icon-filled' : 'text-muted-foreground'
+              }`}
+            >
+              {item.icon}
+            </span>
+            <span className={`text-[11px] ${
+              active ? 'text-accent font-semibold' : 'text-muted-foreground font-medium'
+            }`}>
+              {item.label}
+            </span>
+          </button>
+        </div>
+      );
+    }
+
+    return (
+      <button
+        key={item.path}
+        onClick={() => handleNavClick(item)}
+        className="flex flex-col items-center justify-center gap-1 min-w-[60px]"
+      >
+        <span 
+          className={`material-symbols-outlined text-2xl ${
+            active ? 'text-accent icon-filled' : 'text-muted-foreground'
+          }`}
+        >
+          {item.icon}
+        </span>
+        <span className={`text-[11px] ${
+          active ? 'text-accent font-semibold' : 'text-muted-foreground font-medium'
+        }`}>
+          {item.label}
+        </span>
+      </button>
+    );
   };
 
   return (
     <nav className="fixed bottom-0 w-full bg-background/50 backdrop-blur-sm pb-safe pt-1 px-4 z-50 rounded-t-[28px] shadow-[0_-4px_30px_rgba(0,0,0,0.1)]">
       <div className="flex items-center justify-around h-14 relative max-w-lg mx-auto">
         {/* First two nav items */}
-        {navItems.slice(0, 2).map((item) => {
-          const active = isActive(item.path);
-          return (
-            <button
-              key={item.path}
-              onClick={() => handleNavClick(item.path)}
-              className="flex flex-col items-center justify-center gap-1 min-w-[60px]"
-            >
-              <span 
-                className={`material-symbols-outlined text-2xl ${
-                  active ? 'text-accent icon-filled' : 'text-muted-foreground'
-                }`}
-              >
-                {item.icon}
-              </span>
-              <span className={`text-[11px] ${
-                active ? 'text-accent font-semibold' : 'text-muted-foreground font-medium'
-              }`}>
-                {item.label}
-              </span>
-            </button>
-          );
-        })}
+        {navItems.slice(0, 2).map((item) => renderNavButton(item))}
 
         {/* FAB Button with Voice Input */}
         <div className="absolute left-1/2 -translate-x-1/2 -top-10">
@@ -124,29 +212,7 @@ export function BottomNav() {
         </div>
 
         {/* Last two nav items */}
-        {navItems.slice(2).map((item) => {
-          const active = isActive(item.path);
-          return (
-            <button
-              key={item.path}
-              onClick={() => handleNavClick(item.path)}
-              className="flex flex-col items-center justify-center gap-1 min-w-[60px]"
-            >
-              <span 
-                className={`material-symbols-outlined text-2xl ${
-                  active ? 'text-accent icon-filled' : 'text-muted-foreground'
-                }`}
-              >
-                {item.icon}
-              </span>
-              <span className={`text-[11px] ${
-                active ? 'text-accent font-semibold' : 'text-muted-foreground font-medium'
-              }`}>
-                {item.label}
-              </span>
-            </button>
-          );
-        })}
+        {navItems.slice(2).map((item) => renderNavButton(item))}
       </div>
       <div className="h-2 w-full" />
       
