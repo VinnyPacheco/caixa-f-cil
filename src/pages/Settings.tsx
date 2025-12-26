@@ -1,52 +1,77 @@
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Header } from '@/components/layout/Header';
 import { useAuth } from '@/contexts/AuthContext';
 import { useVoiceSettings } from '@/contexts/VoiceSettingsContext';
-
-interface SettingItem {
-  icon: string;
-  label: string;
-  description?: string;
-  path?: string;
-  action?: () => void;
-}
-
-const settingsGroups: { title: string; items: SettingItem[] }[] = [
-  {
-    title: 'Cadastros',
-    items: [
-      { icon: 'account_balance', label: 'Contas', description: 'Gerenciar contas bancárias e cartões', path: '/accounts' },
-      { icon: 'category', label: 'Categorias', description: 'Gerenciar categorias de lançamentos', path: '/categories' },
-    ],
-  },
-  {
-    title: 'Configurações',
-    items: [
-      { icon: 'person', label: 'Perfil', description: 'Dados pessoais e avatar', path: '/profile' },
-      { icon: 'notifications', label: 'Notificações', description: 'Alertas e lembretes' },
-      { icon: 'security', label: 'Segurança', description: 'Senha e autenticação' },
-    ],
-  },
-  {
-    title: 'Sobre',
-    items: [
-      { icon: 'help', label: 'Ajuda', description: 'Central de ajuda e FAQ' },
-      { icon: 'info', label: 'Sobre o App', description: 'Versão e informações legais' },
-    ],
-  },
-];
+import { useNotificationSettings } from '@/contexts/NotificationSettingsContext';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { Input } from '@/components/ui/input';
+import { toast } from 'sonner';
+import { fetchProfile, updateProfile, uploadAvatar } from '@/services/profileService';
 
 export default function Settings() {
   const navigate = useNavigate();
-  const { signOut } = useAuth();
+  const { user, signOut } = useAuth();
   const { autoSaveVoiceTransaction, setAutoSaveVoiceTransaction } = useVoiceSettings();
+  const { notificationsEnabled, setNotificationsEnabled } = useNotificationSettings();
+  
+  const [fullName, setFullName] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleItemClick = (item: SettingItem) => {
-    if (item.path) {
-      navigate(item.path);
-    } else if (item.action) {
-      item.action();
+  useEffect(() => {
+    if (user?.id) {
+      loadProfile();
+    }
+  }, [user?.id]);
+
+  const loadProfile = async () => {
+    if (!user?.id) return;
+    const profile = await fetchProfile(user.id);
+    if (profile) {
+      setFullName(profile.full_name || '');
+      setAvatarUrl(profile.avatar_url);
+    }
+  };
+
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user?.id) return;
+
+    try {
+      setIsLoading(true);
+      const publicUrl = await uploadAvatar(user.id, file);
+      await updateProfile(user.id, { avatar_url: publicUrl });
+      setAvatarUrl(publicUrl);
+      toast.success('Foto atualizada com sucesso!');
+    } catch (error) {
+      toast.error('Erro ao atualizar foto');
+      console.error(error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleNameSave = async () => {
+    if (!user?.id) return;
+    
+    try {
+      setIsLoading(true);
+      await updateProfile(user.id, { full_name: fullName });
+      setIsEditingName(false);
+      toast.success('Nome atualizado com sucesso!');
+    } catch (error) {
+      toast.error('Erro ao atualizar nome');
+      console.error(error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -54,60 +79,202 @@ export default function Settings() {
     await signOut();
   };
 
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map((n) => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
   return (
     <AppLayout>
-      <Header title="Cadastros" showBack />
+      <Header title="Perfil" showBack />
 
       <main className="flex flex-col gap-6 p-6">
-        {settingsGroups.map((group) => (
-          <div key={group.title} className="space-y-3">
-            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">
-              {group.title}
-            </h3>
-            <div className="bg-card rounded-2xl border border-border/50 overflow-hidden divide-y divide-border/50">
-              {group.items.map((item) => (
-                <button
-                  key={item.label}
-                  onClick={() => handleItemClick(item)}
-                  className="w-full flex items-center gap-4 p-4 hover:bg-secondary/50 transition-colors"
-                >
-                  <div className="size-10 rounded-xl bg-accent/10 flex items-center justify-center">
-                    <span className="material-symbols-outlined text-accent">{item.icon}</span>
-                  </div>
-                  <div className="flex-1 text-left">
-                    <p className="font-semibold text-foreground">{item.label}</p>
-                    {item.description && (
-                      <p className="text-sm text-muted-foreground">{item.description}</p>
-                    )}
-                  </div>
-                  <span className="material-symbols-outlined text-muted-foreground">chevron_right</span>
-                </button>
-              ))}
+        {/* Profile Photo */}
+        <div className="flex flex-col items-center gap-4">
+          <button
+            onClick={handleAvatarClick}
+            disabled={isLoading}
+            className="relative group"
+          >
+            <Avatar className="size-28 border-4 border-accent/20">
+              {avatarUrl ? (
+                <AvatarImage src={avatarUrl} alt="Foto de perfil" />
+              ) : null}
+              <AvatarFallback className="text-2xl bg-accent/10 text-accent">
+                {fullName ? getInitials(fullName) : <span className="material-symbols-outlined text-4xl">person</span>}
+              </AvatarFallback>
+            </Avatar>
+            <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+              <span className="material-symbols-outlined text-white text-2xl">photo_camera</span>
             </div>
-          </div>
-        ))}
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            onChange={handleFileChange}
+            className="hidden"
+          />
+          <p className="text-sm text-muted-foreground">Toque para alterar a foto</p>
+        </div>
 
-        {/* Voice Auto-Save Toggle */}
+        {/* Full Name Field */}
         <div className="bg-card rounded-2xl border border-border/50 overflow-hidden p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="size-10 rounded-xl bg-accent/10 flex items-center justify-center">
-                <span className="material-symbols-outlined text-accent">mic</span>
-              </div>
-              <div className="flex-1">
-                <p className="font-semibold text-foreground">Lançamento automático por áudio</p>
-                <p className="text-sm text-muted-foreground">Salvar automaticamente quando usar voz</p>
-              </div>
+          <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+            Nome Completo
+          </label>
+          <div className="flex items-center gap-2 mt-2">
+            {isEditingName ? (
+              <>
+                <Input
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  className="flex-1"
+                  placeholder="Digite seu nome completo"
+                />
+                <button
+                  onClick={handleNameSave}
+                  disabled={isLoading}
+                  className="size-10 rounded-xl bg-accent text-accent-foreground flex items-center justify-center"
+                >
+                  <span className="material-symbols-outlined">check</span>
+                </button>
+                <button
+                  onClick={() => setIsEditingName(false)}
+                  className="size-10 rounded-xl bg-muted text-muted-foreground flex items-center justify-center"
+                >
+                  <span className="material-symbols-outlined">close</span>
+                </button>
+              </>
+            ) : (
+              <>
+                <p className="flex-1 text-foreground font-medium">
+                  {fullName || 'Não informado'}
+                </p>
+                <button
+                  onClick={() => setIsEditingName(true)}
+                  className="size-10 rounded-xl bg-accent/10 text-accent flex items-center justify-center"
+                >
+                  <span className="material-symbols-outlined">edit</span>
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Settings Items */}
+        <div className="bg-card rounded-2xl border border-border/50 overflow-hidden divide-y divide-border/50">
+          {/* Notifications Toggle */}
+          <button
+            onClick={() => setNotificationsEnabled(!notificationsEnabled)}
+            className="w-full flex items-center gap-4 p-4 hover:bg-secondary/50 transition-colors"
+          >
+            <div className={`size-10 rounded-xl flex items-center justify-center ${
+              notificationsEnabled ? 'bg-green-500/10' : 'bg-destructive/10'
+            }`}>
+              <span 
+                className={`material-symbols-outlined ${
+                  notificationsEnabled 
+                    ? 'text-green-500 font-bold' 
+                    : 'text-destructive font-normal'
+                }`}
+                style={{ fontVariationSettings: notificationsEnabled ? "'wght' 700" : "'wght' 400" }}
+              >
+                notifications
+              </span>
             </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={autoSaveVoiceTransaction}
-                onChange={(e) => setAutoSaveVoiceTransaction(e.target.checked)}
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-muted peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-border after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent"></div>
-            </label>
+            <div className="flex-1 text-left">
+              <p className="font-semibold text-foreground">Notificações</p>
+              <p className="text-sm text-muted-foreground">Alertas e lembretes</p>
+            </div>
+            <span className={`text-sm font-medium ${
+              notificationsEnabled ? 'text-green-500' : 'text-destructive'
+            }`}>
+              {notificationsEnabled ? 'Ativado' : 'Desativado'}
+            </span>
+          </button>
+
+          {/* Voice Auto-Save Toggle */}
+          <button
+            onClick={() => setAutoSaveVoiceTransaction(!autoSaveVoiceTransaction)}
+            className="w-full flex items-center gap-4 p-4 hover:bg-secondary/50 transition-colors"
+          >
+            <div className={`size-10 rounded-xl flex items-center justify-center ${
+              autoSaveVoiceTransaction ? 'bg-green-500/10' : 'bg-destructive/10'
+            }`}>
+              <span 
+                className={`material-symbols-outlined ${
+                  autoSaveVoiceTransaction 
+                    ? 'text-green-500 font-bold' 
+                    : 'text-destructive font-normal'
+                }`}
+                style={{ fontVariationSettings: autoSaveVoiceTransaction ? "'wght' 700" : "'wght' 400" }}
+              >
+                mic
+              </span>
+            </div>
+            <div className="flex-1 text-left">
+              <p className="font-semibold text-foreground">Lançamento automático por áudio</p>
+              <p className="text-sm text-muted-foreground">Salvar automaticamente quando usar voz</p>
+            </div>
+            <span className={`text-sm font-medium ${
+              autoSaveVoiceTransaction ? 'text-green-500' : 'text-destructive'
+            }`}>
+              {autoSaveVoiceTransaction ? 'Ativado' : 'Desativado'}
+            </span>
+          </button>
+
+          {/* Security */}
+          <button
+            onClick={() => navigate('/security')}
+            className="w-full flex items-center gap-4 p-4 hover:bg-secondary/50 transition-colors"
+          >
+            <div className="size-10 rounded-xl bg-accent/10 flex items-center justify-center">
+              <span className="material-symbols-outlined text-accent">security</span>
+            </div>
+            <div className="flex-1 text-left">
+              <p className="font-semibold text-foreground">Segurança</p>
+              <p className="text-sm text-muted-foreground">Senha e autenticação</p>
+            </div>
+            <span className="material-symbols-outlined text-muted-foreground">chevron_right</span>
+          </button>
+        </div>
+
+        {/* About Section */}
+        <div className="space-y-3">
+          <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">
+            Sobre
+          </h3>
+          <div className="bg-card rounded-2xl border border-border/50 overflow-hidden divide-y divide-border/50">
+            <button
+              className="w-full flex items-center gap-4 p-4 hover:bg-secondary/50 transition-colors"
+            >
+              <div className="size-10 rounded-xl bg-accent/10 flex items-center justify-center">
+                <span className="material-symbols-outlined text-accent">help</span>
+              </div>
+              <div className="flex-1 text-left">
+                <p className="font-semibold text-foreground">Ajuda</p>
+                <p className="text-sm text-muted-foreground">Central de ajuda e FAQ</p>
+              </div>
+              <span className="material-symbols-outlined text-muted-foreground">chevron_right</span>
+            </button>
+            <button
+              className="w-full flex items-center gap-4 p-4 hover:bg-secondary/50 transition-colors"
+            >
+              <div className="size-10 rounded-xl bg-accent/10 flex items-center justify-center">
+                <span className="material-symbols-outlined text-accent">info</span>
+              </div>
+              <div className="flex-1 text-left">
+                <p className="font-semibold text-foreground">Sobre o App</p>
+                <p className="text-sm text-muted-foreground">Versão e informações legais</p>
+              </div>
+              <span className="material-symbols-outlined text-muted-foreground">chevron_right</span>
+            </button>
           </div>
         </div>
 
