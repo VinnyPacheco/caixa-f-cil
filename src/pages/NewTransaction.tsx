@@ -244,22 +244,10 @@ export default function NewTransaction() {
     }).format(value);
   };
 
-  const handleAmountKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    // Allow only digits and backspace/delete
-    if (e.key === 'Backspace' || e.key === 'Delete') {
-      e.preventDefault();
-      setAmountCents((prev) => Math.floor(prev / 10));
-      return;
-    }
-    
-    if (!/^\d$/.test(e.key)) {
-      e.preventDefault();
-      return;
-    }
-    
-    e.preventDefault();
-    const digit = parseInt(e.key, 10);
-    setAmountCents((prev) => prev * 10 + digit);
+  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Extract only digits from input
+    const digits = e.target.value.replace(/\D/g, '');
+    setAmountCents(parseInt(digits, 10) || 0);
   };
 
   const handleSubmit = async () => {
@@ -361,9 +349,8 @@ export default function NewTransaction() {
               type="text"
               inputMode="decimal"
               value={formatAmountDisplay(amountCents)}
-              onKeyDown={handleAmountKeyDown}
-              readOnly
-              className={`w-full max-w-[280px] bg-transparent border-none p-0 text-5xl font-bold text-center focus:ring-0 focus:outline-none leading-tight cursor-text caret-transparent ${type === 'expense' ? 'text-destructive' : 'text-success'}`}
+              onChange={handleAmountChange}
+              className={`w-full max-w-[280px] bg-transparent border-none p-0 text-5xl font-bold text-center focus:ring-0 focus:outline-none leading-tight cursor-text ${type === 'expense' ? 'text-destructive' : 'text-success'}`}
             />
           </div>
         </div>
