@@ -92,6 +92,180 @@ const datePatterns = {
   fullDate: /(\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{2,4}))?/,
 };
 
+function normalizeTextForDateParsing(text: string) {
+  return text
+    .toLowerCase()
+    .replace(/[.,!?;:()[\]{}"“”'’]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function parsePtNumberWordsToInt(input: string): number | undefined {
+  const s = normalizeTextForDateParsing(input);
+  if (!s) return undefined;
+
+  // If there are digits, prefer them.
+  const digitMatch = s.match(/\b\d+\b/);
+  if (digitMatch) {
+    const n = parseInt(digitMatch[0], 10);
+    return Number.isFinite(n) ? n : undefined;
+  }
+
+  const units: Record<string, number> = {
+    zero: 0,
+    um: 1,
+    uma: 1,
+    dois: 2,
+    tres: 3,
+    três: 3,
+    quatro: 4,
+    cinco: 5,
+    seis: 6,
+    sete: 7,
+    oito: 8,
+    nove: 9,
+  };
+
+  const teens: Record<string, number> = {
+    dez: 10,
+    onze: 11,
+    doze: 12,
+    treze: 13,
+    catorze: 14,
+    quatorze: 14,
+    quinze: 15,
+    dezesseis: 16,
+    dezasseis: 16,
+    dezessete: 17,
+    dezoito: 18,
+    dezenove: 19,
+  };
+
+  const tens: Record<string, number> = {
+    vinte: 20,
+    trinta: 30,
+    quarenta: 40,
+    cinquenta: 50,
+    sessenta: 60,
+    setenta: 70,
+    oitenta: 80,
+    noventa: 90,
+  };
+
+  const hundreds: Record<string, number> = {
+    cem: 100,
+    cento: 100,
+    duzentos: 200,
+    trezentos: 300,
+    quatrocentos: 400,
+    quinhentos: 500,
+    seiscentos: 600,
+    setecentos: 700,
+    oitocentos: 800,
+    novecentos: 900,
+  };
+
+  const tokens = s.split(' ').filter(Boolean);
+  let total = 0;
+  let current = 0;
+  let consumedAny = false;
+
+  for (const token of tokens) {
+    if (token === 'e' || token === 'de' || token === 'do' || token === 'da' || token === 'dia') continue;
+
+    if (token === 'mil') {
+      consumedAny = true;
+      if (current === 0) current = 1;
+      total += current * 1000;
+      current = 0;
+      continue;
+    }
+
+    const h = hundreds[token];
+    if (h !== undefined) {
+      consumedAny = true;
+      current += h;
+      continue;
+    }
+
+    const t = tens[token];
+    if (t !== undefined) {
+      consumedAny = true;
+      current += t;
+      continue;
+    }
+
+    const teen = teens[token];
+    if (teen !== undefined) {
+      consumedAny = true;
+      current += teen;
+      continue;
+    }
+
+    const u = units[token];
+    if (u !== undefined) {
+      consumedAny = true;
+      current += u;
+      continue;
+    }
+  }
+
+  if (!consumedAny) return undefined;
+  return total + current;
+}
+
+function tryExtractDateWithMonthName(text: string, today: Date): Date | undefined {
+  const normalized = normalizeTextForDateParsing(text);
+
+  const monthRegex =
+    /(janeiro|fevereiro|março|marco|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro|jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)/i;
+  const monthExec = monthRegex.exec(normalized);
+  if (!monthExec || monthExec.index === undefined) return undefined;
+
+  const monthName = monthExec[1].toLowerCase();
+  const month = monthNameToNumber[monthName];
+  if (month === undefined) return undefined;
+
+  const before = normalized.slice(0, monthExec.index).trim();
+  const after = normalized.slice(monthExec.index + monthExec[1].length).trim();
+
+  // Day: prefer digits near the month; otherwise parse number words (e.g., "cinco", "vinte e seis").
+  let day: number | undefined;
+  const digitDays = [...before.matchAll(/\b(\d{1,2})\b/g)];
+  if (digitDays.length > 0) {
+    day = parseInt(digitDays[digitDays.length - 1][1], 10);
+  } else {
+    const dayWindow = before.split(' ').slice(-8).join(' ');
+    const parsedDay = parsePtNumberWordsToInt(dayWindow);
+    if (parsedDay !== undefined) day = parsedDay;
+  }
+
+  if (!day || day < 1 || day > 31) return undefined;
+
+  // Year: digits OR number words (e.g., "dois mil e vinte e seis").
+  let year = today.getFullYear();
+  const yearDigits = after.match(/\b(\d{2,4})\b/);
+  if (yearDigits) {
+    const yearStr = yearDigits[1];
+    year = yearStr.length === 2 ? 2000 + parseInt(yearStr, 10) : parseInt(yearStr, 10);
+  } else {
+    const yearWindow = after.split(' ').slice(0, 16).join(' ');
+    const parsedYear = parsePtNumberWordsToInt(yearWindow);
+    if (parsedYear !== undefined && parsedYear >= 1000 && parsedYear <= 3000) {
+      year = parsedYear;
+    }
+  }
+
+  const date = new Date(year, month, day);
+
+  // Guard against overflow (e.g., 31/02) which JS auto-normalizes.
+  if (date.getFullYear() !== year || date.getMonth() !== month || date.getDate() !== day) {
+    return undefined;
+  }
+
+  return date;
+}
+
 function extractAmount(text: string): number | undefined {
   // Match patterns like "150 reais", "R$ 150,00", "150,50", "cento e cinquenta"
   const patterns = [
@@ -152,29 +326,11 @@ function extractDate(text: string): Date | undefined {
     return addMonths(today, -1);
   }
 
-  // Full date with month name: "dia 5 de janeiro de 2026"
-  const monthNameMatch = text.match(datePatterns.fullDateWithMonthName);
-  if (monthNameMatch) {
-    const day = parseInt(monthNameMatch[1], 10);
-    const monthName = monthNameMatch[2].toLowerCase();
-    const month = monthNameToNumber[monthName];
-    
-    if (month !== undefined && day >= 1 && day <= 31) {
-      let year = today.getFullYear();
-      
-      if (monthNameMatch[3]) {
-        const yearStr = monthNameMatch[3];
-        year = yearStr.length === 2 ? 2000 + parseInt(yearStr, 10) : parseInt(yearStr, 10);
-      }
-      
-      const date = new Date(year, month, day);
-      if (!isNaN(date.getTime())) {
-        return date;
-      }
-    }
-  }
+  // Month name date (supports digits and numbers in full words)
+  const monthNameDate = tryExtractDateWithMonthName(text, today);
+  if (monthNameDate) return monthNameDate;
 
-  // Specific day of current month (only when no month name follows)
+  // Specific day of current month (only when user literally says "dia 5")
   const dayMatch = text.match(datePatterns.specificDay);
   if (dayMatch) {
     const day = parseInt(dayMatch[1], 10);
@@ -188,10 +344,12 @@ function extractDate(text: string): Date | undefined {
   if (fullMatch) {
     const day = parseInt(fullMatch[1], 10);
     const month = parseInt(fullMatch[2], 10) - 1;
-    const year = fullMatch[3] 
-      ? (fullMatch[3].length === 2 ? 2000 + parseInt(fullMatch[3], 10) : parseInt(fullMatch[3], 10))
+    const year = fullMatch[3]
+      ? fullMatch[3].length === 2
+        ? 2000 + parseInt(fullMatch[3], 10)
+        : parseInt(fullMatch[3], 10)
       : today.getFullYear();
-    
+
     const date = new Date(year, month, day);
     if (!isNaN(date.getTime())) {
       return date;
