@@ -6,12 +6,12 @@ import { BalanceCard } from '@/components/finance/BalanceCard';
 import { SummaryCards } from '@/components/finance/SummaryCards';
 import { TransactionItem } from '@/components/finance/TransactionItem';
 import { useTransactions } from '@/hooks/useTransactions';
-import { useAuth } from '@/contexts/AuthContext';
+import { useProfile } from '@/hooks/useProfile';
 import { Loader2 } from 'lucide-react';
 
 export default function Home() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { displayName } = useProfile();
   const [selectedDate] = useState(new Date());
   const { transactions, monthSummary, togglePaid, isLoading } = useTransactions(selectedDate);
 
@@ -21,13 +21,10 @@ export default function Home() {
   // Calculate percentage change (mock for now)
   const percentChange = monthSummary.balance > 0 ? 2.5 : -1.8;
 
-  // Get user's name from profile or email
-  const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Usuário';
-
   if (isLoading) {
     return (
       <AppLayout>
-        <Header showAvatar showNotification userName={userName} />
+        <Header showAvatar showNotification userName={displayName} />
         <div className="flex-1 flex items-center justify-center p-6">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
@@ -40,7 +37,7 @@ export default function Home() {
       <Header
         showAvatar
         showNotification
-        userName={userName}
+        userName={displayName}
       />
       
       <main className="flex flex-col gap-6 p-6">
