@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Header } from '@/components/layout/Header';
 import { useAccounts } from '@/hooks/useAccounts';
+import { useProfile } from '@/hooks/useProfile';
 import { Account, AccountType } from '@/types/finance';
 import { Button } from '@/components/ui/button';
 import { AccountForm } from '@/components/finance/AccountForm';
@@ -23,6 +24,7 @@ const accountTypeIcons: Record<AccountType, string> = {
 
 export default function Accounts() {
   const { accounts, createAccount, updateAccount, isLoading } = useAccounts();
+  const { displayName } = useProfile();
   const [formOpen, setFormOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
 
@@ -55,7 +57,7 @@ export default function Accounts() {
 
   return (
     <AppLayout>
-      <Header title="Contas" showBack />
+      <Header showAvatar showNotification userName={displayName} />
 
       <main className="flex flex-col gap-6 p-6">
         {/* Account List */}
