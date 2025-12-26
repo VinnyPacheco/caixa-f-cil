@@ -61,6 +61,22 @@ const recurringPatterns = [
   /fixo/i,
 ];
 
+// Month name to number mapping
+const monthNameToNumber: Record<string, number> = {
+  'janeiro': 0, 'jan': 0,
+  'fevereiro': 1, 'fev': 1,
+  'março': 2, 'marco': 2, 'mar': 2,
+  'abril': 3, 'abr': 3,
+  'maio': 4, 'mai': 4,
+  'junho': 5, 'jun': 5,
+  'julho': 6, 'jul': 6,
+  'agosto': 7, 'ago': 7,
+  'setembro': 8, 'set': 8,
+  'outubro': 9, 'out': 9,
+  'novembro': 10, 'nov': 10,
+  'dezembro': 11, 'dez': 11,
+};
+
 // Date patterns
 const datePatterns = {
   today: /hoje/i,
@@ -70,7 +86,9 @@ const datePatterns = {
   thisMonth: /esse?\s*mês|este?\s*mês/i,
   nextMonth: /próximo\s*mês|proximo\s*mes/i,
   lastMonth: /mês\s*passado|mes\s*passado/i,
-  specificDay: /dia\s*(\d{1,2})/i,
+  // Full date with month name: "dia 5 de janeiro de 2026" or "5 de janeiro de 2026"
+  fullDateWithMonthName: /(?:dia\s*)?(\d{1,2})\s*(?:de\s*)?(janeiro|fevereiro|março|marco|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro|jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)(?:\s*(?:de\s*)?(\d{4}|\d{2}))?/i,
+  specificDay: /dia\s*(\d{1,2})(?!\s*(?:de\s*)?(?:janeiro|fevereiro|março|marco|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro|jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez))/i,
   fullDate: /(\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{2,4}))?/,
 };
 
@@ -134,7 +152,29 @@ function extractDate(text: string): Date | undefined {
     return addMonths(today, -1);
   }
 
-  // Specific day of current month
+  // Full date with month name: "dia 5 de janeiro de 2026"
+  const monthNameMatch = text.match(datePatterns.fullDateWithMonthName);
+  if (monthNameMatch) {
+    const day = parseInt(monthNameMatch[1], 10);
+    const monthName = monthNameMatch[2].toLowerCase();
+    const month = monthNameToNumber[monthName];
+    
+    if (month !== undefined && day >= 1 && day <= 31) {
+      let year = today.getFullYear();
+      
+      if (monthNameMatch[3]) {
+        const yearStr = monthNameMatch[3];
+        year = yearStr.length === 2 ? 2000 + parseInt(yearStr, 10) : parseInt(yearStr, 10);
+      }
+      
+      const date = new Date(year, month, day);
+      if (!isNaN(date.getTime())) {
+        return date;
+      }
+    }
+  }
+
+  // Specific day of current month (only when no month name follows)
   const dayMatch = text.match(datePatterns.specificDay);
   if (dayMatch) {
     const day = parseInt(dayMatch[1], 10);
@@ -143,7 +183,7 @@ function extractDate(text: string): Date | undefined {
     }
   }
 
-  // Full date format
+  // Full date format (numeric): 05/01/2026
   const fullMatch = text.match(datePatterns.fullDate);
   if (fullMatch) {
     const day = parseInt(fullMatch[1], 10);
