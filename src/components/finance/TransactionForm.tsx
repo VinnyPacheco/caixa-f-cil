@@ -61,6 +61,7 @@ export function TransactionForm({
   const [categoryId, setCategoryId] = useState('');
   const [accountId, setAccountId] = useState('');
   const [date, setDate] = useState(new Date());
+  const [calendarMonth, setCalendarMonth] = useState(new Date());
   const [recurrence, setRecurrence] = useState<RecurrenceType>('once');
   const [installmentCount, setInstallmentCount] = useState('2');
   const [isPaid, setIsPaid] = useState(false);
@@ -90,24 +91,28 @@ export function TransactionForm({
 
   useEffect(() => {
     if (transaction) {
+      const parsedDate = parseDateString(transaction.date);
       setType(transaction.type);
       setAmountCents(Math.round(transaction.amount * 100));
       setDescription(transaction.description);
       setCategoryId(transaction.categoryId);
       setAccountId(transaction.accountId);
-      setDate(parseDateString(transaction.date));
+      setDate(parsedDate);
+      setCalendarMonth(parsedDate);
       setRecurrence(transaction.recurrenceType);
       setInstallmentCount(transaction.installmentTotal?.toString() || '2');
       setIsPaid(transaction.isPaid);
       setAutoSettle(transaction.autoSettle || false);
       setNotes(transaction.notes || '');
     } else {
+      const today = new Date();
       setType('expense');
       setAmountCents(0);
       setDescription('');
       setCategoryId('');
       setAccountId(accounts[0]?.id || '');
-      setDate(new Date());
+      setDate(today);
+      setCalendarMonth(today);
       setRecurrence('once');
       setInstallmentCount('2');
       setIsPaid(false);
@@ -297,8 +302,10 @@ export function TransactionForm({
                 mode="single"
                 selected={date}
                 onSelect={(d) => d && setDate(d)}
+                month={calendarMonth}
+                onMonthChange={setCalendarMonth}
                 locale={ptBR}
-                className="rounded-md"
+                className="rounded-md pointer-events-auto"
               />
             </div>
           </div>
