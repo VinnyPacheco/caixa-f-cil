@@ -8,7 +8,13 @@ import {
   deleteTransaction,
   toggleTransactionPaid,
   reorderTransactions as reorderTransactionsService,
+  setTransactionEndDate,
 } from '@/services/transactionsService';
+import { 
+  createRecurringException,
+  fetchRecurringExceptions,
+  RecurringException,
+} from '@/services/recurringExceptionsService';
 import { fetchAccounts } from '@/services/accountsService';
 import { fetchCategories } from '@/services/categoriesService';
 import { useAuth } from '@/contexts/AuthContext';
@@ -17,6 +23,7 @@ import { calculateRunningBalances } from '@/lib/format';
 import { FilterType } from '@/components/finance/FilterPills';
 import { format, startOfMonth, endOfMonth, isWithinInterval, parseISO, addMonths, isBefore, isAfter } from 'date-fns';
 import { useState } from 'react';
+import { RecurringUpdateAction } from '@/components/finance/TransactionForm';
 
 // Helper function to expand transactions for a specific month
 function expandTransactionsForMonth(
@@ -300,15 +307,79 @@ export function useMultiMonthTransactions(selectedDate: Date, additionalMonths: 
     createMutation.mutate(transaction);
   }, [createMutation]);
 
-  // Update existing transaction
-  const updateTransactionFn = useCallback((id: string, updates: Partial<Transaction>) => {
-    updateMutation.mutate({ id, data: updates });
-  }, [updateMutation]);
+  // Update existing transaction with recurring action support
+  const updateTransactionFn = useCallback(async (
+    id: string, 
+    updates: Partial<Transaction>,
+    recurringAction?: RecurringUpdateAction
+  ) => {
+    if (!user) return;
+    const originalTransaction = transactions.find(t => t.id === id || t.parentId === id);
+    const isRecurringOrInstallment = originalTransaction && 
+      (originalTransaction.recurrenceType === 'recurring' || originalTransaction.recurrenceType === 'installment');
 
-  // Delete transaction
-  const deleteTransactionFn = useCallback((id: string) => {
-    deleteMutation.mutate(id);
-  }, [deleteMutation]);
+    if (!isRecurringOrInstallment || !recurringAction) {
+      updateMutation.mutate({ id, data: updates });
+      return;
+    }
+
+    const parentId = originalTransaction.parentId || id;
+    try {
+      if (recurringAction.type === 'only_this') {
+        await createRecurringException({
+          parentId,
+          exceptionDate: recurringAction.instanceDate,
+          exceptionType: 'modified',
+          modifiedAmount: updates.amount,
+          modifiedDescription: updates.description,
+          modifiedCategoryId: updates.categoryId,
+          modifiedAccountId: updates.accountId,
+          modifiedIsPaid: updates.isPaid,
+          modifiedNotes: updates.notes,
+        }, user.id);
+        queryClient.invalidateQueries({ queryKey: ['recurring-exceptions'] });
+      } else if (recurringAction.type === 'this_and_future') {
+        await setTransactionEndDate(parentId, recurringAction.instanceDate);
+        const newTx = { ...originalTransaction, ...updates, startDate: recurringAction.instanceDate, date: recurringAction.instanceDate, parentId: undefined };
+        delete (newTx as { id?: string }).id;
+        delete (newTx as { orderIndex?: number }).orderIndex;
+        await createTransaction(newTx as Omit<Transaction, 'id' | 'orderIndex'>, user.id);
+        queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      } else {
+        updateMutation.mutate({ id: parentId, data: updates });
+      }
+    } catch (error) {
+      toast({ title: 'Erro', description: error instanceof Error ? error.message : 'Erro', variant: 'destructive' });
+    }
+  }, [updateMutation, user, transactions, queryClient, toast]);
+
+  // Delete transaction with recurring action support
+  const deleteTransactionFn = useCallback(async (id: string, recurringAction?: RecurringUpdateAction) => {
+    if (!user) return;
+    const originalTransaction = transactions.find(t => t.id === id || t.parentId === id);
+    const isRecurringOrInstallment = originalTransaction && 
+      (originalTransaction.recurrenceType === 'recurring' || originalTransaction.recurrenceType === 'installment');
+
+    if (!isRecurringOrInstallment || !recurringAction) {
+      deleteMutation.mutate(id);
+      return;
+    }
+
+    const parentId = originalTransaction.parentId || id;
+    try {
+      if (recurringAction.type === 'only_this') {
+        await createRecurringException({ parentId, exceptionDate: recurringAction.instanceDate, exceptionType: 'skip' }, user.id);
+        queryClient.invalidateQueries({ queryKey: ['recurring-exceptions'] });
+      } else if (recurringAction.type === 'this_and_future') {
+        await setTransactionEndDate(parentId, recurringAction.instanceDate);
+        queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      } else {
+        deleteMutation.mutate(parentId);
+      }
+    } catch (error) {
+      toast({ title: 'Erro', description: error instanceof Error ? error.message : 'Erro', variant: 'destructive' });
+    }
+  }, [deleteMutation, user, transactions, queryClient, toast]);
 
   return {
     monthsData,

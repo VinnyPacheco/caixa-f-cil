@@ -19,6 +19,7 @@ export interface DbTransaction {
   auto_settle: boolean | null;
   parent_id: string | null;
   start_date: string | null;
+  end_date: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -42,6 +43,7 @@ export function dbToTransaction(dbTransaction: DbTransaction): Transaction {
     autoSettle: dbTransaction.auto_settle ?? undefined,
     parentId: dbTransaction.parent_id ?? undefined,
     startDate: dbTransaction.start_date ?? undefined,
+    endDate: dbTransaction.end_date ?? undefined,
   };
 }
 
@@ -66,7 +68,34 @@ export function transactionToDb(
     auto_settle: transaction.autoSettle ?? null,
     parent_id: transaction.parentId ?? null,
     start_date: transaction.startDate ?? null,
+    end_date: transaction.endDate ?? null,
   };
+}
+
+// Set end_date for a recurring transaction (for "this and future" deletion)
+export async function setTransactionEndDate(id: string, endDate: string): Promise<Transaction> {
+  const { data, error } = await supabase
+    .from('transactions')
+    .update({ end_date: endDate })
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return dbToTransaction(data);
+}
+
+// Update the start_date for a recurring transaction (for "this and future" scenarios)
+export async function setTransactionStartDate(id: string, startDate: string): Promise<Transaction> {
+  const { data, error } = await supabase
+    .from('transactions')
+    .update({ start_date: startDate, date: startDate })
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return dbToTransaction(data);
 }
 
 export async function fetchTransactions(): Promise<Transaction[]> {
