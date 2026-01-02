@@ -117,6 +117,9 @@ export function useVoiceInput(onResult: (transcript: string) => void) {
 
     // Start listening after 0.5 seconds of holding
     holdTimeoutRef.current = window.setTimeout(() => {
+      // Clear the timeout ref since it has fired
+      holdTimeoutRef.current = null;
+      
       if (isHoldingRef.current && recognitionRef.current) {
         setState(prev => ({ ...prev, isListening: true, transcript: '' }));
         try {
