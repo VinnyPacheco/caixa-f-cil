@@ -153,7 +153,14 @@ export function TransactionForm({
 
   const handleDelete = () => {
     if (transaction && onDelete) {
-      onDelete(transaction.id);
+      // Use parentId for recurring/installment transactions, otherwise use id
+      // Also strip any virtual suffixes like "-inst-2" or "-2026-01"
+      const originalId = transaction.parentId || transaction.id;
+      const cleanId = originalId.includes('-inst-') || originalId.match(/-\d{4}-\d{2}$/)
+        ? originalId.split('-inst-')[0].replace(/-\d{4}-\d{2}$/, '')
+        : originalId;
+      
+      onDelete(cleanId);
       setShowDeleteConfirm(false);
       onOpenChange(false);
     }
