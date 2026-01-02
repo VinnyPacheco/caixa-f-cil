@@ -46,11 +46,11 @@ function dbToException(db: DbRecurringException): RecurringException {
 
 export async function fetchRecurringExceptions(): Promise<RecurringException[]> {
   const { data, error } = await supabase
-    .from('recurring_exceptions')
+    .from('recurring_exceptions' as any)
     .select('*');
 
   if (error) throw error;
-  return (data || []).map(dbToException);
+  return (data || []).map((item: any) => dbToException(item as DbRecurringException));
 }
 
 export async function createRecurringException(
@@ -58,7 +58,7 @@ export async function createRecurringException(
   userId: string
 ): Promise<RecurringException> {
   const { data, error } = await supabase
-    .from('recurring_exceptions')
+    .from('recurring_exceptions' as any)
     .insert([{
       user_id: userId,
       parent_id: exception.parentId,
@@ -75,12 +75,12 @@ export async function createRecurringException(
     .single();
 
   if (error) throw error;
-  return dbToException(data);
+  return dbToException(data as unknown as DbRecurringException);
 }
 
 export async function deleteRecurringException(id: string): Promise<void> {
   const { error } = await supabase
-    .from('recurring_exceptions')
+    .from('recurring_exceptions' as any)
     .delete()
     .eq('id', id);
 
@@ -89,7 +89,7 @@ export async function deleteRecurringException(id: string): Promise<void> {
 
 export async function deleteExceptionsByParentId(parentId: string): Promise<void> {
   const { error } = await supabase
-    .from('recurring_exceptions')
+    .from('recurring_exceptions' as any)
     .delete()
     .eq('parent_id', parentId);
 
@@ -137,7 +137,7 @@ export async function createSkipExceptionsBeforeDate(
   
   if (exceptions.length > 0) {
     const { error } = await supabase
-      .from('recurring_exceptions')
+      .from('recurring_exceptions' as any)
       .upsert(exceptions, { onConflict: 'parent_id,exception_date' });
     
     if (error) throw error;
