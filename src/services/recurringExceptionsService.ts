@@ -57,9 +57,10 @@ export async function createRecurringException(
   exception: Omit<RecurringException, 'id'>,
   userId: string
 ): Promise<RecurringException> {
+  // Use upsert to handle cases where an exception already exists for this date
   const { data, error } = await supabase
     .from('recurring_exceptions' as any)
-    .insert([{
+    .upsert([{
       user_id: userId,
       parent_id: exception.parentId,
       exception_date: exception.exceptionDate,
@@ -70,7 +71,7 @@ export async function createRecurringException(
       modified_account_id: exception.modifiedAccountId ?? null,
       modified_is_paid: exception.modifiedIsPaid ?? null,
       modified_notes: exception.modifiedNotes ?? null,
-    }])
+    }], { onConflict: 'parent_id,exception_date' })
     .select()
     .single();
 
