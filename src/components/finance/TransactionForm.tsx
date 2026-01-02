@@ -1,11 +1,21 @@
 import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Transaction, TransactionType, RecurrenceType, Category, Account } from '@/types/finance';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Calendar } from '@/components/ui/calendar';
-import { Copy } from 'lucide-react';
+import { Copy, Trash2 } from 'lucide-react';
 
 interface TransactionFormProps {
   open: boolean;
@@ -15,6 +25,7 @@ interface TransactionFormProps {
   accounts: Account[];
   onSave: (transaction: Omit<Transaction, 'id' | 'orderIndex'>) => void;
   onUpdate?: (id: string, transaction: Partial<Transaction>) => void;
+  onDelete?: (id: string) => void;
 }
 
 export function TransactionForm({
@@ -25,9 +36,11 @@ export function TransactionForm({
   accounts,
   onSave,
   onUpdate,
+  onDelete,
 }: TransactionFormProps) {
   const { toast } = useToast();
   const isEditing = !!transaction;
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const [type, setType] = useState<TransactionType>('expense');
   const [amountCents, setAmountCents] = useState(0);
@@ -138,7 +151,16 @@ export function TransactionForm({
     onOpenChange(false);
   };
 
+  const handleDelete = () => {
+    if (transaction && onDelete) {
+      onDelete(transaction.id);
+      setShowDeleteConfirm(false);
+      onOpenChange(false);
+    }
+  };
+
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
@@ -397,8 +419,42 @@ export function TransactionForm({
             <span className="material-symbols-outlined icon-filled">check_circle</span>
             {isEditing ? 'Salvar Alterações' : 'Salvar Lançamento'}
           </button>
+
+          {/* Delete Button - Only show when editing */}
+          {isEditing && onDelete && (
+            <button
+              type="button"
+              onClick={() => setShowDeleteConfirm(true)}
+              className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors font-semibold"
+            >
+              <Trash2 className="w-5 h-5" />
+              Excluir Lançamento
+            </button>
+          )}
         </div>
       </DialogContent>
     </Dialog>
+
+    {/* Delete Confirmation Dialog */}
+    <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+          <AlertDialogDescription>
+            Tem certeza que deseja excluir este lançamento? Esta ação não pode ser desfeita.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={handleDelete}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            Excluir
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }

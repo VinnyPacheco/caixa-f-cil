@@ -46,6 +46,7 @@ export default function Transactions() {
     togglePaid,
     addTransaction,
     updateTransaction,
+    deleteTransaction,
   } = useMultiMonthTransactions(selectedDate, additionalMonths);
 
   // Clean up location state if coming from auto-save
@@ -198,6 +199,7 @@ export default function Transactions() {
         accounts={accounts}
         onSave={addTransaction}
         onUpdate={updateTransaction}
+        onDelete={deleteTransaction}
       />
     </AppLayout>
   );

@@ -5,6 +5,7 @@ import {
   fetchTransactions, 
   createTransaction, 
   updateTransaction, 
+  deleteTransaction,
   toggleTransactionPaid,
   reorderTransactions as reorderTransactionsService,
 } from '@/services/transactionsService';
@@ -227,6 +228,24 @@ export function useTransactions(selectedDate: Date) {
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deleteTransaction(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      toast({
+        title: 'Transação excluída',
+        description: 'A transação foi excluída com sucesso.',
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: 'Erro ao excluir transação',
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+
   // Reorder transactions and optionally update dates
   const reorderTransactions = useCallback(async (
     newOrder: TransactionWithBalance[],
@@ -268,6 +287,11 @@ export function useTransactions(selectedDate: Date) {
     updateMutation.mutate({ id, data: updates });
   }, [updateMutation]);
 
+  // Delete transaction
+  const deleteTransactionFn = useCallback((id: string) => {
+    deleteMutation.mutate(id);
+  }, [deleteMutation]);
+
   return {
     transactions: transactionsWithBalance,
     categories,
@@ -279,6 +303,7 @@ export function useTransactions(selectedDate: Date) {
     togglePaid,
     addTransaction,
     updateTransaction: updateTransactionFn,
+    deleteTransaction: deleteTransactionFn,
     isLoading: transactionsQuery.isLoading || accountsQuery.isLoading || categoriesQuery.isLoading,
     isError: transactionsQuery.isError || accountsQuery.isError || categoriesQuery.isError,
   };
