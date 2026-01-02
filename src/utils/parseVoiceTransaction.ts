@@ -377,9 +377,31 @@ function extractType(text: string): TransactionType | undefined {
   return undefined;
 }
 
-function extractCategory(text: string): string | undefined {
+function extractCategory(text: string, categories: Category[]): string | undefined {
   const lowerText = text.toLowerCase();
 
+  // Pattern 1: "categoria X" or "na categoria X"
+  const categoryPattern = /(?:na\s+)?categoria\s+([a-záàâãéèêíïóôõöúç\s]+?)(?:\s+(?:pelo|pela|no|na|em|do|da|de|para|por|$))/i;
+  const categoryMatch = text.match(categoryPattern);
+  if (categoryMatch) {
+    const extractedName = categoryMatch[1].trim();
+    // Try to find this category in user's categories
+    const found = categories.find(c => 
+      c.name.toLowerCase() === extractedName.toLowerCase() ||
+      c.name.toLowerCase().includes(extractedName.toLowerCase()) ||
+      extractedName.toLowerCase().includes(c.name.toLowerCase())
+    );
+    if (found) return found.name;
+  }
+
+  // Pattern 2: Check if any user category name appears in the text
+  for (const category of categories) {
+    if (lowerText.includes(category.name.toLowerCase())) {
+      return category.name;
+    }
+  }
+
+  // Pattern 3: Fallback to keyword mappings
   for (const [category, keywords] of Object.entries(categoryMappings)) {
     for (const keyword of keywords) {
       if (lowerText.includes(keyword)) {
@@ -391,10 +413,37 @@ function extractCategory(text: string): string | undefined {
   return undefined;
 }
 
-function extractAccount(text: string): string | undefined {
+function extractAccount(text: string, accounts: Account[]): string | undefined {
   const lowerText = text.toLowerCase();
 
-  // Check for credit card patterns first (more specific)
+  // Pattern 1: "pelo X", "pela X", "no X", "na X", "na conta X", "pelo cartão X"
+  const accountPatterns = [
+    /(?:pelo|pela|no|na)\s+(?:cart[ãa]o\s+)?([a-záàâãéèêíïóôõöúç\s]+?)(?:\s+(?:na|no|em|do|da|de|para|por|dia|data|hoje|ontem|$))/i,
+    /(?:conta|cart[ãa]o)\s+([a-záàâãéèêíïóôõöúç\s]+?)(?:\s+(?:na|no|em|do|da|de|para|por|dia|data|hoje|ontem|$))/i,
+  ];
+  
+  for (const pattern of accountPatterns) {
+    const match = text.match(pattern);
+    if (match) {
+      const extractedName = match[1].trim();
+      // Try to find this account in user's accounts
+      const found = accounts.find(a => 
+        a.name.toLowerCase() === extractedName.toLowerCase() ||
+        a.name.toLowerCase().includes(extractedName.toLowerCase()) ||
+        extractedName.toLowerCase().includes(a.name.toLowerCase())
+      );
+      if (found) return found.name;
+    }
+  }
+
+  // Pattern 2: Check if any user account name appears in the text
+  for (const account of accounts) {
+    if (lowerText.includes(account.name.toLowerCase())) {
+      return account.name;
+    }
+  }
+
+  // Pattern 3: Check for credit card patterns (fallback to keyword mappings)
   if (/cart[ãa]o\s*de\s*cr[eé]dito/i.test(text) || /no\s*cart[ãa]o/i.test(text)) {
     return 'Cartão';
   }
@@ -529,11 +578,11 @@ export function parseVoiceTransaction(
   // Extract date
   parsed.date = extractDate(text);
 
-  // Extract category name
-  parsed.categoryName = extractCategory(text);
+  // Extract category name (pass categories for dynamic matching)
+  parsed.categoryName = extractCategory(text, categories);
 
-  // Extract account name
-  parsed.accountName = extractAccount(text);
+  // Extract account name (pass accounts for dynamic matching)
+  parsed.accountName = extractAccount(text, accounts);
 
   // Extract recurrence
   const recurrence = extractRecurrence(text);
