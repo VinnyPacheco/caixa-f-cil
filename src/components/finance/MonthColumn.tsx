@@ -16,15 +16,6 @@ export function MonthColumn({ monthData, sortOrder, onMonthClick }: MonthColumnP
 
   return (
     <div className="flex flex-col gap-4 min-w-0">
-      {/* Month Header - Only show on tablet (desktop has its own header) */}
-      {!onMonthClick && (
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-lg font-bold text-foreground capitalize">{monthLabel}</h3>
-            <p className="text-xs text-muted-foreground">{yearLabel}</p>
-          </div>
-        </div>
-      )}
 
       {/* Summary Card */}
       <div className="flex items-center justify-between bg-card/50 p-3 rounded-xl border border-border/30">

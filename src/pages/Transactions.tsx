@@ -87,8 +87,8 @@ export default function Transactions() {
 
       <main className="flex flex-col gap-6 p-6">
 
-        {/* Header with MonthSelector - Only on mobile/tablet */}
-        {deviceType !== 'desktop' && (
+        {/* Header with MonthSelector - Only on mobile */}
+        {isMobile && (
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold text-foreground">Extrato</h1>
             <MonthSelector
@@ -149,65 +149,52 @@ export default function Transactions() {
         {/* Tablet/Desktop Layout - Multi Column */}
         {!isMobile && (
           <div className="flex flex-col gap-4">
-            {/* Desktop Navigation Header - Only on desktop */}
-            {deviceType === 'desktop' && (
-              <div className="flex items-center justify-between">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setSelectedDate(subMonths(selectedDate, 1))}
-                  className="h-8 w-8"
-                >
-                  <ChevronLeft className="h-5 w-5" />
-                </Button>
-                
-                <div className="flex-1 grid gap-6" style={{ gridTemplateColumns: `repeat(${additionalMonths + 1}, minmax(0, 1fr))` }}>
-                  {monthsData.map((monthData, index) => {
-                    const monthLabel = format(monthData.date, 'MMMM', { locale: ptBR });
-                    const isCurrentMonth = index === 0;
-                    
-                    return (
-                      <button
-                        key={monthData.date.toISOString()}
-                        onClick={() => !isCurrentMonth && setSelectedDate(monthData.date)}
-                        className={`text-center capitalize ${isCurrentMonth ? 'cursor-default' : 'cursor-pointer hover:text-primary transition-colors'}`}
-                      >
-                        <h3 className={`text-lg font-bold ${isCurrentMonth ? 'text-foreground' : 'text-muted-foreground'}`}>
-                          {monthLabel}
-                        </h3>
-                        <p className="text-xs text-muted-foreground">
-                          {isCurrentMonth ? 'Editável • Arraste para reorganizar' : format(monthData.date, 'yyyy')}
-                        </p>
-                      </button>
-                    );
-                  })}
-                </div>
-                
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setSelectedDate(addMonths(selectedDate, 1))}
-                  className="h-8 w-8"
-                >
-                  <ChevronRight className="h-5 w-5" />
-                </Button>
+            {/* Navigation Header - Desktop and Tablet */}
+            <div className="flex items-center justify-between">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setSelectedDate(subMonths(selectedDate, 1))}
+                className="h-8 w-8"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </Button>
+              
+              <div className="flex-1 grid gap-6" style={{ gridTemplateColumns: `repeat(${additionalMonths + 1}, minmax(0, 1fr))` }}>
+                {monthsData.map((monthData, index) => {
+                  const monthLabel = format(monthData.date, 'MMMM', { locale: ptBR });
+                  const isCurrentMonth = index === 0;
+                  
+                  return (
+                    <button
+                      key={monthData.date.toISOString()}
+                      onClick={() => !isCurrentMonth && setSelectedDate(monthData.date)}
+                      className={`text-center capitalize ${isCurrentMonth ? 'cursor-default' : 'cursor-pointer hover:text-primary transition-colors'}`}
+                    >
+                      <h3 className={`text-lg font-bold ${isCurrentMonth ? 'text-foreground' : 'text-muted-foreground'}`}>
+                        {monthLabel}
+                      </h3>
+                      <p className="text-xs text-muted-foreground">
+                        {isCurrentMonth ? 'Editável • Arraste para reorganizar' : format(monthData.date, 'yyyy')}
+                      </p>
+                    </button>
+                  );
+                })}
               </div>
-            )}
+              
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setSelectedDate(addMonths(selectedDate, 1))}
+                className="h-8 w-8"
+              >
+                <ChevronRight className="h-5 w-5" />
+              </Button>
+            </div>
 
             <div className="grid gap-6" style={{ gridTemplateColumns: `repeat(${additionalMonths + 1}, minmax(0, 1fr))` }}>
               {/* Current Month - Editable */}
               <div className="flex flex-col gap-4">
-                {/* Tablet: Show month header */}
-                {deviceType === 'tablet' && (
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-lg font-bold text-foreground capitalize">
-                        {format(selectedDate, 'MMMM', { locale: ptBR })}
-                      </h3>
-                      <p className="text-xs text-muted-foreground">Editável • Arraste para reorganizar</p>
-                    </div>
-                  </div>
-                )}
                 
                 <div className="flex items-center justify-between bg-card p-3 rounded-xl border border-border/50">
                   <div>
@@ -241,7 +228,7 @@ export default function Transactions() {
                   key={monthData.date.toISOString()}
                   monthData={monthData}
                   sortOrder={sortOrder}
-                  onMonthClick={deviceType === 'desktop' ? () => setSelectedDate(monthData.date) : undefined}
+                  onMonthClick={() => setSelectedDate(monthData.date)}
                 />
               ))}
             </div>
