@@ -11,9 +11,11 @@ import { useMultiMonthTransactions } from '@/hooks/useMultiMonthTransactions';
 import { useDeviceType } from '@/hooks/use-responsive';
 import { useProfile } from '@/hooks/useProfile';
 import { formatCurrency } from '@/lib/format';
-import { ArrowUpDown } from 'lucide-react';
+import { ArrowUpDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { TransactionWithBalance } from '@/types/finance';
+import { format, addMonths, subMonths } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 const SORT_ORDER_KEY = 'transactions-sort-order';
 
@@ -85,13 +87,16 @@ export default function Transactions() {
 
       <main className="flex flex-col gap-6 p-6">
 
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-foreground">Extrato</h1>
-          <MonthSelector
-            currentDate={selectedDate}
-            onChange={setSelectedDate}
-          />
-        </div>
+        {/* Header with MonthSelector - Only on mobile/tablet */}
+        {deviceType !== 'desktop' && (
+          <div className="flex items-center justify-between">
+            <h1 className="text-2xl font-bold text-foreground">Extrato</h1>
+            <MonthSelector
+              currentDate={selectedDate}
+              onChange={setSelectedDate}
+            />
+          </div>
+        )}
 
         {/* Month Summary - Only on mobile */}
         {isMobile && (
@@ -143,50 +148,103 @@ export default function Transactions() {
 
         {/* Tablet/Desktop Layout - Multi Column */}
         {!isMobile && (
-          <div className="grid gap-6" style={{ gridTemplateColumns: `repeat(${additionalMonths + 1}, minmax(0, 1fr))` }}>
-            {/* Current Month - Editable */}
-            <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-4">
+            {/* Desktop Navigation Header - Only on desktop */}
+            {deviceType === 'desktop' && (
               <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-bold text-foreground">Mês Atual</h3>
-                  <p className="text-xs text-muted-foreground">Editável • Arraste para reorganizar</p>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setSelectedDate(subMonths(selectedDate, 1))}
+                  className="h-8 w-8"
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </Button>
+                
+                <div className="flex-1 grid gap-6" style={{ gridTemplateColumns: `repeat(${additionalMonths + 1}, minmax(0, 1fr))` }}>
+                  {monthsData.map((monthData, index) => {
+                    const monthLabel = format(monthData.date, 'MMMM', { locale: ptBR });
+                    const isCurrentMonth = index === 0;
+                    
+                    return (
+                      <button
+                        key={monthData.date.toISOString()}
+                        onClick={() => !isCurrentMonth && setSelectedDate(monthData.date)}
+                        className={`text-center capitalize ${isCurrentMonth ? 'cursor-default' : 'cursor-pointer hover:text-primary transition-colors'}`}
+                      >
+                        <h3 className={`text-lg font-bold ${isCurrentMonth ? 'text-foreground' : 'text-muted-foreground'}`}>
+                          {monthLabel}
+                        </h3>
+                        <p className="text-xs text-muted-foreground">
+                          {isCurrentMonth ? 'Editável • Arraste para reorganizar' : format(monthData.date, 'yyyy')}
+                        </p>
+                      </button>
+                    );
+                  })}
                 </div>
+                
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setSelectedDate(addMonths(selectedDate, 1))}
+                  className="h-8 w-8"
+                >
+                  <ChevronRight className="h-5 w-5" />
+                </Button>
               </div>
-              
-              <div className="flex items-center justify-between bg-card p-3 rounded-xl border border-border/50">
-                <div>
-                  <p className="text-[10px] text-muted-foreground font-medium">Orçamento</p>
-                  <p className={`text-sm font-bold ${(currentMonth.summary.totalIncome - currentMonth.summary.totalExpense) >= 0 ? 'text-success' : 'text-destructive'}`}>
-                    {formatCurrency(currentMonth.summary.totalIncome - currentMonth.summary.totalExpense)}
-                  </p>
+            )}
+
+            <div className="grid gap-6" style={{ gridTemplateColumns: `repeat(${additionalMonths + 1}, minmax(0, 1fr))` }}>
+              {/* Current Month - Editable */}
+              <div className="flex flex-col gap-4">
+                {/* Tablet: Show month header */}
+                {deviceType === 'tablet' && (
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-lg font-bold text-foreground capitalize">
+                        {format(selectedDate, 'MMMM', { locale: ptBR })}
+                      </h3>
+                      <p className="text-xs text-muted-foreground">Editável • Arraste para reorganizar</p>
+                    </div>
+                  </div>
+                )}
+                
+                <div className="flex items-center justify-between bg-card p-3 rounded-xl border border-border/50">
+                  <div>
+                    <p className="text-[10px] text-muted-foreground font-medium">Orçamento</p>
+                    <p className={`text-sm font-bold ${(currentMonth.summary.totalIncome - currentMonth.summary.totalExpense) >= 0 ? 'text-success' : 'text-destructive'}`}>
+                      {formatCurrency(currentMonth.summary.totalIncome - currentMonth.summary.totalExpense)}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] text-muted-foreground font-medium">Saldo Final</p>
+                    <p className={`text-sm font-bold ${currentMonth.summary.closingBalance >= 0 ? 'text-success' : 'text-destructive'}`}>
+                      {formatCurrency(currentMonth.summary.closingBalance)}
+                    </p>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-[10px] text-muted-foreground font-medium">Saldo Final</p>
-                  <p className={`text-sm font-bold ${currentMonth.summary.closingBalance >= 0 ? 'text-success' : 'text-destructive'}`}>
-                    {formatCurrency(currentMonth.summary.closingBalance)}
-                  </p>
+
+                <div className="flex-1 overflow-y-auto max-h-[calc(100vh-350px)]">
+                  <TransactionList
+                    transactions={currentMonth.transactions}
+                    onReorder={reorderTransactions}
+                    onTogglePaid={togglePaid}
+                    onTransactionClick={handleTransactionClick}
+                    sortOrder={sortOrder}
+                  />
                 </div>
               </div>
 
-              <div className="flex-1 overflow-y-auto max-h-[calc(100vh-350px)]">
-                <TransactionList
-                  transactions={currentMonth.transactions}
-                  onReorder={reorderTransactions}
-                  onTogglePaid={togglePaid}
-                  onTransactionClick={handleTransactionClick}
+              {/* Future Months - Read Only */}
+              {monthsData.slice(1).map((monthData) => (
+                <MonthColumn
+                  key={monthData.date.toISOString()}
+                  monthData={monthData}
                   sortOrder={sortOrder}
+                  onMonthClick={deviceType === 'desktop' ? () => setSelectedDate(monthData.date) : undefined}
                 />
-              </div>
+              ))}
             </div>
-
-            {/* Future Months - Read Only */}
-            {monthsData.slice(1).map((monthData) => (
-              <MonthColumn
-                key={monthData.date.toISOString()}
-                monthData={monthData}
-                sortOrder={sortOrder}
-              />
-            ))}
           </div>
         )}
       </main>
