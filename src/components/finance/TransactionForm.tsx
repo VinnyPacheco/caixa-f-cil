@@ -16,6 +16,12 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Calendar } from '@/components/ui/calendar';
 import { Copy, Trash2 } from 'lucide-react';
+import { RecurringActionDialog, RecurringActionType } from './RecurringActionDialog';
+
+export type RecurringUpdateAction = {
+  type: RecurringActionType;
+  instanceDate: string;
+};
 
 interface TransactionFormProps {
   open: boolean;
@@ -24,8 +30,8 @@ interface TransactionFormProps {
   categories: Category[];
   accounts: Account[];
   onSave: (transaction: Omit<Transaction, 'id' | 'orderIndex'>) => void;
-  onUpdate?: (id: string, transaction: Partial<Transaction>) => void;
-  onDelete?: (id: string) => void;
+  onUpdate?: (id: string, transaction: Partial<Transaction>, recurringAction?: RecurringUpdateAction) => void;
+  onDelete?: (id: string, recurringAction?: RecurringUpdateAction) => void;
 }
 
 export function TransactionForm({
@@ -41,7 +47,14 @@ export function TransactionForm({
   const { toast } = useToast();
   const isEditing = !!transaction;
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showRecurringDialog, setShowRecurringDialog] = useState(false);
+  const [recurringActionType, setRecurringActionType] = useState<'edit' | 'delete'>('edit');
+  const [pendingSubmitData, setPendingSubmitData] = useState<Partial<Transaction> | null>(null);
 
+  // Check if this is a recurring or installment transaction
+  const isRecurring = transaction?.recurrenceType === 'recurring';
+  const isInstallment = transaction?.recurrenceType === 'installment';
+  const needsRecurringAction = isRecurring || isInstallment;
   const [type, setType] = useState<TransactionType>('expense');
   const [amountCents, setAmountCents] = useState(0);
   const [description, setDescription] = useState('');
@@ -135,26 +148,65 @@ export function TransactionForm({
     };
 
     if (isEditing && onUpdate) {
-      onUpdate(transaction.id, transactionData);
-      toast({
-        title: 'Lançamento atualizado!',
-        description: `${type === 'income' ? 'Receita' : 'Despesa'} atualizada com sucesso.`,
-      });
+      if (needsRecurringAction) {
+        // Show recurring action dialog for recurring/installment transactions
+        setPendingSubmitData(transactionData);
+        setRecurringActionType('edit');
+        setShowRecurringDialog(true);
+      } else {
+        // For one-time transactions, update directly
+        onUpdate(transaction.id, transactionData);
+        toast({
+          title: 'Lançamento atualizado!',
+          description: `${type === 'income' ? 'Receita' : 'Despesa'} atualizada com sucesso.`,
+        });
+        onOpenChange(false);
+      }
     } else {
       onSave(transactionData);
       toast({
         title: 'Lançamento salvo!',
         description: `${type === 'income' ? 'Receita' : 'Despesa'} de R$ ${formatAmountDisplay(amountCents)} registrada com sucesso.`,
       });
+      onOpenChange(false);
     }
-
-    onOpenChange(false);
   };
 
-  const handleDelete = () => {
+  const handleRecurringAction = (action: RecurringActionType) => {
+    if (!transaction) return;
+
+    const instanceDate = transaction.date;
+    const originalId = transaction.parentId || transaction.id;
+    const cleanId = originalId.includes('-inst-') || originalId.match(/-\d{4}-\d{2}$/)
+      ? originalId.split('-inst-')[0].replace(/-\d{4}-\d{2}$/, '')
+      : originalId;
+
+    if (recurringActionType === 'delete' && onDelete) {
+      onDelete(cleanId, { type: action, instanceDate });
+      setShowDeleteConfirm(false);
+      onOpenChange(false);
+    } else if (recurringActionType === 'edit' && onUpdate && pendingSubmitData) {
+      onUpdate(cleanId, pendingSubmitData, { type: action, instanceDate });
+      toast({
+        title: 'Lançamento atualizado!',
+        description: `${type === 'income' ? 'Receita' : 'Despesa'} atualizada com sucesso.`,
+      });
+      setPendingSubmitData(null);
+      onOpenChange(false);
+    }
+  };
+
+  const handleDeleteClick = () => {
+    if (needsRecurringAction) {
+      setRecurringActionType('delete');
+      setShowRecurringDialog(true);
+    } else {
+      setShowDeleteConfirm(true);
+    }
+  };
+
+  const handleSimpleDelete = () => {
     if (transaction && onDelete) {
-      // Use parentId for recurring/installment transactions, otherwise use id
-      // Also strip any virtual suffixes like "-inst-2" or "-2026-01"
       const originalId = transaction.parentId || transaction.id;
       const cleanId = originalId.includes('-inst-') || originalId.match(/-\d{4}-\d{2}$/)
         ? originalId.split('-inst-')[0].replace(/-\d{4}-\d{2}$/, '')
@@ -431,7 +483,7 @@ export function TransactionForm({
           {isEditing && onDelete && (
             <button
               type="button"
-              onClick={() => setShowDeleteConfirm(true)}
+              onClick={handleDeleteClick}
               className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors font-semibold"
             >
               <Trash2 className="w-5 h-5" />
@@ -442,7 +494,7 @@ export function TransactionForm({
       </DialogContent>
     </Dialog>
 
-    {/* Delete Confirmation Dialog */}
+    {/* Delete Confirmation Dialog - For non-recurring transactions */}
     <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
       <AlertDialogContent>
         <AlertDialogHeader>
@@ -454,7 +506,7 @@ export function TransactionForm({
         <AlertDialogFooter>
           <AlertDialogCancel>Cancelar</AlertDialogCancel>
           <AlertDialogAction
-            onClick={handleDelete}
+            onClick={handleSimpleDelete}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
             Excluir
@@ -462,6 +514,15 @@ export function TransactionForm({
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
+
+    {/* Recurring Action Dialog - For recurring/installment transactions */}
+    <RecurringActionDialog
+      open={showRecurringDialog}
+      onOpenChange={setShowRecurringDialog}
+      onAction={handleRecurringAction}
+      actionType={recurringActionType}
+      isInstallment={isInstallment}
+    />
     </>
   );
 }

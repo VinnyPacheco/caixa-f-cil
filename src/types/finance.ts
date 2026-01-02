@@ -40,6 +40,8 @@ export interface Transaction {
   parentId?: string;
   // Original start date for recurring transactions
   startDate?: string;
+  // End date for recurring transactions (when "this and future" is used)
+  endDate?: string;
 }
 
 export interface MonthlyBalance {

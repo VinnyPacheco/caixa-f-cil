@@ -8,7 +8,14 @@ import {
   deleteTransaction,
   toggleTransactionPaid,
   reorderTransactions as reorderTransactionsService,
+  setTransactionEndDate,
+  setTransactionStartDate,
 } from '@/services/transactionsService';
+import { 
+  createRecurringException, 
+  fetchRecurringExceptions,
+  RecurringException,
+} from '@/services/recurringExceptionsService';
 import { fetchAccounts } from '@/services/accountsService';
 import { fetchCategories } from '@/services/categoriesService';
 import { useAuth } from '@/contexts/AuthContext';
@@ -17,6 +24,9 @@ import { calculateRunningBalances } from '@/lib/format';
 import { FilterType } from '@/components/finance/FilterPills';
 import { format, startOfMonth, endOfMonth, isWithinInterval, parseISO, addMonths, isBefore, isAfter } from 'date-fns';
 import { useState } from 'react';
+import { RecurringUpdateAction } from '@/components/finance/TransactionForm';
+
+export type { RecurringUpdateAction } from '@/components/finance/TransactionForm';
 
 export function useTransactions(selectedDate: Date) {
   const { user } = useAuth();
@@ -43,9 +53,16 @@ export function useTransactions(selectedDate: Date) {
     enabled: !!user,
   });
 
+  const exceptionsQuery = useQuery({
+    queryKey: ['recurring-exceptions'],
+    queryFn: fetchRecurringExceptions,
+    enabled: !!user,
+  });
+
   const transactions = transactionsQuery.data || [];
   const accounts = accountsQuery.data || [];
   const categories = categoriesQuery.data || [];
+  const exceptions = exceptionsQuery.data || [];
 
   // Calculate opening balance from accounts
   const openingBalance = useMemo(() => {
@@ -58,9 +75,16 @@ export function useTransactions(selectedDate: Date) {
     const end = endOfMonth(selectedDate);
     const result: Transaction[] = [];
 
+    // Create a map of exceptions by parentId and date for quick lookup
+    const exceptionMap = new Map<string, RecurringException>();
+    exceptions.forEach(ex => {
+      exceptionMap.set(`${ex.parentId}-${ex.exceptionDate}`, ex);
+    });
+
     transactions.forEach((t) => {
       const transactionDate = parseISO(t.date);
       const transactionStartDate = t.startDate ? parseISO(t.startDate) : transactionDate;
+      const transactionEndDate = t.endDate ? parseISO(t.endDate) : null;
       
       // For one-time transactions, include if in range
       if (t.recurrenceType === 'once') {
@@ -74,19 +98,64 @@ export function useTransactions(selectedDate: Date) {
       if (t.recurrenceType === 'recurring') {
         const dayOfMonth = transactionStartDate.getDate();
         const instanceDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), dayOfMonth);
+        const instanceDateStr = format(instanceDate, 'yyyy-MM-dd');
         
+        // Check if this instance has been ended
+        if (transactionEndDate && !isBefore(instanceDate, transactionEndDate)) {
+          return;
+        }
+
+        // Check for exceptions
+        const exceptionKey = `${t.parentId || t.id}-${instanceDateStr}`;
+        const exception = exceptionMap.get(exceptionKey);
+        
+        if (exception?.exceptionType === 'skip') {
+          // Skip this instance
+          return;
+        }
+
         if (!isAfter(transactionStartDate, end)) {
           if (isWithinInterval(transactionDate, { start, end })) {
-            result.push(t);
+            // Apply any modifications from exception
+            if (exception?.exceptionType === 'modified') {
+              result.push({
+                ...t,
+                amount: exception.modifiedAmount ?? t.amount,
+                description: exception.modifiedDescription ?? t.description,
+                categoryId: exception.modifiedCategoryId ?? t.categoryId,
+                accountId: exception.modifiedAccountId ?? t.accountId,
+                isPaid: exception.modifiedIsPaid ?? t.isPaid,
+                notes: exception.modifiedNotes ?? t.notes,
+              });
+            } else {
+              result.push(t);
+            }
           } else if (!isBefore(instanceDate, transactionStartDate)) {
             const instanceId = `${t.parentId || t.id}-${format(instanceDate, 'yyyy-MM')}`;
-            result.push({
-              ...t,
-              id: instanceId,
-              parentId: t.parentId || t.id,
-              date: format(instanceDate, 'yyyy-MM-dd'),
-              isPaid: false,
-            });
+            
+            // Apply any modifications from exception
+            if (exception?.exceptionType === 'modified') {
+              result.push({
+                ...t,
+                id: instanceId,
+                parentId: t.parentId || t.id,
+                date: instanceDateStr,
+                amount: exception.modifiedAmount ?? t.amount,
+                description: exception.modifiedDescription ?? t.description,
+                categoryId: exception.modifiedCategoryId ?? t.categoryId,
+                accountId: exception.modifiedAccountId ?? t.accountId,
+                isPaid: exception.modifiedIsPaid ?? false,
+                notes: exception.modifiedNotes ?? t.notes,
+              });
+            } else {
+              result.push({
+                ...t,
+                id: instanceId,
+                parentId: t.parentId || t.id,
+                date: instanceDateStr,
+                isPaid: false,
+              });
+            }
           }
         }
         return;
@@ -98,25 +167,57 @@ export function useTransactions(selectedDate: Date) {
         
         for (let i = 0; i < totalInstallments; i++) {
           const installmentDate = addMonths(transactionStartDate, i);
+          const installmentDateStr = format(installmentDate, 'yyyy-MM-dd');
+          
+          // Check if this instance has been ended
+          if (transactionEndDate && !isBefore(installmentDate, transactionEndDate)) {
+            continue;
+          }
+
+          // Check for exceptions
+          const exceptionKey = `${t.parentId || t.id}-${installmentDateStr}`;
+          const exception = exceptionMap.get(exceptionKey);
+          
+          if (exception?.exceptionType === 'skip') {
+            continue;
+          }
           
           if (isWithinInterval(installmentDate, { start, end })) {
             const instanceId = i === 0 ? t.id : `${t.parentId || t.id}-inst-${i + 1}`;
-            result.push({
-              ...t,
-              id: instanceId,
-              parentId: t.parentId || t.id,
-              date: format(installmentDate, 'yyyy-MM-dd'),
-              installmentCurrent: i + 1,
-              isPaid: i === 0 ? t.isPaid : false,
-              description: `${t.description} (${i + 1}/${totalInstallments})`,
-            });
+            
+            // Apply any modifications from exception
+            if (exception?.exceptionType === 'modified') {
+              result.push({
+                ...t,
+                id: instanceId,
+                parentId: t.parentId || t.id,
+                date: installmentDateStr,
+                installmentCurrent: i + 1,
+                amount: exception.modifiedAmount ?? t.amount,
+                description: exception.modifiedDescription ?? `${t.description} (${i + 1}/${totalInstallments})`,
+                categoryId: exception.modifiedCategoryId ?? t.categoryId,
+                accountId: exception.modifiedAccountId ?? t.accountId,
+                isPaid: exception.modifiedIsPaid ?? (i === 0 ? t.isPaid : false),
+                notes: exception.modifiedNotes ?? t.notes,
+              });
+            } else {
+              result.push({
+                ...t,
+                id: instanceId,
+                parentId: t.parentId || t.id,
+                date: installmentDateStr,
+                installmentCurrent: i + 1,
+                isPaid: i === 0 ? t.isPaid : false,
+                description: `${t.description} (${i + 1}/${totalInstallments})`,
+              });
+            }
           }
         }
       }
     });
 
     return result;
-  }, [transactions, selectedDate]);
+  }, [transactions, selectedDate, exceptions]);
 
   // Get transactions for the selected month (already filtered by expandedTransactions)
   const monthTransactions = useMemo(() => expandedTransactions, [expandedTransactions]);
@@ -282,15 +383,152 @@ export function useTransactions(selectedDate: Date) {
     createMutation.mutate(transaction);
   }, [createMutation]);
 
-  // Update existing transaction
-  const updateTransactionFn = useCallback((id: string, updates: Partial<Transaction>) => {
-    updateMutation.mutate({ id, data: updates });
-  }, [updateMutation]);
+  // Update existing transaction with recurring action support
+  const updateTransactionFn = useCallback(async (
+    id: string, 
+    updates: Partial<Transaction>,
+    recurringAction?: RecurringUpdateAction
+  ) => {
+    if (!user) return;
 
-  // Delete transaction
-  const deleteTransactionFn = useCallback((id: string) => {
-    deleteMutation.mutate(id);
-  }, [deleteMutation]);
+    const originalTransaction = transactions.find(t => t.id === id || t.parentId === id);
+    if (!originalTransaction) {
+      updateMutation.mutate({ id, data: updates });
+      return;
+    }
+
+    const isRecurringOrInstallment = originalTransaction.recurrenceType === 'recurring' || 
+                                      originalTransaction.recurrenceType === 'installment';
+
+    if (!isRecurringOrInstallment || !recurringAction) {
+      updateMutation.mutate({ id, data: updates });
+      return;
+    }
+
+    try {
+      const parentId = originalTransaction.parentId || id;
+
+      switch (recurringAction.type) {
+        case 'only_this':
+          // Create a modified exception for this specific date
+          await createRecurringException({
+            parentId,
+            exceptionDate: recurringAction.instanceDate,
+            exceptionType: 'modified',
+            modifiedAmount: updates.amount,
+            modifiedDescription: updates.description,
+            modifiedCategoryId: updates.categoryId,
+            modifiedAccountId: updates.accountId,
+            modifiedIsPaid: updates.isPaid,
+            modifiedNotes: updates.notes,
+          }, user.id);
+          queryClient.invalidateQueries({ queryKey: ['recurring-exceptions'] });
+          toast({
+            title: 'Lançamento atualizado',
+            description: 'Apenas esta ocorrência foi modificada.',
+          });
+          break;
+
+        case 'this_and_future':
+          // Set end_date on current transaction and create a new one from this date
+          const endDate = recurringAction.instanceDate;
+          await setTransactionEndDate(parentId, endDate);
+          
+          // Create a new transaction starting from this date with the updates
+          const newTransaction = {
+            ...originalTransaction,
+            ...updates,
+            startDate: endDate,
+            date: endDate,
+            parentId: undefined,
+          };
+          delete (newTransaction as { id?: string }).id;
+          delete (newTransaction as { orderIndex?: number }).orderIndex;
+          
+          await createTransaction(newTransaction as Omit<Transaction, 'id' | 'orderIndex'>, user.id);
+          queryClient.invalidateQueries({ queryKey: ['transactions'] });
+          toast({
+            title: 'Lançamento atualizado',
+            description: 'Esta e as próximas ocorrências foram modificadas.',
+          });
+          break;
+
+        case 'all':
+          // Update the parent transaction directly
+          updateMutation.mutate({ id: parentId, data: updates });
+          break;
+      }
+    } catch (error) {
+      toast({
+        title: 'Erro ao atualizar transação',
+        description: error instanceof Error ? error.message : 'Erro desconhecido',
+        variant: 'destructive',
+      });
+    }
+  }, [updateMutation, user, transactions, queryClient, toast]);
+
+  // Delete transaction with recurring action support
+  const deleteTransactionFn = useCallback(async (
+    id: string,
+    recurringAction?: RecurringUpdateAction
+  ) => {
+    if (!user) return;
+
+    const originalTransaction = transactions.find(t => t.id === id || t.parentId === id);
+    if (!originalTransaction) {
+      deleteMutation.mutate(id);
+      return;
+    }
+
+    const isRecurringOrInstallment = originalTransaction.recurrenceType === 'recurring' || 
+                                      originalTransaction.recurrenceType === 'installment';
+
+    if (!isRecurringOrInstallment || !recurringAction) {
+      deleteMutation.mutate(id);
+      return;
+    }
+
+    try {
+      const parentId = originalTransaction.parentId || id;
+
+      switch (recurringAction.type) {
+        case 'only_this':
+          // Create a skip exception for this specific date
+          await createRecurringException({
+            parentId,
+            exceptionDate: recurringAction.instanceDate,
+            exceptionType: 'skip',
+          }, user.id);
+          queryClient.invalidateQueries({ queryKey: ['recurring-exceptions'] });
+          toast({
+            title: 'Lançamento excluído',
+            description: 'Apenas esta ocorrência foi removida.',
+          });
+          break;
+
+        case 'this_and_future':
+          // Set end_date on the transaction
+          await setTransactionEndDate(parentId, recurringAction.instanceDate);
+          queryClient.invalidateQueries({ queryKey: ['transactions'] });
+          toast({
+            title: 'Lançamento excluído',
+            description: 'Esta e as próximas ocorrências foram removidas.',
+          });
+          break;
+
+        case 'all':
+          // Delete the parent transaction completely
+          deleteMutation.mutate(parentId);
+          break;
+      }
+    } catch (error) {
+      toast({
+        title: 'Erro ao excluir transação',
+        description: error instanceof Error ? error.message : 'Erro desconhecido',
+        variant: 'destructive',
+      });
+    }
+  }, [deleteMutation, user, transactions, queryClient, toast]);
 
   return {
     transactions: transactionsWithBalance,
@@ -304,7 +542,7 @@ export function useTransactions(selectedDate: Date) {
     addTransaction,
     updateTransaction: updateTransactionFn,
     deleteTransaction: deleteTransactionFn,
-    isLoading: transactionsQuery.isLoading || accountsQuery.isLoading || categoriesQuery.isLoading,
-    isError: transactionsQuery.isError || accountsQuery.isError || categoriesQuery.isError,
+    isLoading: transactionsQuery.isLoading || accountsQuery.isLoading || categoriesQuery.isLoading || exceptionsQuery.isLoading,
+    isError: transactionsQuery.isError || accountsQuery.isError || categoriesQuery.isError || exceptionsQuery.isError,
   };
 }

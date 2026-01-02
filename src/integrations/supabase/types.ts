@@ -160,6 +160,62 @@ export type Database = {
         }
         Relationships: []
       }
+      recurring_exceptions: {
+        Row: {
+          created_at: string
+          exception_date: string
+          exception_type: string
+          id: string
+          modified_account_id: string | null
+          modified_amount: number | null
+          modified_category_id: string | null
+          modified_description: string | null
+          modified_is_paid: boolean | null
+          modified_notes: string | null
+          parent_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          exception_date: string
+          exception_type: string
+          id?: string
+          modified_account_id?: string | null
+          modified_amount?: number | null
+          modified_category_id?: string | null
+          modified_description?: string | null
+          modified_is_paid?: boolean | null
+          modified_notes?: string | null
+          parent_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          exception_date?: string
+          exception_type?: string
+          id?: string
+          modified_account_id?: string | null
+          modified_amount?: number | null
+          modified_category_id?: string | null
+          modified_description?: string | null
+          modified_is_paid?: boolean | null
+          modified_notes?: string | null
+          parent_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recurring_exceptions_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       transactions: {
         Row: {
           account_id: string
@@ -169,6 +225,7 @@ export type Database = {
           created_at: string
           date: string
           description: string
+          end_date: string | null
           id: string
           installment_current: number | null
           installment_total: number | null
@@ -190,6 +247,7 @@ export type Database = {
           created_at?: string
           date?: string
           description: string
+          end_date?: string | null
           id?: string
           installment_current?: number | null
           installment_total?: number | null
@@ -211,6 +269,7 @@ export type Database = {
           created_at?: string
           date?: string
           description?: string
+          end_date?: string | null
           id?: string
           installment_current?: number | null
           installment_total?: number | null
