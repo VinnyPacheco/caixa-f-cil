@@ -70,8 +70,34 @@ export default function NewTransaction() {
     if (state?.voiceText && !voiceProcessed && categories.length > 0 && accounts.length > 0) {
       console.log('Processing voice text:', state.voiceText);
       
+      // Toast 1: Show captured audio text
+      toast({
+        title: '🎤 Áudio capturado',
+        description: state.voiceText,
+      });
+      
       const parsed = parseVoiceTransaction(state.voiceText, categories, accounts);
       console.log('Parsed transaction:', parsed);
+      
+      // Build fields summary for second toast
+      const fieldsList: string[] = [];
+      if (parsed.amount !== undefined) fieldsList.push(`Valor: R$ ${parsed.amount.toFixed(2)}`);
+      if (parsed.description) fieldsList.push(`Descrição: ${parsed.description}`);
+      if (parsed.date) fieldsList.push(`Data: ${format(parsed.date, 'dd/MM/yyyy', { locale: ptBR })}`);
+      if (parsed.categoryName) fieldsList.push(`Categoria: ${parsed.categoryName}`);
+      if (parsed.accountName) fieldsList.push(`Conta: ${parsed.accountName}`);
+      if (parsed.type) fieldsList.push(`Tipo: ${parsed.type === 'expense' ? 'Despesa' : 'Receita'}`);
+      if (parsed.recurrence && parsed.recurrence !== 'once') {
+        fieldsList.push(`Recorrência: ${parsed.recurrence === 'installment' ? `${parsed.installmentCount}x` : 'Mensal'}`);
+      }
+      
+      // Toast 2: Show parsed fields (with delay so both toasts are visible)
+      setTimeout(() => {
+        toast({
+          title: '📝 Campos identificados',
+          description: fieldsList.length > 0 ? fieldsList.join(' | ') : 'Nenhum campo identificado',
+        });
+      }, 500);
       
       // Track parsed values for auto-save check
       let parsedAmountCents = 0;
