@@ -380,22 +380,22 @@ function extractType(text: string): TransactionType | undefined {
 function extractCategory(text: string, categories: Category[]): string | undefined {
   const lowerText = text.toLowerCase();
 
-  // Pattern 1: "categoria X" or "na categoria X"
-  const categoryPattern = /(?:na\s+)?categoria\s+([a-záàâãéèêíïóôõöúç\s]+?)(?:\s+(?:pelo|pela|no|na|em|do|da|de|para|por|$))/i;
+  // Pattern 1: "categoria X" - extract just the category name (single word or known category)
+  const categoryPattern = /(?:na\s+)?categoria\s+([a-záàâãéèêíïóôõöúç]+)/i;
   const categoryMatch = text.match(categoryPattern);
   if (categoryMatch) {
     const extractedName = categoryMatch[1].trim();
     // Try to find this category in user's categories
     const found = categories.find(c => 
-      c.name.toLowerCase() === extractedName.toLowerCase() ||
-      c.name.toLowerCase().includes(extractedName.toLowerCase()) ||
-      extractedName.toLowerCase().includes(c.name.toLowerCase())
+      c.name.toLowerCase() === extractedName.toLowerCase()
     );
     if (found) return found.name;
   }
 
   // Pattern 2: Check if any user category name appears in the text
-  for (const category of categories) {
+  // Sort by length descending to match longer names first (e.g., "Renda extra" before "Renda")
+  const sortedCategories = [...categories].sort((a, b) => b.name.length - a.name.length);
+  for (const category of sortedCategories) {
     if (lowerText.includes(category.name.toLowerCase())) {
       return category.name;
     }
@@ -416,10 +416,19 @@ function extractCategory(text: string, categories: Category[]): string | undefin
 function extractAccount(text: string, accounts: Account[]): string | undefined {
   const lowerText = text.toLowerCase();
 
-  // Pattern 1: "pelo X", "pela X", "no X", "na X", "na conta X", "pelo cartão X"
+  // Pattern 1: Check if any user account name appears in the text first
+  // Sort by length descending to match longer names first (e.g., "Mercado Pago" before "Mercado")
+  const sortedAccounts = [...accounts].sort((a, b) => b.name.length - a.name.length);
+  for (const account of sortedAccounts) {
+    if (lowerText.includes(account.name.toLowerCase())) {
+      return account.name;
+    }
+  }
+
+  // Pattern 2: "pelo X", "pela X", "no X", "na X" patterns
   const accountPatterns = [
-    /(?:pelo|pela|no|na)\s+(?:cart[ãa]o\s+)?([a-záàâãéèêíïóôõöúç\s]+?)(?:\s+(?:na|no|em|do|da|de|para|por|dia|data|hoje|ontem|$))/i,
-    /(?:conta|cart[ãa]o)\s+([a-záàâãéèêíïóôõöúç\s]+?)(?:\s+(?:na|no|em|do|da|de|para|por|dia|data|hoje|ontem|$))/i,
+    /(?:pelo|pela)\s+([a-záàâãéèêíïóôõöúç\s]+?)(?:\s*$)/i,
+    /(?:no|na)\s+(?:cart[ãa]o|conta)\s+([a-záàâãéèêíïóôõöúç\s]+?)(?:\s*$)/i,
   ];
   
   for (const pattern of accountPatterns) {
@@ -427,19 +436,12 @@ function extractAccount(text: string, accounts: Account[]): string | undefined {
     if (match) {
       const extractedName = match[1].trim();
       // Try to find this account in user's accounts
-      const found = accounts.find(a => 
+      const found = sortedAccounts.find(a => 
         a.name.toLowerCase() === extractedName.toLowerCase() ||
         a.name.toLowerCase().includes(extractedName.toLowerCase()) ||
         extractedName.toLowerCase().includes(a.name.toLowerCase())
       );
       if (found) return found.name;
-    }
-  }
-
-  // Pattern 2: Check if any user account name appears in the text
-  for (const account of accounts) {
-    if (lowerText.includes(account.name.toLowerCase())) {
-      return account.name;
     }
   }
 
@@ -514,6 +516,9 @@ const stopWords = new Set([
   
   // Auto-pay words
   'baixa', 'automática', 'automatica', 'auto',
+  
+  // Category-related words
+  'categoria',
   
   // Common filler words
   'foi', 'ser', 'será', 'sera', 'estava', 'estou', 'tenho', 'tinha', 'vai', 'vou',
