@@ -377,31 +377,38 @@ function extractType(text: string): TransactionType | undefined {
   return undefined;
 }
 
+function normalizeForComparison(text: string): string {
+  return text
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // Remove accents
+    .trim();
+}
+
 function extractCategory(text: string, categories: Category[]): string | undefined {
   const lowerText = text.toLowerCase();
+  const normalizedText = normalizeForComparison(text);
 
-  // Pattern 1: "categoria X" or "na categoria X"
-  const categoryPattern = /(?:na\s+)?categoria\s+([a-záàâãéèêíïóôõöúç\s]+?)(?:\s+(?:pelo|pela|no|na|em|do|da|de|para|por|$))/i;
-  const categoryMatch = text.match(categoryPattern);
-  if (categoryMatch) {
-    const extractedName = categoryMatch[1].trim();
-    // Try to find this category in user's categories
-    const found = categories.find(c => 
-      c.name.toLowerCase() === extractedName.toLowerCase() ||
-      c.name.toLowerCase().includes(extractedName.toLowerCase()) ||
-      extractedName.toLowerCase().includes(c.name.toLowerCase())
-    );
-    if (found) return found.name;
-  }
-
-  // Pattern 2: Check if any user category name appears in the text
-  for (const category of categories) {
-    if (lowerText.includes(category.name.toLowerCase())) {
+  // Priority 1: Direct match - check if any user category name appears in the text
+  // Sort by name length (longest first) to match compound names like "Renda extra" before "Renda"
+  const sortedCategories = [...categories].sort((a, b) => b.name.length - a.name.length);
+  
+  for (const category of sortedCategories) {
+    const categoryNameLower = category.name.toLowerCase();
+    const categoryNameNormalized = normalizeForComparison(category.name);
+    
+    // Check exact match (with accents)
+    if (lowerText.includes(categoryNameLower)) {
+      return category.name;
+    }
+    
+    // Check normalized match (without accents)
+    if (normalizedText.includes(categoryNameNormalized)) {
       return category.name;
     }
   }
 
-  // Pattern 3: Fallback to keyword mappings
+  // Priority 2: Fallback to keyword mappings
   for (const [category, keywords] of Object.entries(categoryMappings)) {
     for (const keyword of keywords) {
       if (lowerText.includes(keyword)) {
@@ -415,35 +422,28 @@ function extractCategory(text: string, categories: Category[]): string | undefin
 
 function extractAccount(text: string, accounts: Account[]): string | undefined {
   const lowerText = text.toLowerCase();
+  const normalizedText = normalizeForComparison(text);
 
-  // Pattern 1: "pelo X", "pela X", "no X", "na X", "na conta X", "pelo cartão X"
-  const accountPatterns = [
-    /(?:pelo|pela|no|na)\s+(?:cart[ãa]o\s+)?([a-záàâãéèêíïóôõöúç\s]+?)(?:\s+(?:na|no|em|do|da|de|para|por|dia|data|hoje|ontem|$))/i,
-    /(?:conta|cart[ãa]o)\s+([a-záàâãéèêíïóôõöúç\s]+?)(?:\s+(?:na|no|em|do|da|de|para|por|dia|data|hoje|ontem|$))/i,
-  ];
+  // Priority 1: Direct match - check if any user account name appears in the text
+  // Sort by name length (longest first) to match compound names like "Mercado Pago" before "Mercado"
+  const sortedAccounts = [...accounts].sort((a, b) => b.name.length - a.name.length);
   
-  for (const pattern of accountPatterns) {
-    const match = text.match(pattern);
-    if (match) {
-      const extractedName = match[1].trim();
-      // Try to find this account in user's accounts
-      const found = accounts.find(a => 
-        a.name.toLowerCase() === extractedName.toLowerCase() ||
-        a.name.toLowerCase().includes(extractedName.toLowerCase()) ||
-        extractedName.toLowerCase().includes(a.name.toLowerCase())
-      );
-      if (found) return found.name;
+  for (const account of sortedAccounts) {
+    const accountNameLower = account.name.toLowerCase();
+    const accountNameNormalized = normalizeForComparison(account.name);
+    
+    // Check exact match (with accents)
+    if (lowerText.includes(accountNameLower)) {
+      return account.name;
     }
-  }
-
-  // Pattern 2: Check if any user account name appears in the text
-  for (const account of accounts) {
-    if (lowerText.includes(account.name.toLowerCase())) {
+    
+    // Check normalized match (without accents)
+    if (normalizedText.includes(accountNameNormalized)) {
       return account.name;
     }
   }
 
-  // Pattern 3: Check for credit card patterns (fallback to keyword mappings)
+  // Priority 2: Check for credit card patterns (fallback to keyword mappings)
   if (/cart[ãa]o\s*de\s*cr[eé]dito/i.test(text) || /no\s*cart[ãa]o/i.test(text)) {
     return 'Cartão';
   }
