@@ -391,7 +391,14 @@ export function useTransactions(selectedDate: Date) {
   ) => {
     if (!user) return;
 
-    const originalTransaction = transactions.find(t => t.id === id || t.parentId === id);
+    // First try to find in expanded transactions (which includes virtual instances)
+    let originalTransaction = expandedTransactions.find(t => t.id === id || t.parentId === id);
+    
+    // If not found, try to find in raw transactions
+    if (!originalTransaction) {
+      originalTransaction = transactions.find(t => t.id === id || t.parentId === id);
+    }
+    
     if (!originalTransaction) {
       updateMutation.mutate({ id, data: updates });
       return;
@@ -465,7 +472,7 @@ export function useTransactions(selectedDate: Date) {
         variant: 'destructive',
       });
     }
-  }, [updateMutation, user, transactions, queryClient, toast]);
+  }, [updateMutation, user, transactions, expandedTransactions, queryClient, toast]);
 
   // Delete transaction with recurring action support
   const deleteTransactionFn = useCallback(async (
@@ -474,7 +481,14 @@ export function useTransactions(selectedDate: Date) {
   ) => {
     if (!user) return;
 
-    const originalTransaction = transactions.find(t => t.id === id || t.parentId === id);
+    // First try to find in expanded transactions (which includes virtual instances)
+    let originalTransaction = expandedTransactions.find(t => t.id === id || t.parentId === id);
+    
+    // If not found, try to find in raw transactions
+    if (!originalTransaction) {
+      originalTransaction = transactions.find(t => t.id === id || t.parentId === id);
+    }
+    
     if (!originalTransaction) {
       deleteMutation.mutate(id);
       return;
@@ -528,7 +542,7 @@ export function useTransactions(selectedDate: Date) {
         variant: 'destructive',
       });
     }
-  }, [deleteMutation, user, transactions, queryClient, toast]);
+  }, [deleteMutation, user, transactions, expandedTransactions, queryClient, toast]);
 
   return {
     transactions: transactionsWithBalance,
