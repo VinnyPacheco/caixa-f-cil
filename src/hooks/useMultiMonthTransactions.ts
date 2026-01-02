@@ -143,13 +143,82 @@ export function useMultiMonthTransactions(selectedDate: Date, additionalMonths: 
     return accounts.reduce((sum, acc) => sum + acc.initialBalance, 0);
   }, [accounts]);
 
-  // Generate data for multiple months
+  // Helper to calculate month summary (income, expense, opening/closing balance)
+  const calculateMonthSummary = useCallback((
+    monthDate: Date,
+    monthOpeningBalance: number
+  ): { expanded: TransactionWithBalance[]; summary: MonthSummary } => {
+    const expanded = expandTransactionsForMonth(transactions, monthDate, categories, accounts, monthOpeningBalance);
+    
+    const totalIncome = expanded
+      .filter((t) => t.type === 'income')
+      .reduce((sum, t) => sum + t.amount, 0);
+    const totalExpense = expanded
+      .filter((t) => t.type === 'expense')
+      .reduce((sum, t) => sum + t.amount, 0);
+    const closingBalance = monthOpeningBalance + totalIncome - totalExpense;
+
+    return {
+      expanded,
+      summary: {
+        totalIncome,
+        totalExpense,
+        balance: totalIncome - totalExpense,
+        openingBalance: monthOpeningBalance,
+        closingBalance,
+      },
+    };
+  }, [transactions, categories, accounts]);
+
+  // Generate data for multiple months with cascading balances
   const monthsData = useMemo(() => {
     const result: MonthData[] = [];
     
+    // First, calculate the opening balance for the selected month
+    // by computing all previous months from the account initial balance
+    let currentOpeningBalance = openingBalance;
+    
+    // Calculate balance from the beginning of time until the selected month
+    // We need to process all transactions before the selected month
+    const selectedMonthStart = startOfMonth(selectedDate);
+    
+    // Get all transactions before selected month and calculate their impact
+    transactions.forEach((t) => {
+      const transactionDate = parseISO(t.date);
+      const transactionStartDate = t.startDate ? parseISO(t.startDate) : transactionDate;
+      
+      if (t.recurrenceType === 'once') {
+        if (isBefore(transactionDate, selectedMonthStart)) {
+          currentOpeningBalance += t.type === 'income' ? t.amount : -t.amount;
+        }
+      } else if (t.recurrenceType === 'recurring') {
+        // Count all instances before selected month
+        const dayOfMonth = transactionStartDate.getDate();
+        let instanceDate = new Date(transactionStartDate.getFullYear(), transactionStartDate.getMonth(), dayOfMonth);
+        
+        while (isBefore(instanceDate, selectedMonthStart)) {
+          if (!isBefore(instanceDate, transactionStartDate)) {
+            currentOpeningBalance += t.type === 'income' ? t.amount : -t.amount;
+          }
+          instanceDate = addMonths(instanceDate, 1);
+        }
+      } else if (t.recurrenceType === 'installment' && t.installmentTotal) {
+        // Count all installments before selected month
+        for (let i = 0; i < t.installmentTotal; i++) {
+          const installmentDate = addMonths(transactionStartDate, i);
+          if (isBefore(installmentDate, selectedMonthStart)) {
+            currentOpeningBalance += t.type === 'income' ? t.amount : -t.amount;
+          }
+        }
+      }
+    });
+
+    // Now generate data for selected month and additional months
     for (let i = 0; i <= additionalMonths; i++) {
       const monthDate = addMonths(selectedDate, i);
-      const expanded = expandTransactionsForMonth(transactions, monthDate, categories, accounts, openingBalance);
+      const monthOpeningBalance = i === 0 ? currentOpeningBalance : result[i - 1].summary.closingBalance;
+      
+      const { expanded, summary } = calculateMonthSummary(monthDate, monthOpeningBalance);
       
       // Apply filter
       let filtered = expanded;
@@ -171,31 +240,16 @@ export function useMultiMonthTransactions(selectedDate: Date, additionalMonths: 
           break;
       }
 
-      // Calculate summary
-      const totalIncome = expanded
-        .filter((t) => t.type === 'income')
-        .reduce((sum, t) => sum + t.amount, 0);
-      const totalExpense = expanded
-        .filter((t) => t.type === 'expense')
-        .reduce((sum, t) => sum + t.amount, 0);
-      const closingBalance = openingBalance + totalIncome - totalExpense;
-
       result.push({
         date: monthDate,
         label: format(monthDate, 'MMMM yyyy'),
         transactions: filtered,
-        summary: {
-          totalIncome,
-          totalExpense,
-          balance: totalIncome - totalExpense,
-          openingBalance,
-          closingBalance,
-        },
+        summary,
       });
     }
 
     return result;
-  }, [selectedDate, additionalMonths, transactions, categories, accounts, filter, openingBalance]);
+  }, [selectedDate, additionalMonths, transactions, filter, openingBalance, calculateMonthSummary]);
 
   // Mutations
   const createMutation = useMutation({
