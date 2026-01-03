@@ -34,17 +34,15 @@ export function BottomNav() {
   const { toast } = useToast();
   const [showCadastrosMenu, setShowCadastrosMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const pendingTranscriptRef = useRef<string | null>(null);
 
   const handleVoiceResult = useCallback((transcript: string) => {
-    console.log('Voice transcript:', transcript);
-    toast({
-      title: 'Áudio capturado',
-      description: transcript,
-    });
-    navigate('/new-transaction', { state: { voiceText: transcript } });
-  }, [navigate, toast]);
+    console.log('Voice transcript received:', transcript);
+    // Store the transcript, navigation will happen on button release
+    pendingTranscriptRef.current = transcript;
+  }, []);
 
-  const { isListening, isHolding, isSupported, startHold, endHold } = useVoiceInput(handleVoiceResult);
+  const { isListening, isHolding, transcript, isSupported, startHold, endHold } = useVoiceInput(handleVoiceResult);
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -79,10 +77,29 @@ export function BottomNav() {
 
   const handleHoldEnd = useCallback(() => {
     const wasShortClick = endHold();
+    
     if (wasShortClick) {
+      // Short click - just navigate without voice
       navigate('/new-transaction');
+    } else {
+      // Long press - wait a bit for final transcript, then navigate
+      setTimeout(() => {
+        const voiceText = pendingTranscriptRef.current || transcript;
+        pendingTranscriptRef.current = null;
+        
+        if (voiceText) {
+          toast({
+            title: 'Áudio capturado',
+            description: voiceText,
+          });
+          navigate('/new-transaction', { state: { voiceText } });
+        } else {
+          // No transcript captured, still navigate
+          navigate('/new-transaction');
+        }
+      }, 300);
     }
-  }, [endHold, navigate]);
+  }, [endHold, navigate, toast, transcript]);
 
   const isActive = (path: string) => {
     if (path === '/cadastros') {
