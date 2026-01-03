@@ -510,7 +510,7 @@ const stopWords = new Set([
   
   // Account-related words
   'cartão', 'cartao', 'banco', 'conta', 'débito', 'debito', 'crédito', 'credito',
-  'pix', 'dinheiro', 'espécie', 'especie', 'poupança', 'poupanca',
+  'pix', 'dinheiro', 'espécie', 'especie', 'poupança', 'poupanca', 'categoria',
   
   // Auto-pay words
   'baixa', 'automática', 'automatica', 'auto',
