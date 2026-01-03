@@ -9,6 +9,7 @@ interface HeaderProps {
   showBack?: boolean;
   showNotification?: boolean;
   userName?: string;
+  onBack?: () => void;
 }
 
 export function Header({
@@ -18,6 +19,7 @@ export function Header({
   showBack = false,
   showNotification = false,
   userName = 'Usuário',
+  onBack,
 }: HeaderProps) {
   const navigate = useNavigate();
   const { 
@@ -37,7 +39,7 @@ export function Header({
     <header className="flex items-center px-6 pt-6 pb-2 justify-between sticky top-0 z-10 bg-background/95 backdrop-blur-sm">
       {showBack ? (
         <button
-          onClick={() => navigate(-1)}
+          onClick={onBack || (() => navigate(-1))}
           className="flex items-center justify-center p-2 -ml-2 rounded-full hover:bg-foreground/5 transition-colors"
         >
           <span className="material-symbols-outlined">arrow_back</span>
