@@ -67,166 +67,205 @@ export default function NewTransaction() {
   // Process voice input when available
   useEffect(() => {
     const state = location.state as LocationState | null;
-    if (state?.voiceText && !voiceProcessed && categories.length > 0 && accounts.length > 0) {
-      console.log('Processing voice text:', state.voiceText);
-      
-      // Toast 1: Show captured audio text
-      toast({
-        title: '🎤 Áudio capturado',
-        description: state.voiceText,
-      });
-      
-      const parsed = parseVoiceTransaction(state.voiceText, categories, accounts);
-      console.log('Parsed transaction:', parsed);
-      
-      // Build fields summary for second toast
-      const fieldsList: string[] = [];
-      if (parsed.amount !== undefined) fieldsList.push(`Valor: R$ ${parsed.amount.toFixed(2)}`);
-      if (parsed.description) fieldsList.push(`Descrição: ${parsed.description}`);
-      if (parsed.date) fieldsList.push(`Data: ${format(parsed.date, 'dd/MM/yyyy', { locale: ptBR })}`);
-      if (parsed.categoryName) fieldsList.push(`Categoria: ${parsed.categoryName}`);
-      if (parsed.accountName) fieldsList.push(`Conta: ${parsed.accountName}`);
-      if (parsed.type) fieldsList.push(`Tipo: ${parsed.type === 'expense' ? 'Despesa' : 'Receita'}`);
-      if (parsed.recurrence && parsed.recurrence !== 'once') {
-        fieldsList.push(`Recorrência: ${parsed.recurrence === 'installment' ? `${parsed.installmentCount}x` : 'Mensal'}`);
-      }
-      
-      // Toast 2: Show parsed fields (with delay so both toasts are visible)
-      setTimeout(() => {
-        toast({
-          title: '📝 Campos identificados',
-          description: fieldsList.length > 0 ? fieldsList.join(' | ') : 'Nenhum campo identificado',
-        });
-      }, 500);
-      
-      // Track parsed values for auto-save check
-      let parsedAmountCents = 0;
-      let parsedDescription = '';
-      let parsedCategoryId = '';
-      let parsedAccountId = '';
-      
-      // Apply parsed values
-      if (parsed.type) {
-        setType(parsed.type);
-      }
-      
-      if (parsed.amount !== undefined) {
-        parsedAmountCents = Math.round(parsed.amount * 100);
-        setAmountCents(parsedAmountCents);
-      }
-      
-      if (parsed.description) {
-        parsedDescription = parsed.description;
-        setDescription(parsedDescription);
-      }
-      
-      if (parsed.date) {
-        setDate(parsed.date);
-      }
-      
-      if (parsed.recurrence) {
-        setRecurrence(parsed.recurrence);
-      }
-      
-      if (parsed.installmentCount) {
-        setInstallmentCount(parsed.installmentCount);
-      }
-      
-      if (parsed.autoPay !== undefined) {
-        setAutoPay(parsed.autoPay);
-      }
-      
-      // Match category by name - need to use the correct type
-      const typeToUse = parsed.type || 'expense';
-      if (parsed.categoryName) {
-        const matchedCategory = matchCategoryByName(parsed.categoryName, categories, typeToUse);
-        if (matchedCategory) {
-          parsedCategoryId = matchedCategory;
-          setCategoryId(matchedCategory);
-          setCategoryInitialized(true);
-        }
-      }
-      
-      // If no category matched, use default
-      if (!parsedCategoryId) {
-        const defaultCategory = categories.find(
-          (c) => c.isSystem && c.name === 'Outros' && c.type === typeToUse
-        );
-        if (defaultCategory) {
-          parsedCategoryId = defaultCategory.id;
-          setCategoryId(defaultCategory.id);
-          setCategoryInitialized(true);
-        }
-      }
-      
-      // Match account by name
-      if (parsed.accountName) {
-        const matchedAccount = matchAccountByName(parsed.accountName, accounts);
-        if (matchedAccount) {
-          parsedAccountId = matchedAccount;
-          setAccountId(matchedAccount);
-        }
-      }
-      
-      // If no account matched, use primary or first
-      if (!parsedAccountId) {
-        const primaryAccount = accounts.find((acc) => acc.isPrimary);
-        parsedAccountId = primaryAccount ? primaryAccount.id : accounts[0]?.id || '';
-        if (parsedAccountId) {
-          setAccountId(parsedAccountId);
-        }
-      }
-      
-      setVoiceProcessed(true);
-      
-      // Check if all required fields are filled and auto-save is enabled
-      const allRequiredFilled = parsedAmountCents > 0 && parsedDescription && parsedCategoryId && parsedAccountId;
-      
-      if (autoSaveVoiceTransaction && allRequiredFilled && !autoSaveTriggeredRef.current) {
-        autoSaveTriggeredRef.current = true;
-        
-        // Auto-save the transaction
-        const numericAmount = parsedAmountCents / 100;
-        
-        addTransaction({
-          accountId: parsedAccountId,
-          categoryId: parsedCategoryId,
-          description: parsedDescription,
-          amount: numericAmount,
-          date: parsed.date ? format(parsed.date, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
-          type: typeToUse,
-          isPaid: false,
-          recurrenceType: parsed.recurrence || 'once',
-          installmentTotal: parsed.recurrence === 'installment' && parsed.installmentCount ? parsed.installmentCount : undefined,
-          installmentCurrent: parsed.recurrence === 'installment' ? 1 : undefined,
-          autoSettle: parsed.autoPay || false,
-          notes: undefined,
-          startDate: parsed.date ? format(parsed.date, 'yyyy-MM-dd') : undefined,
-        });
-        
-        // Play confirmation sound
-        playConfirmationSound();
-        
-        // Invalidate transactions query to refresh the list
-        queryClient.invalidateQueries({ queryKey: ['transactions'] });
-        
-        // Show success toast with visual feedback
-        toast({
-          title: '✓ Lançamento salvo',
-          description: `${parsedDescription} - R$ ${numericAmount.toFixed(2)}`,
-        });
-        
-        // Navigate to transactions page to show the new transaction
-        navigate('/transactions', { state: { newTransaction: true } });
-        return;
-      }
-      
-      toast({
-        title: 'Lançamento por voz',
-        description: 'Campos preenchidos a partir do áudio. Revise antes de salvar.',
-      });
+    if (!state?.voiceText || voiceProcessed || categories.length === 0 || accounts.length === 0) return;
+
+    console.log('Processing voice text:', state.voiceText);
+
+    // Mark as processed EARLY so other effects (defaulting category/account) don't override voice-set values
+    setVoiceProcessed(true);
+
+    // Toast 1: Show captured audio text
+    toast({
+      title: '🎤 Áudio capturado',
+      description: state.voiceText,
+    });
+
+    const parsed = parseVoiceTransaction(state.voiceText, categories, accounts);
+    console.log('Parsed transaction:', parsed);
+
+    // Build fields summary for second toast
+    const fieldsList: string[] = [];
+    if (parsed.amount !== undefined) fieldsList.push(`Valor: R$ ${parsed.amount.toFixed(2)}`);
+    if (parsed.description) fieldsList.push(`Descrição: ${parsed.description}`);
+    if (parsed.date) fieldsList.push(`Data: ${format(parsed.date, 'dd/MM/yyyy', { locale: ptBR })}`);
+    if (parsed.categoryName) fieldsList.push(`Categoria: ${parsed.categoryName}`);
+    if (parsed.accountName) fieldsList.push(`Conta: ${parsed.accountName}`);
+    if (parsed.type) fieldsList.push(`Tipo: ${parsed.type === 'expense' ? 'Despesa' : 'Receita'}`);
+    if (parsed.recurrence && parsed.recurrence !== 'once') {
+      fieldsList.push(
+        `Recorrência: ${parsed.recurrence === 'installment' ? `${parsed.installmentCount}x` : 'Mensal'}`,
+      );
     }
-  }, [location.state, voiceProcessed, categories, accounts, toast, autoSaveVoiceTransaction, addTransaction, navigate, queryClient]);
+
+    // Toast 2: Show parsed fields (with delay so both toasts are visible)
+    setTimeout(() => {
+      toast({
+        title: '📝 Campos identificados',
+        description: fieldsList.length > 0 ? fieldsList.join(' | ') : 'Nenhum campo identificado',
+      });
+    }, 500);
+
+    // Track parsed values for auto-save check
+    let parsedAmountCents = 0;
+    let parsedDescription = '';
+    let parsedCategoryId = '';
+    let parsedAccountId = '';
+
+    // Determine type to use:
+    // - Prefer explicit type from speech
+    // - Otherwise, if category matches only one type, use that type (so the <select> options contain the chosen category)
+    // - Otherwise, keep current UI type
+    let inferredTypeFromCategory: TransactionType | undefined;
+    let inferredCategoryId: string | undefined;
+
+    if (parsed.categoryName) {
+      const tryTypes: TransactionType[] = [type, type === 'expense' ? 'income' : 'expense'];
+      for (const t of tryTypes) {
+        const maybeId = matchCategoryByName(parsed.categoryName, categories, t);
+        if (maybeId) {
+          inferredTypeFromCategory = t;
+          inferredCategoryId = maybeId;
+          break;
+        }
+      }
+    }
+
+    const typeToUse: TransactionType = parsed.type ?? inferredTypeFromCategory ?? type;
+    if (typeToUse !== type) setType(typeToUse);
+
+    // Apply parsed values
+    if (parsed.amount !== undefined) {
+      parsedAmountCents = Math.round(parsed.amount * 100);
+      setAmountCents(parsedAmountCents);
+    }
+
+    if (parsed.description) {
+      parsedDescription = parsed.description;
+      setDescription(parsedDescription);
+    }
+
+    if (parsed.date) {
+      setDate(parsed.date);
+    }
+
+    if (parsed.recurrence) {
+      setRecurrence(parsed.recurrence);
+    }
+
+    if (parsed.installmentCount) {
+      setInstallmentCount(parsed.installmentCount);
+    }
+
+    if (parsed.autoPay !== undefined) {
+      setAutoPay(parsed.autoPay);
+    }
+
+    // Category (prefer the inferred ID we already found while inferring type)
+    if (inferredCategoryId) {
+      parsedCategoryId = inferredCategoryId;
+      setCategoryId(inferredCategoryId);
+      setCategoryInitialized(true);
+    } else if (parsed.categoryName) {
+      const matchedCategory = matchCategoryByName(parsed.categoryName, categories, typeToUse);
+      if (matchedCategory) {
+        parsedCategoryId = matchedCategory;
+        setCategoryId(matchedCategory);
+        setCategoryInitialized(true);
+      }
+    }
+
+    // If no category matched, use default
+    if (!parsedCategoryId) {
+      const defaultCategory = categories.find(
+        (c) => c.isSystem && c.name === 'Outros' && c.type === typeToUse,
+      );
+      if (defaultCategory) {
+        parsedCategoryId = defaultCategory.id;
+        setCategoryId(defaultCategory.id);
+        setCategoryInitialized(true);
+      }
+    }
+
+    // Account
+    if (parsed.accountName) {
+      const matchedAccount = matchAccountByName(parsed.accountName, accounts);
+      if (matchedAccount) {
+        parsedAccountId = matchedAccount;
+        setAccountId(matchedAccount);
+      }
+    }
+
+    // If no account matched, use primary or first
+    if (!parsedAccountId) {
+      const primaryAccount = accounts.find((acc) => acc.isPrimary);
+      parsedAccountId = primaryAccount ? primaryAccount.id : accounts[0]?.id || '';
+      if (parsedAccountId) {
+        setAccountId(parsedAccountId);
+      }
+    }
+
+    // Check if all required fields are filled and auto-save is enabled
+    const allRequiredFilled =
+      parsedAmountCents > 0 && parsedDescription && parsedCategoryId && parsedAccountId;
+
+    if (autoSaveVoiceTransaction && allRequiredFilled && !autoSaveTriggeredRef.current) {
+      autoSaveTriggeredRef.current = true;
+
+      // Auto-save the transaction
+      const numericAmount = parsedAmountCents / 100;
+
+      addTransaction({
+        accountId: parsedAccountId,
+        categoryId: parsedCategoryId,
+        description: parsedDescription,
+        amount: numericAmount,
+        date: parsed.date ? format(parsed.date, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
+        type: typeToUse,
+        isPaid: false,
+        recurrenceType: parsed.recurrence || 'once',
+        installmentTotal:
+          parsed.recurrence === 'installment' && parsed.installmentCount
+            ? parsed.installmentCount
+            : undefined,
+        installmentCurrent: parsed.recurrence === 'installment' ? 1 : undefined,
+        autoSettle: parsed.autoPay || false,
+        notes: undefined,
+        startDate: parsed.date ? format(parsed.date, 'yyyy-MM-dd') : undefined,
+      });
+
+      // Play confirmation sound
+      playConfirmationSound();
+
+      // Invalidate transactions query to refresh the list
+      queryClient.invalidateQueries({ queryKey: ['transactions'] });
+
+      // Show success toast with visual feedback
+      toast({
+        title: '✓ Lançamento salvo',
+        description: `${parsedDescription} - R$ ${numericAmount.toFixed(2)}`,
+      });
+
+      // Navigate to transactions page to show the new transaction
+      navigate('/transactions', { state: { newTransaction: true } });
+      return;
+    }
+
+    toast({
+      title: 'Lançamento por voz',
+      description: 'Campos preenchidos a partir do áudio. Revise antes de salvar.',
+    });
+  }, [
+    location.state,
+    voiceProcessed,
+    categories,
+    accounts,
+    toast,
+    autoSaveVoiceTransaction,
+    addTransaction,
+    navigate,
+    queryClient,
+    type,
+  ]);
 
   // Set default category "Outros" when categories load (only if not voice processed)
   useEffect(() => {
@@ -256,11 +295,11 @@ export default function NewTransaction() {
 
   // Set default account when accounts load (prefer primary account)
   useEffect(() => {
-    if (accounts.length > 0 && !accountId) {
+    if (accounts.length > 0 && !accountId && !voiceProcessed) {
       const primaryAccount = accounts.find((acc) => acc.isPrimary);
       setAccountId(primaryAccount ? primaryAccount.id : accounts[0].id);
     }
-  }, [accounts, accountId]);
+  }, [accounts, accountId, voiceProcessed]);
 
   // Format amount from cents to display string with thousand separators
   const formatAmountDisplay = (cents: number): string => {
