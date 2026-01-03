@@ -61,17 +61,26 @@ export default function NewTransaction() {
   const [categoryInitialized, setCategoryInitialized] = useState(false);
   const [voiceProcessed, setVoiceProcessed] = useState(false);
   const autoSaveTriggeredRef = useRef(false);
+  const voiceProcessedRef = useRef(false);
 
   const filteredCategories = categories.filter((c) => c.type === type);
 
   // Process voice input when available
   useEffect(() => {
     const state = location.state as LocationState | null;
-    if (!state?.voiceText || voiceProcessed || categories.length === 0 || accounts.length === 0) return;
+    if (
+      !state?.voiceText ||
+      voiceProcessed ||
+      voiceProcessedRef.current ||
+      categories.length === 0 ||
+      accounts.length === 0
+    )
+      return;
 
     console.log('Processing voice text:', state.voiceText);
 
-    // Mark as processed EARLY so other effects (defaulting category/account) don't override voice-set values
+    // Mark as processed synchronously (so other effects can't override voice-set values)
+    voiceProcessedRef.current = true;
     setVoiceProcessed(true);
 
     // Toast 1: Show captured audio text
@@ -267,39 +276,43 @@ export default function NewTransaction() {
     type,
   ]);
 
-  // Set default category "Outros" when categories load (only if not voice processed)
+  // Set default category "Outros" when categories load (only if voice has NOT been processed)
   useEffect(() => {
-    if (categories.length > 0 && !categoryId && !categoryInitialized && !voiceProcessed) {
+    if (voiceProcessedRef.current) return;
+
+    if (categories.length > 0 && !categoryId && !categoryInitialized) {
       const defaultCategory = categories.find(
-        (c) => c.isSystem && c.name === 'Outros' && c.type === type
+        (c) => c.isSystem && c.name === 'Outros' && c.type === type,
       );
       if (defaultCategory) {
         setCategoryId(defaultCategory.id);
         setCategoryInitialized(true);
       }
     }
-  }, [categories, type, categoryId, categoryInitialized, voiceProcessed]);
+  }, [categories, type, categoryId, categoryInitialized]);
 
   // Update category when type changes (only if not from voice input)
   useEffect(() => {
     // Skip if voice was just processed - don't override voice-set category
-    if (voiceProcessed) return;
-    
+    if (voiceProcessedRef.current) return;
+
     const defaultCategory = categories.find(
-      (c) => c.isSystem && c.name === 'Outros' && c.type === type
+      (c) => c.isSystem && c.name === 'Outros' && c.type === type,
     );
     if (defaultCategory) {
       setCategoryId(defaultCategory.id);
     }
-  }, [type, categories, voiceProcessed]);
+  }, [type, categories]);
 
   // Set default account when accounts load (prefer primary account)
   useEffect(() => {
-    if (accounts.length > 0 && !accountId && !voiceProcessed) {
+    if (voiceProcessedRef.current) return;
+
+    if (accounts.length > 0 && !accountId) {
       const primaryAccount = accounts.find((acc) => acc.isPrimary);
       setAccountId(primaryAccount ? primaryAccount.id : accounts[0].id);
     }
-  }, [accounts, accountId, voiceProcessed]);
+  }, [accounts, accountId]);
 
   // Format amount from cents to display string with thousand separators
   const formatAmountDisplay = (cents: number): string => {
