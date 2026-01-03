@@ -188,10 +188,8 @@ export function BottomNav() {
           <button
             onMouseDown={isSupported ? startHold : undefined}
             onMouseUp={isSupported ? handleHoldEnd : () => navigate('/new-transaction')}
-            onMouseLeave={isSupported ? handleHoldEnd : undefined}
             onTouchStart={isSupported ? startHold : undefined}
             onTouchEnd={isSupported ? handleHoldEnd : () => navigate('/new-transaction')}
-            onTouchCancel={isSupported ? handleHoldEnd : undefined}
             onContextMenu={(e) => e.preventDefault()}
             className={`size-16 rounded-full bg-accent shadow-lg shadow-accent/30 flex items-center justify-center text-accent-foreground transition-all duration-200 select-none touch-none ${
               isListening 
