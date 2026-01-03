@@ -228,9 +228,9 @@ export default function NewTransaction() {
     }
   }, [location.state, voiceProcessed, categories, accounts, toast, autoSaveVoiceTransaction, addTransaction, navigate, queryClient]);
 
-  // Set default category "Outros" when categories load or type changes
+  // Set default category "Outros" when categories load (only if not voice processed)
   useEffect(() => {
-    if (categories.length > 0 && (!categoryId || !categoryInitialized)) {
+    if (categories.length > 0 && !categoryId && !categoryInitialized && !voiceProcessed) {
       const defaultCategory = categories.find(
         (c) => c.isSystem && c.name === 'Outros' && c.type === type
       );
@@ -239,19 +239,20 @@ export default function NewTransaction() {
         setCategoryInitialized(true);
       }
     }
-  }, [categories, type, categoryId, categoryInitialized]);
+  }, [categories, type, categoryId, categoryInitialized, voiceProcessed]);
 
-  // Update category when type changes (only if not from voice input or no match)
+  // Update category when type changes (only if not from voice input)
   useEffect(() => {
-    if (!voiceProcessed || !categoryId) {
-      const defaultCategory = categories.find(
-        (c) => c.isSystem && c.name === 'Outros' && c.type === type
-      );
-      if (defaultCategory) {
-        setCategoryId(defaultCategory.id);
-      }
+    // Skip if voice was just processed - don't override voice-set category
+    if (voiceProcessed) return;
+    
+    const defaultCategory = categories.find(
+      (c) => c.isSystem && c.name === 'Outros' && c.type === type
+    );
+    if (defaultCategory) {
+      setCategoryId(defaultCategory.id);
     }
-  }, [type, categories, voiceProcessed, categoryId]);
+  }, [type, categories, voiceProcessed]);
 
   // Set default account when accounts load (prefer primary account)
   useEffect(() => {

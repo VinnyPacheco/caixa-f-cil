@@ -551,9 +551,43 @@ function normalizeDescription(text: string): string {
     .join(' ');
 }
 
-function extractDescription(text: string, parsed: Partial<ParsedTransaction>): string {
+function extractDescription(
+  text: string, 
+  categoryName: string | undefined, 
+  accountName: string | undefined
+): string {
   // First, normalize the text by removing stop-words
-  const normalized = normalizeDescription(text);
+  let normalized = normalizeDescription(text);
+  
+  // Remove matched category name from description
+  if (categoryName && normalized) {
+    const categoryLower = categoryName.toLowerCase();
+    const categoryNormalized = normalizeForComparison(categoryName);
+    // Remove the category name (case-insensitive)
+    normalized = normalized
+      .split(' ')
+      .filter(word => {
+        const wordLower = word.toLowerCase();
+        const wordNormalized = normalizeForComparison(word);
+        return wordLower !== categoryLower && wordNormalized !== categoryNormalized;
+      })
+      .join(' ');
+  }
+  
+  // Remove matched account name from description
+  if (accountName && normalized) {
+    const accountWords = accountName.toLowerCase().split(' ');
+    const accountWordsNormalized = accountWords.map(w => normalizeForComparison(w));
+    // Remove all words that are part of the account name
+    normalized = normalized
+      .split(' ')
+      .filter(word => {
+        const wordLower = word.toLowerCase();
+        const wordNormalized = normalizeForComparison(word);
+        return !accountWords.includes(wordLower) && !accountWordsNormalized.includes(wordNormalized);
+      })
+      .join(' ');
+  }
   
   if (normalized.length > 0) {
     return normalized;
@@ -594,8 +628,8 @@ export function parseVoiceTransaction(
     parsed.autoPay = true;
   }
 
-  // Extract description (what's left after removing other patterns)
-  parsed.description = extractDescription(text, parsed);
+  // Extract description (exclude matched category and account names)
+  parsed.description = extractDescription(text, parsed.categoryName, parsed.accountName);
 
   return parsed;
 }
