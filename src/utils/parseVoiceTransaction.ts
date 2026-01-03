@@ -641,18 +641,20 @@ export function matchCategoryByName(
 ): string | undefined {
   if (!categoryName) return undefined;
 
-  const lowerName = categoryName.toLowerCase();
-  const filtered = categories.filter(c => c.type === type);
+  const input = normalizeForComparison(categoryName).replace(/\s+/g, ' ').trim();
+  const filtered = categories.filter((c) => c.type === type);
 
-  // Try exact match first
-  const exactMatch = filtered.find(c => c.name.toLowerCase() === lowerName);
+  // Exact match (accent/case-insensitive)
+  const exactMatch = filtered.find(
+    (c) => normalizeForComparison(c.name).replace(/\s+/g, ' ').trim() === input,
+  );
   if (exactMatch) return exactMatch.id;
 
-  // Try partial match
-  const partialMatch = filtered.find(c => 
-    c.name.toLowerCase().includes(lowerName) || 
-    lowerName.includes(c.name.toLowerCase())
-  );
+  // Partial match (either direction)
+  const partialMatch = filtered.find((c) => {
+    const candidate = normalizeForComparison(c.name).replace(/\s+/g, ' ').trim();
+    return candidate.includes(input) || input.includes(candidate);
+  });
   if (partialMatch) return partialMatch.id;
 
   return undefined;
@@ -664,18 +666,21 @@ export function matchAccountByName(
 ): string | undefined {
   if (!accountName) return undefined;
 
-  const lowerName = accountName.toLowerCase();
+  const input = normalizeForComparison(accountName).replace(/\s+/g, ' ').trim();
 
-  // Try exact match first
-  const exactMatch = accounts.find(a => a.name.toLowerCase() === lowerName);
+  // Exact match (accent/case-insensitive)
+  const exactMatch = accounts.find(
+    (a) => normalizeForComparison(a.name).replace(/\s+/g, ' ').trim() === input,
+  );
   if (exactMatch) return exactMatch.id;
 
-  // Try partial match
-  const partialMatch = accounts.find(a => 
-    a.name.toLowerCase().includes(lowerName) || 
-    lowerName.includes(a.name.toLowerCase())
-  );
+  // Partial match
+  const partialMatch = accounts.find((a) => {
+    const candidate = normalizeForComparison(a.name).replace(/\s+/g, ' ').trim();
+    return candidate.includes(input) || input.includes(candidate);
+  });
   if (partialMatch) return partialMatch.id;
 
   return undefined;
 }
+
