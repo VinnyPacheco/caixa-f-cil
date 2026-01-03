@@ -65,6 +65,30 @@ export default function NewTransaction() {
 
   const filteredCategories = categories.filter((c) => c.type === type);
 
+  // Reset form to default values
+  const resetForm = useCallback(() => {
+    setType('expense');
+    setAmountCents(0);
+    setDescription('');
+    setCategoryId('');
+    setAccountId('');
+    setDate(new Date());
+    setRecurrence('once');
+    setInstallmentCount(2);
+    setAutoPay(false);
+    setNotes('');
+    setCategoryInitialized(false);
+    setVoiceProcessed(false);
+    voiceProcessedRef.current = false;
+    autoSaveTriggeredRef.current = false;
+  }, []);
+
+  // Handle close (X button or after save)
+  const handleClose = useCallback(() => {
+    resetForm();
+    navigate(-1);
+  }, [resetForm, navigate]);
+
   // Process voice input when available
   useEffect(() => {
     const state = location.state as LocationState | null;
@@ -363,7 +387,7 @@ export default function NewTransaction() {
       // Play confirmation sound
       playConfirmationSound();
 
-      navigate(-1);
+      handleClose();
     } catch (error) {
       toast({
         title: 'Erro ao salvar',
@@ -380,7 +404,7 @@ export default function NewTransaction() {
   if (isLoading) {
     return (
       <div className="relative flex min-h-screen w-full flex-col overflow-x-hidden bg-background">
-        <Header title="Novo Lançamento" showBack />
+        <Header title="Novo Lançamento" showBack onBack={handleClose} />
         <div className="flex-1 flex items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
@@ -390,7 +414,7 @@ export default function NewTransaction() {
 
   return (
     <div className="relative flex min-h-screen w-full flex-col overflow-x-hidden bg-background">
-      <Header title="Novo Lançamento" showBack />
+      <Header title="Novo Lançamento" showBack onBack={handleClose} />
 
       <main className="flex-1 flex flex-col p-6 gap-6 pb-32">
         {/* Type Toggle */}
