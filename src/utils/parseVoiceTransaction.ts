@@ -523,8 +523,19 @@ const stopWords = new Set([
 ]);
 
 function normalizeDescription(text: string): string {
+  // First, remove monetary values from text (e.g., "50 reais", "R$ 100,50", "cem reais")
+  let cleanedText = text
+    // Remove patterns like "R$ 100", "R$100,50", "100 reais", "50,00 reais"
+    .replace(/r\$\s*[\d.,]+/gi, '')
+    .replace(/[\d.,]+\s*(?:reais?|real|centavos?|conto|contos)/gi, '')
+    // Remove number words followed by reais (e.g., "cem reais", "cinquenta reais")
+    .replace(/(?:cem|duzentos?|trezentos?|quatrocentos?|quinhentos?|seiscentos?|setecentos?|oitocentos?|novecentos?|mil|milhão|milhao|bilhão|bilhao|um|dois|duas|três|tres|quatro|cinco|seis|sete|oito|nove|dez|onze|doze|treze|catorze|quatorze|quinze|dezesseis|dezessete|dezoito|dezenove|vinte|trinta|quarenta|cinquenta|sessenta|setenta|oitenta|noventa)(?:\s+(?:e\s+)?(?:cem|duzentos?|trezentos?|quatrocentos?|quinhentos?|seiscentos?|setecentos?|oitocentos?|novecentos?|um|dois|duas|três|tres|quatro|cinco|seis|sete|oito|nove|dez|onze|doze|treze|catorze|quatorze|quinze|dezesseis|dezessete|dezoito|dezenove|vinte|trinta|quarenta|cinquenta|sessenta|setenta|oitenta|noventa))*\s*(?:reais?|real|centavos?|conto|contos)/gi, '')
+    // Clean up extra spaces
+    .replace(/\s+/g, ' ')
+    .trim();
+
   // Split into words
-  const words = text
+  const words = cleanedText
     .toLowerCase()
     .replace(/[.,!?;:()[\]{}""'']/g, ' ')
     .split(/\s+/)
