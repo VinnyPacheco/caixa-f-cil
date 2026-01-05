@@ -3,98 +3,489 @@ import { Header } from '@/components/layout/Header';
 import { useTransactions } from '@/hooks/useTransactions';
 import { useProfile } from '@/hooks/useProfile';
 import { formatCurrency } from '@/lib/format';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
+import { format, addMonths, subMonths } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
+
+type TabType = 'budget' | 'categories';
+type FilterType = 'all' | 'income' | 'expense';
 
 export default function Reports() {
-  const [selectedDate] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [activeTab, setActiveTab] = useState<TabType>('budget');
+  const [filterType, setFilterType] = useState<FilterType>('all');
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>('all');
+  const [openItems, setOpenItems] = useState<string[]>(['budget']);
+
   const { monthSummary, categories, transactions } = useTransactions(selectedDate);
   const { displayName } = useProfile();
 
+  const monthLabel = format(selectedDate, 'MMMM', { locale: ptBR });
+  const capitalizedMonth = monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1);
+
+  const handlePrevMonth = () => setSelectedDate((prev) => subMonths(prev, 1));
+  const handleNextMonth = () => setSelectedDate((prev) => addMonths(prev, 1));
+
+  // Filter transactions by type
+  const filteredTransactions = useMemo(() => {
+    let filtered = transactions;
+    if (filterType === 'income') {
+      filtered = filtered.filter((t) => t.type === 'income');
+    } else if (filterType === 'expense') {
+      filtered = filtered.filter((t) => t.type === 'expense');
+    }
+    if (selectedCategoryId !== 'all') {
+      filtered = filtered.filter((t) => t.categoryId === selectedCategoryId);
+    }
+    return filtered;
+  }, [transactions, filterType, selectedCategoryId]);
+
   // Group expenses by category
-  const expensesByCategory = transactions
-    .filter((t) => t.type === 'expense')
-    .reduce((acc, t) => {
+  const expensesByCategory = useMemo(() => {
+    const expenses = transactions.filter((t) => t.type === 'expense');
+    const grouped = expenses.reduce((acc, t) => {
       const catId = t.categoryId;
       if (!acc[catId]) {
-        acc[catId] = { total: 0, category: t.category };
+        acc[catId] = { total: 0, category: t.category, transactions: [] };
       }
       acc[catId].total += t.amount;
+      acc[catId].transactions.push(t);
       return acc;
-    }, {} as Record<string, { total: number; category: typeof transactions[0]['category'] }>);
+    }, {} as Record<string, { total: number; category: typeof transactions[0]['category']; transactions: typeof transactions }>);
+    return Object.values(grouped).sort((a, b) => b.total - a.total);
+  }, [transactions]);
 
-  const sortedExpenses = Object.values(expensesByCategory).sort((a, b) => b.total - a.total);
-  const maxExpense = sortedExpenses[0]?.total || 1;
+  // Group income by category
+  const incomeByCategory = useMemo(() => {
+    const income = transactions.filter((t) => t.type === 'income');
+    const grouped = income.reduce((acc, t) => {
+      const catId = t.categoryId;
+      if (!acc[catId]) {
+        acc[catId] = { total: 0, category: t.category, transactions: [] };
+      }
+      acc[catId].total += t.amount;
+      acc[catId].transactions.push(t);
+      return acc;
+    }, {} as Record<string, { total: number; category: typeof transactions[0]['category']; transactions: typeof transactions }>);
+    return Object.values(grouped).sort((a, b) => b.total - a.total);
+  }, [transactions]);
+
+  const maxExpense = expensesByCategory[0]?.total || 1;
+  const maxIncome = incomeByCategory[0]?.total || 1;
+
+  const toggleItem = (id: string) => {
+    setOpenItems((prev) =>
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
+    );
+  };
+
+  // Generate month labels for chart
+  const monthLabels = useMemo(() => {
+    const months = [];
+    for (let i = -3; i <= 3; i++) {
+      const date = addMonths(selectedDate, i);
+      months.push({
+        label: format(date, 'MMM', { locale: ptBR }),
+        isCurrent: i === 0,
+        opacity: i === 0 ? 1 : i === -1 || i === 1 ? 0.8 : i === -2 || i === 2 ? 0.6 : 0.4,
+      });
+    }
+    return months;
+  }, [selectedDate]);
+
+  const budgetBalance = monthSummary.totalIncome - monthSummary.totalExpense;
+  const budgetPercentage = monthSummary.totalIncome > 0 
+    ? Math.round((budgetBalance / monthSummary.totalIncome) * 100) 
+    : 0;
 
   return (
     <AppLayout>
       <Header showAvatar showNotification userName={displayName} />
 
       <main className="flex flex-col gap-6 p-6">
-        {/* Summary */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="bg-card p-5 rounded-2xl border border-border/50">
-            <div className="flex items-center gap-2 mb-2">
-              <span className="material-symbols-outlined text-success text-lg">trending_up</span>
-              <span className="text-sm font-medium text-muted-foreground">Total Receitas</span>
-            </div>
-            <p className="text-2xl font-bold text-success">{formatCurrency(monthSummary.totalIncome)}</p>
-          </div>
-          <div className="bg-card p-5 rounded-2xl border border-border/50">
-            <div className="flex items-center gap-2 mb-2">
-              <span className="material-symbols-outlined text-destructive text-lg">trending_down</span>
-              <span className="text-sm font-medium text-muted-foreground">Total Despesas</span>
-            </div>
-            <p className="text-2xl font-bold text-destructive">{formatCurrency(monthSummary.totalExpense)}</p>
-          </div>
+        {/* Tabs */}
+        <div className="w-full bg-card p-1.5 rounded-2xl shadow-sm border border-border/50 flex">
+          <button
+            onClick={() => setActiveTab('budget')}
+            className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all text-center ${
+              activeTab === 'budget'
+                ? 'font-bold text-accent-foreground bg-accent shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            Orçamento
+          </button>
+          <button
+            onClick={() => setActiveTab('categories')}
+            className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all text-center ${
+              activeTab === 'categories'
+                ? 'font-bold text-accent-foreground bg-accent shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            Categorias
+          </button>
         </div>
 
-        {/* Balance */}
-        <div className="bg-gold-card p-6 rounded-2xl border border-accent/20">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-muted-foreground">Saldo do Mês</span>
-            <span className="material-symbols-outlined text-accent">account_balance</span>
+        {/* Main Section */}
+        <section className="w-full rounded-3xl bg-card p-6 shadow-lg border border-border/50">
+          {/* Month Selector */}
+          <div className="flex items-center justify-between mb-6">
+            <div className="w-full flex items-center justify-between gap-1 bg-secondary rounded-full p-2 px-4 border border-border/50">
+              <button
+                onClick={handlePrevMonth}
+                className="size-6 flex items-center justify-center rounded-full bg-card shadow-sm text-muted-foreground hover:text-foreground transition-transform active:scale-95"
+              >
+                <span className="material-symbols-outlined text-sm">chevron_left</span>
+              </button>
+              <span className="text-sm font-bold text-foreground mx-auto">{capitalizedMonth}</span>
+              <button
+                onClick={handleNextMonth}
+                className="size-6 flex items-center justify-center rounded-full bg-card shadow-sm text-muted-foreground hover:text-foreground transition-transform active:scale-95"
+              >
+                <span className="material-symbols-outlined text-sm">chevron_right</span>
+              </button>
+            </div>
           </div>
-          <p className={`text-3xl font-bold ${monthSummary.balance >= 0 ? 'text-success' : 'text-destructive'}`}>
-            {formatCurrency(monthSummary.balance)}
-          </p>
-        </div>
 
-        {/* Expenses by Category */}
-        <div className="bg-card p-6 rounded-2xl border border-border/50">
-          <h3 className="text-lg font-bold text-foreground mb-4">Despesas por Categoria</h3>
-          <div className="flex flex-col gap-4">
-            {sortedExpenses.map(({ total, category }) => (
-              <div key={category?.id || 'unknown'} className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div
-                      className="size-8 rounded-lg flex items-center justify-center"
-                      style={{ backgroundColor: `${category?.color}20` }}
-                    >
-                      <span
-                        className="material-symbols-outlined text-lg"
-                        style={{ color: category?.color }}
-                      >
-                        {category?.icon || 'category'}
-                      </span>
-                    </div>
-                    <span className="font-medium text-foreground">{category?.name || 'Sem categoria'}</span>
-                  </div>
-                  <span className="font-bold text-foreground">{formatCurrency(total)}</span>
-                </div>
-                <div className="h-2 bg-secondary rounded-full overflow-hidden">
-                  <div
-                    className="h-full rounded-full transition-all duration-500"
-                    style={{
-                      width: `${(total / maxExpense) * 100}%`,
-                      backgroundColor: category?.color || '#64748B',
-                    }}
-                  />
-                </div>
+          {/* Filters based on active tab */}
+          {activeTab === 'budget' ? (
+            <div className="flex gap-2 mb-8 overflow-x-auto no-scrollbar pb-1">
+              <button
+                onClick={() => setOpenItems((prev) => prev.includes('budget') ? prev : [...prev, 'budget'])}
+                className="flex-shrink-0 flex items-center gap-2 px-3 py-1.5 rounded-full bg-accent text-accent-foreground text-xs font-bold shadow-md shadow-accent/20 transition-all active:scale-95"
+              >
+                <span className="material-symbols-outlined text-[16px]">check</span>
+                Orçamento
+              </button>
+              <button
+                onClick={() => toggleItem('income')}
+                className="flex-shrink-0 flex items-center gap-2 px-3 py-1.5 rounded-full bg-success/10 text-success border border-success/20 text-xs font-bold transition-all active:scale-95 hover:bg-success/20"
+              >
+                <div className="size-2 rounded-full bg-success"></div>
+                Receita
+              </button>
+              <button
+                onClick={() => toggleItem('expense')}
+                className="flex-shrink-0 flex items-center gap-2 px-3 py-1.5 rounded-full bg-destructive/10 text-destructive border border-destructive/20 text-xs font-bold transition-all active:scale-95 hover:bg-destructive/20"
+              >
+                <div className="size-2 rounded-full bg-destructive"></div>
+                Despesa
+              </button>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-3 mb-8">
+              <div className="flex p-1 bg-secondary rounded-xl border border-border/50">
+                <button
+                  onClick={() => setFilterType('all')}
+                  className={`flex-1 py-2 rounded-lg text-xs font-medium transition-all ${
+                    filterType === 'all'
+                      ? 'font-bold text-foreground bg-card shadow-sm border border-border/50'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-card/50'
+                  }`}
+                >
+                  Todos
+                </button>
+                <button
+                  onClick={() => setFilterType('expense')}
+                  className={`flex-1 py-2 rounded-lg text-xs font-medium transition-all ${
+                    filterType === 'expense'
+                      ? 'font-bold text-foreground bg-card shadow-sm border border-border/50'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-card/50'
+                  }`}
+                >
+                  Despesa
+                </button>
+                <button
+                  onClick={() => setFilterType('income')}
+                  className={`flex-1 py-2 rounded-lg text-xs font-medium transition-all ${
+                    filterType === 'income'
+                      ? 'font-bold text-foreground bg-card shadow-sm border border-border/50'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-card/50'
+                  }`}
+                >
+                  Receita
+                </button>
               </div>
-            ))}
+              <Select value={selectedCategoryId} onValueChange={setSelectedCategoryId}>
+                <SelectTrigger className="w-full py-2.5 px-4 bg-secondary rounded-xl border border-border/50 text-xs font-medium hover:border-accent/30 transition-colors">
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <span className="material-symbols-outlined text-[18px]">category</span>
+                    <SelectValue placeholder="Todas as categorias" />
+                  </div>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas as categorias</SelectItem>
+                  {categories.map((cat) => (
+                    <SelectItem key={cat.id} value={cat.id}>
+                      {cat.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {/* Chart Area */}
+          <div className="flex items-stretch gap-3 mb-8 h-48 select-none w-full pr-1">
+            <div className="flex flex-col justify-between pb-6 text-[10px] font-semibold text-muted-foreground/70 text-right w-8 flex-shrink-0 pt-[1px] -mr-1 z-10">
+              <span>10k</span>
+              <span>7.5k</span>
+              <span>5.0k</span>
+              <span>2.5k</span>
+              <span>0</span>
+            </div>
+            <div className="relative flex-1 h-full pl-2">
+              {/* Grid lines */}
+              <div className="absolute inset-0 flex flex-col justify-between pointer-events-none pb-6">
+                <div className="w-full border-b border-dashed border-border/50 h-px"></div>
+                <div className="w-full border-b border-dashed border-border/50 h-px"></div>
+                <div className="w-full border-b border-dashed border-border/50 h-px"></div>
+                <div className="w-full border-b border-dashed border-border/50 h-px"></div>
+                <div className="w-full border-b border-dashed border-border/50 h-px"></div>
+              </div>
+              {/* Current month indicator */}
+              <div className="absolute left-1/2 -translate-x-1/2 top-0 bottom-6 w-px bg-accent z-0 opacity-40"></div>
+              {/* Chart lines */}
+              <svg className="absolute inset-0 w-full h-full pb-6 overflow-visible" preserveAspectRatio="none" viewBox="0 0 100 50">
+                <defs>
+                  <linearGradient id="gradGold" x1="0%" x2="0%" y1="0%" y2="100%">
+                    <stop offset="0%" style={{ stopColor: 'hsl(var(--accent))', stopOpacity: 0.25 }} />
+                    <stop offset="100%" style={{ stopColor: 'hsl(var(--accent))', stopOpacity: 0 }} />
+                  </linearGradient>
+                </defs>
+                {/* Income line */}
+                <path d="M0,15 C20,15 30,8 50,12 S80,15 100,10" fill="none" stroke="hsl(var(--success))" strokeLinecap="round" strokeWidth="1.2" />
+                {/* Expense line */}
+                <path d="M0,40 C20,38 30,35 50,38 S80,42 100,35" fill="none" stroke="hsl(var(--destructive))" strokeLinecap="round" strokeWidth="1.2" />
+                {/* Budget line */}
+                <path d="M0,25 C20,25 35,15 50,20 S80,10 100,18" fill="url(#gradGold)" stroke="hsl(var(--accent))" strokeLinecap="round" strokeWidth="1.2" />
+              </svg>
+              {/* Month labels */}
+              <div className="absolute bottom-0 w-full flex justify-between text-[10px] font-medium text-muted-foreground">
+                {monthLabels.map((month, index) => (
+                  <span
+                    key={index}
+                    className={`w-[14%] text-center ${
+                      month.isCurrent ? 'font-bold text-foreground scale-110 text-xs' : ''
+                    }`}
+                    style={{ opacity: month.opacity }}
+                  >
+                    {month.label.charAt(0).toUpperCase() + month.label.slice(1)}
+                  </span>
+                ))}
+              </div>
+            </div>
           </div>
-        </div>
+
+          {/* Details Section */}
+          <div className="flex flex-col gap-5 pt-4 border-t border-border/50">
+            {activeTab === 'budget' ? (
+              <>
+                {/* Budget Item */}
+                <Collapsible open={openItems.includes('budget')} onOpenChange={() => toggleItem('budget')}>
+                  <CollapsibleTrigger className="w-full">
+                    <div className="flex flex-col gap-1.5 cursor-pointer">
+                      <div className="flex justify-between items-end">
+                        <div className="flex items-center gap-2">
+                          <div className="w-1 h-3 rounded-full bg-accent"></div>
+                          <span className="text-xs font-bold text-accent flex items-center gap-1">
+                            Orçamento
+                            <span className="material-symbols-outlined text-[16px] transition-transform data-[state=open]:rotate-180">expand_more</span>
+                          </span>
+                        </div>
+                        <span className="text-sm font-bold text-foreground">{formatCurrency(budgetBalance)}</span>
+                      </div>
+                      <div className="relative w-full bg-secondary rounded-full h-2.5 overflow-hidden">
+                        <div className="absolute inset-0 bg-accent/10"></div>
+                        <div 
+                          className="bg-accent h-full rounded-full transition-all duration-1000 ease-out" 
+                          style={{ width: `${Math.max(0, Math.min(100, budgetPercentage))}%` }}
+                        />
+                      </div>
+                      <div className="flex justify-between text-[10px] text-muted-foreground">
+                        <span>Receita - Despesa</span>
+                        <span>{budgetPercentage}% da receita</span>
+                      </div>
+                    </div>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <div className="pt-3 pl-3 pr-1 flex flex-col gap-2 border-l-2 border-accent/20 ml-1.5 mt-2">
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-muted-foreground">Total Receitas</span>
+                        <span className="font-medium text-foreground">{formatCurrency(monthSummary.totalIncome)}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-muted-foreground">Total Despesas</span>
+                        <span className="font-medium text-foreground">{formatCurrency(monthSummary.totalExpense)}</span>
+                      </div>
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+
+                {/* Income Item */}
+                <Collapsible open={openItems.includes('income')} onOpenChange={() => toggleItem('income')}>
+                  <CollapsibleTrigger className="w-full">
+                    <div className="flex flex-col gap-1.5 cursor-pointer opacity-80 hover:opacity-100 transition-opacity">
+                      <div className="flex justify-between items-end">
+                        <div className="flex items-center gap-2">
+                          <div className="w-1 h-3 rounded-full bg-success"></div>
+                          <span className="text-xs font-bold text-success flex items-center gap-1">
+                            Receita
+                            <span className="material-symbols-outlined text-[16px] transition-transform data-[state=open]:rotate-180">expand_more</span>
+                          </span>
+                        </div>
+                        <span className="text-sm font-bold text-foreground">{formatCurrency(monthSummary.totalIncome)}</span>
+                      </div>
+                      <div className="relative w-full bg-secondary rounded-full h-2.5 overflow-hidden">
+                        <div className="absolute inset-0 bg-success/10"></div>
+                        <div className="bg-success h-full rounded-full transition-all duration-1000 ease-out" style={{ width: '100%' }} />
+                      </div>
+                    </div>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <div className="pt-3 pl-3 pr-1 flex flex-col gap-2 border-l-2 border-success/20 ml-1.5 mt-2">
+                      {incomeByCategory.map(({ total, category }) => (
+                        <div key={category?.id || 'unknown'} className="flex justify-between items-center text-xs">
+                          <span className="text-muted-foreground">{category?.name || 'Sem categoria'}</span>
+                          <span className="font-medium text-foreground">{formatCurrency(total)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+
+                {/* Expense Item */}
+                <Collapsible open={openItems.includes('expense')} onOpenChange={() => toggleItem('expense')}>
+                  <CollapsibleTrigger className="w-full">
+                    <div className="flex flex-col gap-1.5 cursor-pointer opacity-80 hover:opacity-100 transition-opacity">
+                      <div className="flex justify-between items-end">
+                        <div className="flex items-center gap-2">
+                          <div className="w-1 h-3 rounded-full bg-destructive"></div>
+                          <span className="text-xs font-bold text-destructive flex items-center gap-1">
+                            Despesa
+                            <span className="material-symbols-outlined text-[16px] transition-transform data-[state=open]:rotate-180">expand_more</span>
+                          </span>
+                        </div>
+                        <span className="text-sm font-bold text-foreground">{formatCurrency(monthSummary.totalExpense)}</span>
+                      </div>
+                      <div className="relative w-full bg-secondary rounded-full h-2.5 overflow-hidden">
+                        <div className="absolute inset-0 bg-destructive/10"></div>
+                        <div 
+                          className="bg-destructive h-full rounded-full transition-all duration-1000 ease-out" 
+                          style={{ width: `${monthSummary.totalIncome > 0 ? Math.round((monthSummary.totalExpense / monthSummary.totalIncome) * 100) : 0}%` }}
+                        />
+                      </div>
+                    </div>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <div className="pt-3 pl-3 pr-1 flex flex-col gap-2 border-l-2 border-destructive/20 ml-1.5 mt-2">
+                      {expensesByCategory.map(({ total, category }) => (
+                        <div key={category?.id || 'unknown'} className="flex justify-between items-center text-xs">
+                          <span className="text-muted-foreground">{category?.name || 'Sem categoria'}</span>
+                          <span className="font-medium text-foreground">{formatCurrency(total)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+              </>
+            ) : (
+              /* Categories Tab */
+              <>
+                {(filterType === 'all' || filterType === 'expense') && expensesByCategory.map(({ total, category, transactions: catTransactions }) => (
+                  <Collapsible key={category?.id || 'expense-unknown'} open={openItems.includes(`cat-${category?.id}`)} onOpenChange={() => toggleItem(`cat-${category?.id}`)}>
+                    <CollapsibleTrigger className="w-full">
+                      <div className="flex flex-col gap-1.5 cursor-pointer opacity-90 hover:opacity-100 transition-opacity">
+                        <div className="flex justify-between items-end">
+                          <div className="flex items-center gap-2">
+                            <div className="w-1 h-3 rounded-full" style={{ backgroundColor: category?.color || '#F43F5E' }}></div>
+                            <span className="text-xs font-bold flex items-center gap-1" style={{ color: category?.color || '#F43F5E' }}>
+                              {category?.name || 'Sem categoria'}
+                              <span className="material-symbols-outlined text-[16px] transition-transform data-[state=open]:rotate-180">expand_more</span>
+                            </span>
+                          </div>
+                          <span className="text-sm font-bold text-foreground">{formatCurrency(total)}</span>
+                        </div>
+                        <div className="relative w-full bg-secondary rounded-full h-2.5 overflow-hidden">
+                          <div className="absolute inset-0" style={{ backgroundColor: `${category?.color}10` }}></div>
+                          <div 
+                            className="h-full rounded-full transition-all duration-1000 ease-out" 
+                            style={{ 
+                              width: `${(total / maxExpense) * 100}%`,
+                              backgroundColor: category?.color || '#F43F5E'
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <div className="pt-3 pl-3 pr-1 flex flex-col gap-2 ml-1.5 mt-2" style={{ borderLeft: `2px solid ${category?.color}30` }}>
+                        {catTransactions.map((t) => (
+                          <div key={t.id} className="flex justify-between items-center text-xs">
+                            <span className="text-muted-foreground">{t.description}</span>
+                            <span className="font-medium text-foreground">{formatCurrency(t.amount)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+                ))}
+
+                {(filterType === 'all' || filterType === 'income') && incomeByCategory.map(({ total, category, transactions: catTransactions }) => (
+                  <Collapsible key={category?.id || 'income-unknown'} open={openItems.includes(`cat-income-${category?.id}`)} onOpenChange={() => toggleItem(`cat-income-${category?.id}`)}>
+                    <CollapsibleTrigger className="w-full">
+                      <div className="flex flex-col gap-1.5 cursor-pointer opacity-90 hover:opacity-100 transition-opacity">
+                        <div className="flex justify-between items-end">
+                          <div className="flex items-center gap-2">
+                            <div className="w-1 h-3 rounded-full" style={{ backgroundColor: category?.color || '#10B981' }}></div>
+                            <span className="text-xs font-bold flex items-center gap-1" style={{ color: category?.color || '#10B981' }}>
+                              {category?.name || 'Sem categoria'}
+                              <span className="material-symbols-outlined text-[16px] transition-transform data-[state=open]:rotate-180">expand_more</span>
+                            </span>
+                          </div>
+                          <span className="text-sm font-bold text-foreground">{formatCurrency(total)}</span>
+                        </div>
+                        <div className="relative w-full bg-secondary rounded-full h-2.5 overflow-hidden">
+                          <div className="absolute inset-0" style={{ backgroundColor: `${category?.color}10` }}></div>
+                          <div 
+                            className="h-full rounded-full transition-all duration-1000 ease-out" 
+                            style={{ 
+                              width: `${(total / maxIncome) * 100}%`,
+                              backgroundColor: category?.color || '#10B981'
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <div className="pt-3 pl-3 pr-1 flex flex-col gap-2 ml-1.5 mt-2" style={{ borderLeft: `2px solid ${category?.color}30` }}>
+                        {catTransactions.map((t) => (
+                          <div key={t.id} className="flex justify-between items-center text-xs">
+                            <span className="text-muted-foreground">{t.description}</span>
+                            <span className="font-medium text-foreground">{formatCurrency(t.amount)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+                ))}
+              </>
+            )}
+          </div>
+        </section>
       </main>
     </AppLayout>
   );
