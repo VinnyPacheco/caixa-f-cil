@@ -189,7 +189,10 @@ export default function Reports() {
             <div className="flex flex-col gap-3 mb-8">
               <div className="flex p-1 bg-secondary rounded-xl border border-border/50">
                 <button
-                  onClick={() => setFilterType('all')}
+                  onClick={() => {
+                    setFilterType('all');
+                    setSelectedCategoryId('all');
+                  }}
                   className={`flex-1 py-2 rounded-lg text-xs font-medium transition-all ${
                     filterType === 'all'
                       ? 'font-bold text-foreground bg-card shadow-sm border border-border/50'
@@ -199,7 +202,10 @@ export default function Reports() {
                   Todos
                 </button>
                 <button
-                  onClick={() => setFilterType('expense')}
+                  onClick={() => {
+                    setFilterType('expense');
+                    setSelectedCategoryId('all');
+                  }}
                   className={`flex-1 py-2 rounded-lg text-xs font-medium transition-all ${
                     filterType === 'expense'
                       ? 'font-bold text-foreground bg-card shadow-sm border border-border/50'
@@ -209,7 +215,10 @@ export default function Reports() {
                   Despesa
                 </button>
                 <button
-                  onClick={() => setFilterType('income')}
+                  onClick={() => {
+                    setFilterType('income');
+                    setSelectedCategoryId('all');
+                  }}
                   className={`flex-1 py-2 rounded-lg text-xs font-medium transition-all ${
                     filterType === 'income'
                       ? 'font-bold text-foreground bg-card shadow-sm border border-border/50'
@@ -228,11 +237,16 @@ export default function Reports() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todas as categorias</SelectItem>
-                  {categories.map((cat) => (
-                    <SelectItem key={cat.id} value={cat.id}>
-                      {cat.name}
-                    </SelectItem>
-                  ))}
+                  {categories
+                    .filter((cat) => filterType === 'all' || cat.type === filterType)
+                    .map((cat) => (
+                      <SelectItem key={cat.id} value={cat.id}>
+                        {filterType === 'all' 
+                          ? `${cat.type === 'expense' ? 'Despesa' : 'Receita'} - ${cat.name}`
+                          : cat.name
+                        }
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </div>
