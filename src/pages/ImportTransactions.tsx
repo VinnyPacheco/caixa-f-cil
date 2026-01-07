@@ -43,6 +43,7 @@ export default function ImportTransactions() {
   const [selectedParserId, setSelectedParserId] = useState<string>('');
   const [parsedTransactions, setParsedTransactions] = useState<ParsedTransaction[]>([]);
   const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set());
+  const [transactionCategories, setTransactionCategories] = useState<Record<number, string>>({});
   const [isImporting, setIsImporting] = useState(false);
   const [fileName, setFileName] = useState<string>('');
 
@@ -100,6 +101,15 @@ export default function ImportTransactions() {
       setParsedTransactions(transactions);
       // Select all by default
       setSelectedItems(new Set(transactions.map((_, index) => index)));
+      // Set default categories based on transaction type
+      const defaultCategories: Record<number, string> = {};
+      transactions.forEach((t, index) => {
+        const defaultCat = t.type === 'expense' ? defaultExpenseCategory : defaultIncomeCategory;
+        if (defaultCat) {
+          defaultCategories[index] = defaultCat.id;
+        }
+      });
+      setTransactionCategories(defaultCategories);
 
       toast({
         title: 'Arquivo lido com sucesso',
@@ -174,16 +184,20 @@ export default function ImportTransactions() {
       let successCount = 0;
       let errorCount = 0;
 
-      for (const parsed of transactionsToImport) {
-        const categoryId =
-          parsed.type === 'expense'
-            ? defaultExpenseCategory?.id
-            : defaultIncomeCategory?.id;
+      for (let i = 0; i < parsedTransactions.length; i++) {
+        if (!selectedItems.has(i)) continue;
+        
+        const parsed = parsedTransactions[i];
+        const categoryId = transactionCategories[i];
 
         if (!categoryId) {
           errorCount++;
           continue;
         }
+        
+        // Get category to determine type (in case user changed category to a different type)
+        const category = categories.find(c => c.id === categoryId);
+        const transactionType = category?.type || parsed.type;
 
         try {
           await createTransaction(
@@ -193,7 +207,7 @@ export default function ImportTransactions() {
               description: parsed.description,
               amount: parsed.amount,
               date: parsed.date,
-              type: parsed.type,
+              type: transactionType,
               isPaid: true,
               recurrenceType: 'once',
             },
@@ -219,6 +233,7 @@ export default function ImportTransactions() {
         // Clear state and navigate
         setParsedTransactions([]);
         setSelectedItems(new Set());
+        setTransactionCategories({});
         setFileName('');
         navigate('/transactions');
       } else {
@@ -353,6 +368,7 @@ export default function ImportTransactions() {
                           </TableHead>
                           <TableHead>Data</TableHead>
                           <TableHead>Descrição</TableHead>
+                          <TableHead>Categoria</TableHead>
                           <TableHead className="text-right">Valor</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -370,6 +386,34 @@ export default function ImportTransactions() {
                             </TableCell>
                             <TableCell className="text-sm max-w-[200px] truncate">
                               {transaction.description}
+                            </TableCell>
+                            <TableCell className="min-w-[150px]">
+                              <Select
+                                value={transactionCategories[index] || ''}
+                                onValueChange={(value) => {
+                                  setTransactionCategories(prev => ({
+                                    ...prev,
+                                    [index]: value
+                                  }));
+                                }}
+                              >
+                                <SelectTrigger className="h-8 text-xs">
+                                  <SelectValue placeholder="Categoria" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {categories.map((cat) => (
+                                    <SelectItem key={cat.id} value={cat.id}>
+                                      <span className="flex items-center gap-2">
+                                        <span
+                                          className="size-2 rounded-full"
+                                          style={{ backgroundColor: cat.color }}
+                                        />
+                                        {cat.type === 'expense' ? 'Despesa' : 'Receita'} - {cat.name}
+                                      </span>
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
                             </TableCell>
                             <TableCell
                               className={`text-right whitespace-nowrap text-sm font-medium ${
@@ -413,6 +457,7 @@ export default function ImportTransactions() {
                     onClick={() => {
                       setParsedTransactions([]);
                       setSelectedItems(new Set());
+                      setTransactionCategories({});
                       setFileName('');
                     }}
                     disabled={isImporting}
