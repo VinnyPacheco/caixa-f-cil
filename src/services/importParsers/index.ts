@@ -3,6 +3,7 @@ import { itauParser } from './itauParser';
 import { mercadoPagoParser } from './mercadoPagoParser';
 import { interParser } from './interParser';
 import { nubankParser } from './nubankParser';
+import { bancoBrasilParser } from './bancoBrasilParser';
 
 // Registry of all available parsers
 export const importParsers: ImportParser[] = [
@@ -10,6 +11,7 @@ export const importParsers: ImportParser[] = [
   mercadoPagoParser,
   interParser,
   nubankParser,
+  bancoBrasilParser,
   // Add new parsers here as needed
 ];
 
