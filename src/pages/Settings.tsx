@@ -6,16 +6,19 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useVoiceSettings } from '@/contexts/VoiceSettingsContext';
 import { useNotificationSettings } from '@/contexts/NotificationSettingsContext';
 import { useProfile } from '@/hooks/useProfile';
+import { usePWAInstall } from '@/hooks/usePWAInstall';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { fetchProfile, updateProfile, uploadAvatar } from '@/services/profileService';
+
 export default function Settings() {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const { autoSaveVoiceTransaction, setAutoSaveVoiceTransaction } = useVoiceSettings();
   const { notificationsEnabled, setNotificationsEnabled } = useNotificationSettings();
   const { displayName } = useProfile();
+  const { isInstallable, isInstalled, promptInstall, showIOSInstructions } = usePWAInstall();
   
   const [fullName, setFullName] = useState('');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -228,6 +231,51 @@ export default function Settings() {
             </div>
             <span className="material-symbols-outlined text-muted-foreground">chevron_right</span>
           </button>
+
+          {/* PWA Install */}
+          {isInstalled ? (
+            <div className="w-full flex items-center gap-4 p-4">
+              <div className="size-10 rounded-xl bg-green-500/10 flex items-center justify-center">
+                <span className="material-symbols-outlined text-green-500">install_mobile</span>
+              </div>
+              <div className="flex-1 text-left">
+                <p className="font-semibold text-foreground">App Instalado</p>
+                <p className="text-sm text-muted-foreground">Você está usando a versão instalada</p>
+              </div>
+              <span className="material-symbols-outlined text-green-500">check_circle</span>
+            </div>
+          ) : isInstallable ? (
+            <button
+              onClick={async () => {
+                const success = await promptInstall();
+                if (success) {
+                  toast.success('App instalado com sucesso!');
+                }
+              }}
+              className="w-full flex items-center gap-4 p-4 hover:bg-secondary/50 transition-colors"
+            >
+              <div className="size-10 rounded-xl bg-accent/10 flex items-center justify-center">
+                <span className="material-symbols-outlined text-accent">install_mobile</span>
+              </div>
+              <div className="flex-1 text-left">
+                <p className="font-semibold text-foreground">Instalar App</p>
+                <p className="text-sm text-muted-foreground">Adicione à tela inicial</p>
+              </div>
+              <span className="material-symbols-outlined text-accent">download</span>
+            </button>
+          ) : showIOSInstructions ? (
+            <div className="w-full flex items-center gap-4 p-4">
+              <div className="size-10 rounded-xl bg-accent/10 flex items-center justify-center">
+                <span className="material-symbols-outlined text-accent">install_mobile</span>
+              </div>
+              <div className="flex-1 text-left">
+                <p className="font-semibold text-foreground">Instalar App</p>
+                <p className="text-sm text-muted-foreground">
+                  Toque em <span className="inline-flex items-center"><span className="material-symbols-outlined text-xs">ios_share</span></span> e depois "Adicionar à Tela de Início"
+                </p>
+              </div>
+            </div>
+          ) : null}
         </div>
 
         {/* About Section */}
