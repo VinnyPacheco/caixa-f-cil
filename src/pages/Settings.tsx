@@ -263,7 +263,7 @@ export default function Settings() {
               </div>
               <span className="material-symbols-outlined text-accent">download</span>
             </button>
-          ) : showIOSInstructions ? (
+          ) : (
             <div className="w-full flex items-center gap-4 p-4">
               <div className="size-10 rounded-xl bg-accent/10 flex items-center justify-center">
                 <span className="material-symbols-outlined text-accent">install_mobile</span>
@@ -271,11 +271,14 @@ export default function Settings() {
               <div className="flex-1 text-left">
                 <p className="font-semibold text-foreground">Instalar App</p>
                 <p className="text-sm text-muted-foreground">
-                  Toque em <span className="inline-flex items-center"><span className="material-symbols-outlined text-xs">ios_share</span></span> e depois "Adicionar à Tela de Início"
+                  {showIOSInstructions 
+                    ? <>Toque em <span className="material-symbols-outlined text-xs align-middle">ios_share</span> e "Adicionar à Tela de Início"</>
+                    : "Acesse pelo navegador para instalar"
+                  }
                 </p>
               </div>
             </div>
-          ) : null}
+          )}
         </div>
 
         {/* About Section */}
