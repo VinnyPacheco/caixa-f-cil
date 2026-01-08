@@ -44,6 +44,7 @@ export default function ImportTransactions() {
   const [parsedTransactions, setParsedTransactions] = useState<ParsedTransaction[]>([]);
   const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set());
   const [transactionCategories, setTransactionCategories] = useState<Record<number, string>>({});
+  const [transactionDescriptions, setTransactionDescriptions] = useState<Record<number, string>>({});
   const [isImporting, setIsImporting] = useState(false);
   const [fileName, setFileName] = useState<string>('');
 
@@ -204,7 +205,7 @@ export default function ImportTransactions() {
             {
               accountId: selectedAccountId,
               categoryId,
-              description: parsed.description,
+              description: transactionDescriptions[i] ?? parsed.description,
               amount: parsed.amount,
               date: parsed.date,
               type: transactionType,
@@ -234,6 +235,7 @@ export default function ImportTransactions() {
         setParsedTransactions([]);
         setSelectedItems(new Set());
         setTransactionCategories({});
+        setTransactionDescriptions({});
         setFileName('');
         navigate('/transactions');
       } else {
@@ -384,8 +386,18 @@ export default function ImportTransactions() {
                             <TableCell className="whitespace-nowrap text-sm">
                               {formatDate(transaction.date)}
                             </TableCell>
-                            <TableCell className="text-sm max-w-[200px] truncate">
-                              {transaction.description}
+                            <TableCell className="min-w-[200px]">
+                              <input
+                                type="text"
+                                value={transactionDescriptions[index] ?? transaction.description}
+                                onChange={(e) => {
+                                  setTransactionDescriptions(prev => ({
+                                    ...prev,
+                                    [index]: e.target.value
+                                  }));
+                                }}
+                                className="w-full h-8 px-2 text-sm bg-background border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                              />
                             </TableCell>
                             <TableCell className="min-w-[150px]">
                               <Select
@@ -458,6 +470,7 @@ export default function ImportTransactions() {
                       setParsedTransactions([]);
                       setSelectedItems(new Set());
                       setTransactionCategories({});
+                      setTransactionDescriptions({});
                       setFileName('');
                     }}
                     disabled={isImporting}
