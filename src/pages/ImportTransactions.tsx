@@ -413,17 +413,19 @@ export default function ImportTransactions() {
                                   <SelectValue placeholder="Categoria" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  {categories.map((cat) => (
-                                    <SelectItem key={cat.id} value={cat.id}>
-                                      <span className="flex items-center gap-2">
-                                        <span
-                                          className="size-2 rounded-full"
-                                          style={{ backgroundColor: cat.color }}
-                                        />
-                                        {cat.type === 'expense' ? 'Despesa' : 'Receita'} - {cat.name}
-                                      </span>
-                                    </SelectItem>
-                                  ))}
+                                  {categories
+                                    .filter((cat) => cat.type === transaction.type)
+                                    .map((cat) => (
+                                      <SelectItem key={cat.id} value={cat.id}>
+                                        <span className="flex items-center gap-2">
+                                          <span
+                                            className="size-2 rounded-full"
+                                            style={{ backgroundColor: cat.color }}
+                                          />
+                                          {cat.name}
+                                        </span>
+                                      </SelectItem>
+                                    ))}
                                 </SelectContent>
                               </Select>
                             </TableCell>
