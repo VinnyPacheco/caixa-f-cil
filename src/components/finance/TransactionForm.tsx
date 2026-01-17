@@ -11,12 +11,15 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Transaction, TransactionType, RecurrenceType, Category, Account } from '@/types/finance';
+import { Tag } from '@/types/tag';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Calendar } from '@/components/ui/calendar';
 import { Copy, Trash2 } from 'lucide-react';
 import { RecurringActionDialog, RecurringActionType } from './RecurringActionDialog';
+import { TagSelector } from './TagSelector';
+import { useTags, useTransactionTags } from '@/hooks/useTags';
 
 export type RecurringUpdateAction = {
   type: RecurringActionType;
@@ -29,8 +32,8 @@ interface TransactionFormProps {
   transaction?: Transaction | null;
   categories: Category[];
   accounts: Account[];
-  onSave: (transaction: Omit<Transaction, 'id' | 'orderIndex'>) => void;
-  onUpdate?: (id: string, transaction: Partial<Transaction>, recurringAction?: RecurringUpdateAction) => void;
+  onSave: (transaction: Omit<Transaction, 'id' | 'orderIndex'>, tagIds?: string[]) => void;
+  onUpdate?: (id: string, transaction: Partial<Transaction>, recurringAction?: RecurringUpdateAction, tagIds?: string[]) => void;
   onDelete?: (id: string, recurringAction?: RecurringUpdateAction) => void;
 }
 
@@ -50,6 +53,11 @@ export function TransactionForm({
   const [showRecurringDialog, setShowRecurringDialog] = useState(false);
   const [recurringActionType, setRecurringActionType] = useState<'edit' | 'delete'>('edit');
   const [pendingSubmitData, setPendingSubmitData] = useState<Partial<Transaction> | null>(null);
+
+  // Tags
+  const { tags: availableTags, findOrCreateTag } = useTags();
+  const { tags: transactionTags } = useTransactionTags(transaction?.id);
+  const [selectedTags, setSelectedTags] = useState<Tag[]>([]);
 
   // Check if this is a recurring or installment transaction
   const isRecurring = transaction?.recurrenceType === 'recurring';
@@ -118,8 +126,16 @@ export function TransactionForm({
       setIsPaid(false);
       setAutoSettle(false);
       setNotes('');
+      setSelectedTags([]);
     }
   }, [transaction, accounts, open]);
+
+  // Load transaction tags when editing
+  useEffect(() => {
+    if (transactionTags.length > 0) {
+      setSelectedTags(transactionTags);
+    }
+  }, [transactionTags]);
 
   const filteredCategories = categories.filter((c) => c.type === type);
 
@@ -152,6 +168,8 @@ export function TransactionForm({
       startDate: recurrence !== 'once' ? format(date, 'yyyy-MM-dd') : undefined,
     };
 
+    const tagIds = selectedTags.map(t => t.id);
+
     if (isEditing && onUpdate) {
       if (needsRecurringAction) {
         // Show recurring action dialog for recurring/installment transactions
@@ -160,7 +178,7 @@ export function TransactionForm({
         setShowRecurringDialog(true);
       } else {
         // For one-time transactions, update directly
-        onUpdate(transaction.id, transactionData);
+        onUpdate(transaction.id, transactionData, undefined, tagIds);
         toast({
           title: 'Lançamento atualizado!',
           description: `${type === 'income' ? 'Receita' : 'Despesa'} atualizada com sucesso.`,
@@ -168,7 +186,7 @@ export function TransactionForm({
         onOpenChange(false);
       }
     } else {
-      onSave(transactionData);
+      onSave(transactionData, tagIds);
       toast({
         title: 'Lançamento salvo!',
         description: `${type === 'income' ? 'Receita' : 'Despesa'} de R$ ${formatAmountDisplay(amountCents)} registrada com sucesso.`,
@@ -186,12 +204,14 @@ export function TransactionForm({
       ? originalId.split('-inst-')[0].replace(/-\d{4}-\d{2}$/, '')
       : originalId;
 
+    const tagIds = selectedTags.map(t => t.id);
+
     if (recurringActionType === 'delete' && onDelete) {
       onDelete(cleanId, { type: action, instanceDate });
       setShowDeleteConfirm(false);
       onOpenChange(false);
     } else if (recurringActionType === 'edit' && onUpdate && pendingSubmitData) {
-      onUpdate(cleanId, pendingSubmitData, { type: action, instanceDate });
+      onUpdate(cleanId, pendingSubmitData, { type: action, instanceDate }, tagIds);
       toast({
         title: 'Lançamento atualizado!',
         description: `${type === 'income' ? 'Receita' : 'Despesa'} atualizada com sucesso.`,
@@ -199,6 +219,20 @@ export function TransactionForm({
       setPendingSubmitData(null);
       onOpenChange(false);
     }
+  };
+
+  const handleAddTag = (tag: Tag) => {
+    if (!selectedTags.some(t => t.id === tag.id)) {
+      setSelectedTags([...selectedTags, tag]);
+    }
+  };
+
+  const handleRemoveTag = (tagId: string) => {
+    setSelectedTags(selectedTags.filter(t => t.id !== tagId));
+  };
+
+  const handleCreateTag = async (name: string, color: string): Promise<Tag> => {
+    return findOrCreateTag({ name, color });
   };
 
   const handleDeleteClick = () => {
@@ -441,6 +475,15 @@ export function TransactionForm({
               <div className="w-11 h-6 bg-muted peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-border after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent"></div>
             </label>
           </div>
+
+          {/* Tags */}
+          <TagSelector
+            selectedTags={selectedTags}
+            availableTags={availableTags}
+            onAddTag={handleAddTag}
+            onRemoveTag={handleRemoveTag}
+            onCreateTag={handleCreateTag}
+          />
 
           {/* Notes */}
           <div className="space-y-2">
