@@ -3,15 +3,18 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { Header } from '@/components/layout/Header';
 import { TransactionType, RecurrenceType } from '@/types/finance';
+import { Tag } from '@/types/tag';
 import { useToast } from '@/hooks/use-toast';
 import { useAccounts } from '@/hooks/useAccounts';
 import { useCategories } from '@/hooks/useCategoriesData';
 import { useTransactions } from '@/hooks/useTransactions';
 import { useVoiceSettings } from '@/contexts/VoiceSettingsContext';
+import { useTags } from '@/hooks/useTags';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Copy, Loader2, CheckCircle } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
+import { TagSelector } from '@/components/finance/TagSelector';
 import { 
   parseVoiceTransaction, 
   matchCategoryByName, 
@@ -46,6 +49,7 @@ export default function NewTransaction() {
   const { categories, isLoading: isLoadingCategories } = useCategories();
   const { addTransaction } = useTransactions(new Date());
   const { autoSaveVoiceTransaction } = useVoiceSettings();
+  const { tags: availableTags, findOrCreateTag } = useTags();
   
   const [type, setType] = useState<TransactionType>('expense');
   const [amountCents, setAmountCents] = useState(0);
@@ -57,6 +61,7 @@ export default function NewTransaction() {
   const [installmentCount, setInstallmentCount] = useState(2);
   const [autoPay, setAutoPay] = useState(false);
   const [notes, setNotes] = useState('');
+  const [selectedTags, setSelectedTags] = useState<Tag[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [categoryInitialized, setCategoryInitialized] = useState(false);
   const [voiceProcessed, setVoiceProcessed] = useState(false);
@@ -77,6 +82,7 @@ export default function NewTransaction() {
     setInstallmentCount(2);
     setAutoPay(false);
     setNotes('');
+    setSelectedTags([]);
     setCategoryInitialized(false);
     setVoiceProcessed(false);
     voiceProcessedRef.current = false;
@@ -384,6 +390,9 @@ export default function NewTransaction() {
         startDate: date ? format(date, 'yyyy-MM-dd') : undefined,
       });
 
+      // Note: Tags will be added when editing the transaction
+      // since addTransaction doesn't return the created transaction ID
+
       // Play confirmation sound
       playConfirmationSound();
 
@@ -397,6 +406,20 @@ export default function NewTransaction() {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleAddTag = (tag: Tag) => {
+    if (!selectedTags.some(t => t.id === tag.id)) {
+      setSelectedTags([...selectedTags, tag]);
+    }
+  };
+
+  const handleRemoveTag = (tagId: string) => {
+    setSelectedTags(selectedTags.filter(t => t.id !== tagId));
+  };
+
+  const handleCreateTag = async (name: string, color: string): Promise<Tag> => {
+    return findOrCreateTag({ name, color });
   };
 
   const isLoading = isLoadingAccounts || isLoadingCategories;
@@ -636,6 +659,15 @@ export default function NewTransaction() {
               />
             </div>
           </div>
+
+          {/* Tags */}
+          <TagSelector
+            selectedTags={selectedTags}
+            availableTags={availableTags}
+            onAddTag={handleAddTag}
+            onRemoveTag={handleRemoveTag}
+            onCreateTag={handleCreateTag}
+          />
         </div>
       </main>
 

@@ -2,9 +2,11 @@ import { forwardRef } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { TransactionWithBalance } from '@/types/finance';
+import { Tag } from '@/types/tag';
 import { formatCurrency } from '@/lib/format';
 import { differenceInDays, parseISO, startOfDay } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { TagDots } from './TagSelector';
 
 type DueStatus = 'overdue' | 'due-soon' | 'normal';
 
@@ -24,6 +26,7 @@ function getDueStatus(transaction: TransactionWithBalance): DueStatus {
 
 interface TransactionItemProps {
   transaction: TransactionWithBalance;
+  tags?: Tag[];
   showDragHandle?: boolean;
   showBalance?: boolean;
   isReadOnly?: boolean;
@@ -32,7 +35,7 @@ interface TransactionItemProps {
 }
 
 export const TransactionItem = forwardRef<HTMLDivElement, TransactionItemProps>(
-  ({ transaction, showDragHandle = true, showBalance = true, isReadOnly = false, onTogglePaid, onClick }, ref) => {
+  ({ transaction, tags = [], showDragHandle = true, showBalance = true, isReadOnly = false, onTogglePaid, onClick }, ref) => {
     const isIncome = transaction.type === 'income';
     const category = transaction.category;
     const dueStatus = getDueStatus(transaction);
@@ -84,9 +87,12 @@ export const TransactionItem = forwardRef<HTMLDivElement, TransactionItemProps>(
         
         {/* Middle: description + category */}
         <div className="flex flex-col justify-center flex-1 min-w-0">
-          <p className="text-foreground text-base font-bold line-clamp-1">
-            {transaction.description}
-          </p>
+          <div className="flex items-center gap-2">
+            <p className="text-foreground text-base font-bold line-clamp-1">
+              {transaction.description}
+            </p>
+            {tags.length > 0 && <TagDots tags={tags} />}
+          </div>
           <p className="text-muted-foreground text-sm font-normal">
             {category?.name || 'Sem categoria'}
           </p>
@@ -114,6 +120,7 @@ TransactionItem.displayName = 'TransactionItem';
 // Sortable wrapper for drag and drop
 export function SortableTransactionItem({
   transaction,
+  tags = [],
   showBalance = true,
   onTogglePaid,
   onClick,
@@ -174,9 +181,12 @@ export function SortableTransactionItem({
       
       {/* Middle: description + category */}
       <div className="flex flex-col justify-center flex-1 min-w-0">
-        <p className="text-foreground text-base font-bold line-clamp-1">
-          {transaction.description}
-        </p>
+        <div className="flex items-center gap-2">
+          <p className="text-foreground text-base font-bold line-clamp-1">
+            {transaction.description}
+          </p>
+          {tags.length > 0 && <TagDots tags={tags} />}
+        </div>
         <p className="text-muted-foreground text-sm font-normal">
           {category?.name || 'Sem categoria'}
         </p>
