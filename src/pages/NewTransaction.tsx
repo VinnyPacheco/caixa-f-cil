@@ -374,7 +374,8 @@ export default function NewTransaction() {
     const numericAmount = amountCents / 100;
 
     try {
-      addTransaction({
+      const tagIds = selectedTags.map(t => t.id);
+      await addTransaction({
         accountId,
         categoryId,
         description,
@@ -388,10 +389,7 @@ export default function NewTransaction() {
         autoSettle: autoPay,
         notes: notes || undefined,
         startDate: date ? format(date, 'yyyy-MM-dd') : undefined,
-      });
-
-      // Note: Tags will be added when editing the transaction
-      // since addTransaction doesn't return the created transaction ID
+      }, tagIds.length > 0 ? tagIds : undefined);
 
       // Play confirmation sound
       playConfirmationSound();
