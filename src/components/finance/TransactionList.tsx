@@ -18,8 +18,10 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { TransactionWithBalance } from '@/types/finance';
+import { Tag } from '@/types/tag';
 import { SortableTransactionItem, TransactionItem } from './TransactionItem';
 import { groupTransactionsByDate } from '@/lib/format';
+import { useTransactionTagsBulk } from '@/hooks/useTags';
 
 interface TransactionListProps {
   transactions: TransactionWithBalance[];
@@ -33,6 +35,7 @@ interface DroppableDateGroupProps {
   date: string;
   label: string;
   transactions: TransactionWithBalance[];
+  tagsMap: Record<string, Tag[]>;
   onTogglePaid: (id: string) => void;
   onTransactionClick?: (transaction: TransactionWithBalance) => void;
   activeId: string | null;
@@ -42,6 +45,7 @@ function DroppableDateGroup({
   date,
   label,
   transactions,
+  tagsMap,
   onTogglePaid,
   onTransactionClick,
   activeId,
@@ -52,6 +56,21 @@ function DroppableDateGroup({
   });
 
   const transactionIds = transactions.map((t) => t.id);
+
+  // Helper to get tags for a transaction, considering parent IDs
+  const getTagsForTransaction = (transaction: TransactionWithBalance): Tag[] => {
+    // Try getting tags by current ID first
+    const directTags = tagsMap[transaction.id];
+    if (directTags && directTags.length > 0) return directTags;
+    
+    // If this is a virtual instance, try parent ID
+    if (transaction.parentId) {
+      const parentTags = tagsMap[transaction.parentId];
+      if (parentTags && parentTags.length > 0) return parentTags;
+    }
+    
+    return [];
+  };
 
   return (
     <div key={date} className="flex flex-col gap-3">
@@ -69,6 +88,7 @@ function DroppableDateGroup({
             <SortableTransactionItem
               key={transaction.id}
               transaction={transaction}
+              tags={getTagsForTransaction(transaction)}
               onTogglePaid={onTogglePaid}
               onClick={() => onTransactionClick?.(transaction)}
             />
@@ -94,6 +114,19 @@ export function TransactionList({
   const [activeTransaction, setActiveTransaction] = useState<TransactionWithBalance | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const pendingDateChangeRef = useRef<string | null>(null);
+
+  // Get all transaction IDs including parent IDs for tag lookup
+  const transactionIds = useMemo(() => {
+    const ids = new Set<string>();
+    transactions.forEach(t => {
+      ids.add(t.id);
+      if (t.parentId) ids.add(t.parentId);
+    });
+    return Array.from(ids);
+  }, [transactions]);
+
+  // Fetch tags for all transactions
+  const { data: tagsMap = {} } = useTransactionTagsBulk(transactionIds);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -191,6 +224,7 @@ export function TransactionList({
             date={group.date}
             label={group.label}
             transactions={group.transactions}
+            tagsMap={tagsMap}
             onTogglePaid={onTogglePaid}
             onTransactionClick={onTransactionClick}
             activeId={activeId}
@@ -202,6 +236,7 @@ export function TransactionList({
         {activeTransaction && (
           <TransactionItem
             transaction={activeTransaction}
+            tags={tagsMap[activeTransaction.id] || tagsMap[activeTransaction.parentId || ''] || []}
             showDragHandle={false}
           />
         )}

@@ -17,6 +17,7 @@ import {
 } from '@/services/recurringExceptionsService';
 import { fetchAccounts } from '@/services/accountsService';
 import { fetchCategories } from '@/services/categoriesService';
+import { setTransactionTags } from '@/services/tagsService';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { calculateRunningBalances } from '@/lib/format';
@@ -356,21 +357,46 @@ export function useMultiMonthTransactions(selectedDate: Date, additionalMonths: 
     }
   }, [transactions, togglePaidMutation]);
 
-  // Add new transaction
-  const addTransaction = useCallback((transaction: Omit<Transaction, 'id' | 'orderIndex'>) => {
-    createMutation.mutate(transaction);
-  }, [createMutation]);
+  // Add new transaction with optional tags
+  const addTransaction = useCallback(async (transaction: Omit<Transaction, 'id' | 'orderIndex'>, tagIds?: string[]) => {
+    if (!user) return;
+    try {
+      const createdTransaction = await createMutation.mutateAsync(transaction);
+      if (tagIds && tagIds.length > 0 && createdTransaction) {
+        await setTransactionTags(createdTransaction.id, tagIds, user.id);
+        queryClient.invalidateQueries({ queryKey: ['transaction-tags-bulk'] });
+      }
+    } catch (error) {
+      // Error already handled by mutation
+    }
+  }, [createMutation, user, queryClient]);
 
   // Update existing transaction with recurring action support
   const updateTransactionFn = useCallback(async (
     id: string, 
     updates: Partial<Transaction>,
-    recurringAction?: RecurringUpdateAction
+    recurringAction?: RecurringUpdateAction,
+    tagIds?: string[]
   ) => {
     if (!user) return;
     const originalTransaction = transactions.find(t => t.id === id || t.parentId === id);
     const isRecurringOrInstallment = originalTransaction && 
       (originalTransaction.recurrenceType === 'recurring' || originalTransaction.recurrenceType === 'installment');
+
+    // Handle tags update for the real transaction id
+    const realTransactionId = originalTransaction?.parentId || id;
+    // Only update tags if it's a real DB ID (not a virtual instance ID)
+    const isRealId = !id.includes('-inst-') && !id.match(/-\d{4}-\d{2}$/);
+    
+    if (tagIds !== undefined && isRealId) {
+      try {
+        await setTransactionTags(realTransactionId, tagIds, user.id);
+        queryClient.invalidateQueries({ queryKey: ['transaction-tags-bulk'] });
+        queryClient.invalidateQueries({ queryKey: ['transaction-tags'] });
+      } catch (error) {
+        console.error('Error updating tags:', error);
+      }
+    }
 
     if (!isRecurringOrInstallment || !recurringAction) {
       updateMutation.mutate({ id, data: updates });
