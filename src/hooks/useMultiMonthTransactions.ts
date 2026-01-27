@@ -52,11 +52,17 @@ function expandTransactionsForMonth(
     if (t.recurrenceType === 'recurring') {
       const dayOfMonth = transactionStartDate.getDate();
       const instanceDate = new Date(targetDate.getFullYear(), targetDate.getMonth(), dayOfMonth);
+      const transactionEndDate = t.endDate ? parseISO(t.endDate) : null;
       
+      // Check if this instance is within valid range (after start, before end)
       if (!isAfter(transactionStartDate, end)) {
+        // If the original transaction date is in this month, use it
         if (isWithinInterval(transactionDate, { start, end })) {
           result.push(t);
-        } else if (!isBefore(instanceDate, transactionStartDate)) {
+        } 
+        // Otherwise, generate a virtual instance if within start/end bounds
+        else if (!isBefore(instanceDate, transactionStartDate) && 
+                 (!transactionEndDate || isBefore(instanceDate, transactionEndDate))) {
           const instanceId = `${t.parentId || t.id}-${format(instanceDate, 'yyyy-MM')}`;
           result.push({
             ...t,
@@ -184,22 +190,28 @@ export function useMultiMonthTransactions(selectedDate: Date, additionalMonths: 
     const selectedMonthStart = startOfMonth(selectedDate);
     
     // Get all transactions before selected month and calculate their impact
+    // For 'once' transactions, we simply check if the date is before the selected month
+    // For recurring/installment, we need to expand and count each instance
     transactions.forEach((t) => {
       const transactionDate = parseISO(t.date);
       const transactionStartDate = t.startDate ? parseISO(t.startDate) : transactionDate;
+      const transactionEndDate = t.endDate ? parseISO(t.endDate) : null;
       
       if (t.recurrenceType === 'once') {
         if (isBefore(transactionDate, selectedMonthStart)) {
           currentOpeningBalance += t.type === 'income' ? t.amount : -t.amount;
         }
       } else if (t.recurrenceType === 'recurring') {
-        // Count all instances before selected month
+        // Count all instances before selected month, respecting end_date
         const dayOfMonth = transactionStartDate.getDate();
         let instanceDate = new Date(transactionStartDate.getFullYear(), transactionStartDate.getMonth(), dayOfMonth);
         
         while (isBefore(instanceDate, selectedMonthStart)) {
+          // Check if instance is after start date and before end date (if any)
           if (!isBefore(instanceDate, transactionStartDate)) {
-            currentOpeningBalance += t.type === 'income' ? t.amount : -t.amount;
+            if (!transactionEndDate || isBefore(instanceDate, transactionEndDate)) {
+              currentOpeningBalance += t.type === 'income' ? t.amount : -t.amount;
+            }
           }
           instanceDate = addMonths(instanceDate, 1);
         }
@@ -221,7 +233,7 @@ export function useMultiMonthTransactions(selectedDate: Date, additionalMonths: 
       
       const { expanded, summary } = calculateMonthSummary(monthDate, monthOpeningBalance);
       
-      // Apply filter
+      // Apply filter but keep the original running balances from the full list
       let filtered = expanded;
       switch (filter) {
         case 'pending':
