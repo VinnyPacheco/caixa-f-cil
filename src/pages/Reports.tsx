@@ -47,19 +47,42 @@ export default function Reports() {
   const handlePrevMonth = () => setSelectedDate((prev) => subMonths(prev, 1));
   const handleNextMonth = () => setSelectedDate((prev) => addMonths(prev, 1));
 
-  // Extract unique tags from transactions for filter
+  // Base transactions for category charts (filtered by type and category, but NOT by tags)
+  const chartBaseTransactions = useMemo(() => {
+    let filtered = transactions;
+    
+    // Filter by type
+    if (filterType === 'income') {
+      filtered = filtered.filter((t) => t.type === 'income');
+    } else if (filterType === 'expense') {
+      filtered = filtered.filter((t) => t.type === 'expense');
+    }
+    
+    // Filter by category
+    if (selectedCategoryId !== 'all') {
+      filtered = filtered.filter((t) => t.categoryId === selectedCategoryId);
+    }
+    
+    return filtered;
+  }, [transactions, filterType, selectedCategoryId]);
+
+  // Extract unique tags from chart base transactions (dynamic based on current filters)
   const availableTagsInTransactions = useMemo(() => {
     if (!transactionTagsMap) return [];
     const tagMap = new Map<string, Tag>();
-    Object.values(transactionTagsMap).forEach((tags) => {
+    
+    // Only consider tags from transactions that are in the chart base
+    chartBaseTransactions.forEach((t) => {
+      const tags = transactionTagsMap[t.id] || [];
       tags.forEach((tag) => {
         if (!tagMap.has(tag.id)) {
           tagMap.set(tag.id, tag);
         }
       });
     });
+    
     return Array.from(tagMap.values()).sort((a, b) => a.name.localeCompare(b.name));
-  }, [transactionTagsMap]);
+  }, [transactionTagsMap, chartBaseTransactions]);
 
   // Filter transactions by type, category, and tags
   const filteredTransactions = useMemo(() => {
