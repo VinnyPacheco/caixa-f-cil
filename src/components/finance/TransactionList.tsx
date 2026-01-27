@@ -73,14 +73,14 @@ function DroppableDateGroup({
   };
 
   return (
-    <div key={date} className="flex flex-col gap-3">
+    <div key={date} className="flex flex-col gap-1.5">
       <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">
         {label}
       </p>
       <SortableContext items={transactionIds} strategy={verticalListSortingStrategy}>
         <div
           ref={setNodeRef}
-          className={`flex flex-col gap-3 min-h-[60px] rounded-xl transition-colors ${
+          className={`flex flex-col gap-1.5 min-h-[40px] rounded-lg transition-colors ${
             isOver ? 'bg-primary/10 ring-2 ring-primary/30' : ''
           }`}
         >
@@ -217,7 +217,7 @@ export function TransactionList({
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-4">
         {groups.map((group) => (
           <DroppableDateGroup
             key={group.date}
