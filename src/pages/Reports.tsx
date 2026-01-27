@@ -311,12 +311,16 @@ export default function Reports() {
                     <SelectItem value="all">Todas as categorias</SelectItem>
                     {categories
                       .filter((cat) => filterType === 'all' || cat.type === filterType)
+                      .map((cat) => ({
+                        ...cat,
+                        displayText: filterType === 'all' 
+                          ? `${cat.type === 'expense' ? 'Despesa' : 'Receita'} - ${cat.name}`
+                          : cat.name
+                      }))
+                      .sort((a, b) => a.displayText.localeCompare(b.displayText, 'pt-BR'))
                       .map((cat) => (
                         <SelectItem key={cat.id} value={cat.id}>
-                          {filterType === 'all' 
-                            ? `${cat.type === 'expense' ? 'Despesa' : 'Receita'} - ${cat.name}`
-                            : cat.name
-                          }
+                          {cat.displayText}
                         </SelectItem>
                       ))}
                   </SelectContent>
@@ -547,83 +551,91 @@ export default function Reports() {
             ) : (
               /* Categories Tab */
               <>
-                {(filterType === 'all' || filterType === 'expense') && expensesByCategory.map(({ total, category, transactions: catTransactions }) => (
-                  <Collapsible key={category?.id || 'expense-unknown'} open={openItems.includes(`cat-${category?.id}`)} onOpenChange={() => toggleItem(`cat-${category?.id}`)}>
-                    <CollapsibleTrigger className="w-full">
-                      <div className="flex flex-col gap-1.5 cursor-pointer opacity-90 hover:opacity-100 transition-opacity">
-                        <div className="flex justify-between items-end">
-                          <div className="flex items-center gap-2">
-                            <div className="w-1 h-3 rounded-full" style={{ backgroundColor: category?.color || '#F43F5E' }}></div>
-                            <span className="text-xs font-bold flex items-center gap-1" style={{ color: category?.color || '#F43F5E' }}>
-                              {category?.name || 'Sem categoria'}
-                              <span className="material-symbols-outlined text-[16px] transition-transform data-[state=open]:rotate-180">expand_more</span>
-                            </span>
+                {(filterType === 'all' || filterType === 'expense') && expensesByCategory.map(({ total, category, transactions: catTransactions }) => {
+                  // Use different color for "Outros" expense category
+                  const displayColor = category?.isSystem && category?.name === 'Outros' ? '#94A3B8' : (category?.color || '#F43F5E');
+                  return (
+                    <Collapsible key={category?.id || 'expense-unknown'} open={openItems.includes(`cat-${category?.id}`)} onOpenChange={() => toggleItem(`cat-${category?.id}`)}>
+                      <CollapsibleTrigger className="w-full">
+                        <div className="flex flex-col gap-1.5 cursor-pointer opacity-90 hover:opacity-100 transition-opacity">
+                          <div className="flex justify-between items-end">
+                            <div className="flex items-center gap-2">
+                              <div className="w-1 h-3 rounded-full" style={{ backgroundColor: displayColor }}></div>
+                              <span className="text-xs font-bold flex items-center gap-1" style={{ color: displayColor }}>
+                                {category?.name || 'Sem categoria'}
+                                <span className="material-symbols-outlined text-[16px] transition-transform data-[state=open]:rotate-180">expand_more</span>
+                              </span>
+                            </div>
+                            <span className="text-sm font-bold text-foreground">{formatCurrency(total)}</span>
                           </div>
-                          <span className="text-sm font-bold text-foreground">{formatCurrency(total)}</span>
-                        </div>
-                        <div className="relative w-full bg-secondary rounded-full h-2.5 overflow-hidden">
-                          <div className="absolute inset-0" style={{ backgroundColor: `${category?.color}10` }}></div>
-                          <div 
-                            className="h-full rounded-full transition-all duration-1000 ease-out" 
-                            style={{ 
-                              width: `${(total / maxExpense) * 100}%`,
-                              backgroundColor: category?.color || '#F43F5E'
-                            }}
-                          />
-                        </div>
-                      </div>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent>
-                      <div className="pt-3 pl-3 pr-1 flex flex-col gap-2 ml-1.5 mt-2" style={{ borderLeft: `2px solid ${category?.color}30` }}>
-                        {catTransactions.map((t) => (
-                          <div key={t.id} className="flex justify-between items-center text-xs">
-                            <span className="text-muted-foreground">{t.description}</span>
-                            <span className="font-medium text-foreground">{formatCurrency(t.amount)}</span>
+                          <div className="relative w-full bg-secondary rounded-full h-2.5 overflow-hidden">
+                            <div className="absolute inset-0" style={{ backgroundColor: `${displayColor}10` }}></div>
+                            <div 
+                              className="h-full rounded-full transition-all duration-1000 ease-out" 
+                              style={{ 
+                                width: `${(total / maxExpense) * 100}%`,
+                                backgroundColor: displayColor
+                              }}
+                            />
                           </div>
-                        ))}
-                      </div>
-                    </CollapsibleContent>
-                  </Collapsible>
-                ))}
+                        </div>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <div className="pt-3 pl-3 pr-1 flex flex-col gap-2 ml-1.5 mt-2" style={{ borderLeft: `2px solid ${displayColor}30` }}>
+                          {catTransactions.map((t) => (
+                            <div key={t.id} className="flex justify-between items-center text-xs">
+                              <span className="text-muted-foreground">{t.description}</span>
+                              <span className="font-medium text-foreground">{formatCurrency(t.amount)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  );
+                })}
 
-                {(filterType === 'all' || filterType === 'income') && incomeByCategory.map(({ total, category, transactions: catTransactions }) => (
-                  <Collapsible key={category?.id || 'income-unknown'} open={openItems.includes(`cat-income-${category?.id}`)} onOpenChange={() => toggleItem(`cat-income-${category?.id}`)}>
-                    <CollapsibleTrigger className="w-full">
-                      <div className="flex flex-col gap-1.5 cursor-pointer opacity-90 hover:opacity-100 transition-opacity">
-                        <div className="flex justify-between items-end">
-                          <div className="flex items-center gap-2">
-                            <div className="w-1 h-3 rounded-full" style={{ backgroundColor: category?.color || '#10B981' }}></div>
-                            <span className="text-xs font-bold flex items-center gap-1" style={{ color: category?.color || '#10B981' }}>
-                              {category?.name || 'Sem categoria'}
-                              <span className="material-symbols-outlined text-[16px] transition-transform data-[state=open]:rotate-180">expand_more</span>
-                            </span>
+                {(filterType === 'all' || filterType === 'income') && incomeByCategory.map(({ total, category, transactions: catTransactions }) => {
+                  // Use different color for "Outros" income category (green-tinted gray)
+                  const displayColor = category?.isSystem && category?.name === 'Outros' ? '#6B7280' : (category?.color || '#10B981');
+                  return (
+                    <Collapsible key={category?.id || 'income-unknown'} open={openItems.includes(`cat-income-${category?.id}`)} onOpenChange={() => toggleItem(`cat-income-${category?.id}`)}>
+                      <CollapsibleTrigger className="w-full">
+                        <div className="flex flex-col gap-1.5 cursor-pointer opacity-90 hover:opacity-100 transition-opacity">
+                          <div className="flex justify-between items-end">
+                            <div className="flex items-center gap-2">
+                              <div className="w-1 h-3 rounded-full" style={{ backgroundColor: displayColor }}></div>
+                              <span className="text-xs font-bold flex items-center gap-1" style={{ color: displayColor }}>
+                                {category?.name || 'Sem categoria'}
+                                <span className="material-symbols-outlined text-[16px] transition-transform data-[state=open]:rotate-180">expand_more</span>
+                              </span>
+                            </div>
+                            <span className="text-sm font-bold text-foreground">{formatCurrency(total)}</span>
                           </div>
-                          <span className="text-sm font-bold text-foreground">{formatCurrency(total)}</span>
-                        </div>
-                        <div className="relative w-full bg-secondary rounded-full h-2.5 overflow-hidden">
-                          <div className="absolute inset-0" style={{ backgroundColor: `${category?.color}10` }}></div>
-                          <div 
-                            className="h-full rounded-full transition-all duration-1000 ease-out" 
-                            style={{ 
-                              width: `${(total / maxIncome) * 100}%`,
-                              backgroundColor: category?.color || '#10B981'
-                            }}
-                          />
-                        </div>
-                      </div>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent>
-                      <div className="pt-3 pl-3 pr-1 flex flex-col gap-2 ml-1.5 mt-2" style={{ borderLeft: `2px solid ${category?.color}30` }}>
-                        {catTransactions.map((t) => (
-                          <div key={t.id} className="flex justify-between items-center text-xs">
-                            <span className="text-muted-foreground">{t.description}</span>
-                            <span className="font-medium text-foreground">{formatCurrency(t.amount)}</span>
+                          <div className="relative w-full bg-secondary rounded-full h-2.5 overflow-hidden">
+                            <div className="absolute inset-0" style={{ backgroundColor: `${displayColor}10` }}></div>
+                            <div 
+                              className="h-full rounded-full transition-all duration-1000 ease-out" 
+                              style={{ 
+                                width: `${(total / maxIncome) * 100}%`,
+                                backgroundColor: displayColor
+                              }}
+                            />
                           </div>
-                        ))}
-                      </div>
-                    </CollapsibleContent>
-                  </Collapsible>
-                ))}
+                        </div>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <div className="pt-3 pl-3 pr-1 flex flex-col gap-2 ml-1.5 mt-2" style={{ borderLeft: `2px solid ${displayColor}30` }}>
+                          {catTransactions.map((t) => (
+                            <div key={t.id} className="flex justify-between items-center text-xs">
+                              <span className="text-muted-foreground">{t.description}</span>
+                              <span className="font-medium text-foreground">{formatCurrency(t.amount)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  );
+                })}
               </>
             )}
           </div>
