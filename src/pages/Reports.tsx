@@ -2,6 +2,7 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { Header } from '@/components/layout/Header';
 import { useTransactions } from '@/hooks/useTransactions';
 import { useProfile } from '@/hooks/useProfile';
+import { useTransactionTagsBulk } from '@/hooks/useTags';
 import { formatCurrency } from '@/lib/format';
 import { useState, useMemo } from 'react';
 import { format, addMonths, subMonths } from 'date-fns';
@@ -18,6 +19,8 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
+import { TagFilter } from '@/components/finance/TagFilter';
+import { Tag } from '@/types/tag';
 
 type TabType = 'budget' | 'categories';
 type FilterType = 'all' | 'income' | 'expense';
@@ -27,10 +30,16 @@ export default function Reports() {
   const [activeTab, setActiveTab] = useState<TabType>('budget');
   const [filterType, setFilterType] = useState<FilterType>('all');
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('all');
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
+  const [includeNoTags, setIncludeNoTags] = useState(false);
   const [openItems, setOpenItems] = useState<string[]>(['budget']);
 
   const { monthSummary, categories, transactions } = useTransactions(selectedDate);
   const { displayName } = useProfile();
+
+  // Get all transaction IDs to fetch their tags
+  const transactionIds = useMemo(() => transactions.map((t) => t.id), [transactions]);
+  const { data: transactionTagsMap, isLoading: isLoadingTags } = useTransactionTagsBulk(transactionIds);
 
   const monthLabel = format(selectedDate, 'MMMM', { locale: ptBR });
   const capitalizedMonth = monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1);
@@ -38,23 +47,61 @@ export default function Reports() {
   const handlePrevMonth = () => setSelectedDate((prev) => subMonths(prev, 1));
   const handleNextMonth = () => setSelectedDate((prev) => addMonths(prev, 1));
 
-  // Filter transactions by type
+  // Extract unique tags from transactions for filter
+  const availableTagsInTransactions = useMemo(() => {
+    if (!transactionTagsMap) return [];
+    const tagMap = new Map<string, Tag>();
+    Object.values(transactionTagsMap).forEach((tags) => {
+      tags.forEach((tag) => {
+        if (!tagMap.has(tag.id)) {
+          tagMap.set(tag.id, tag);
+        }
+      });
+    });
+    return Array.from(tagMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [transactionTagsMap]);
+
+  // Filter transactions by type, category, and tags
   const filteredTransactions = useMemo(() => {
     let filtered = transactions;
+    
+    // Filter by type
     if (filterType === 'income') {
       filtered = filtered.filter((t) => t.type === 'income');
     } else if (filterType === 'expense') {
       filtered = filtered.filter((t) => t.type === 'expense');
     }
+    
+    // Filter by category
     if (selectedCategoryId !== 'all') {
       filtered = filtered.filter((t) => t.categoryId === selectedCategoryId);
     }
+    
+    // Filter by tags (only when in categories tab and filters are active)
+    if (activeTab === 'categories' && (selectedTagIds.length > 0 || includeNoTags)) {
+      filtered = filtered.filter((t) => {
+        const tags = transactionTagsMap?.[t.id] || [];
+        const hasTags = tags.length > 0;
+        
+        // If includeNoTags is selected and transaction has no tags
+        if (includeNoTags && !hasTags) return true;
+        
+        // If specific tags are selected
+        if (selectedTagIds.length > 0) {
+          return tags.some((tag) => selectedTagIds.includes(tag.id));
+        }
+        
+        return false;
+      });
+    }
+    
     return filtered;
-  }, [transactions, filterType, selectedCategoryId]);
+  }, [transactions, filterType, selectedCategoryId, activeTab, selectedTagIds, includeNoTags, transactionTagsMap]);
 
-  // Group expenses by category
+  // Group expenses by category (using filteredTransactions for categories tab)
   const expensesByCategory = useMemo(() => {
-    const expenses = transactions.filter((t) => t.type === 'expense');
+    const source = activeTab === 'categories' ? filteredTransactions : transactions;
+    const expenses = source.filter((t) => t.type === 'expense');
     const grouped = expenses.reduce((acc, t) => {
       const catId = t.categoryId;
       if (!acc[catId]) {
@@ -65,11 +112,12 @@ export default function Reports() {
       return acc;
     }, {} as Record<string, { total: number; category: typeof transactions[0]['category']; transactions: typeof transactions }>);
     return Object.values(grouped).sort((a, b) => b.total - a.total);
-  }, [transactions]);
+  }, [transactions, filteredTransactions, activeTab]);
 
-  // Group income by category
+  // Group income by category (using filteredTransactions for categories tab)
   const incomeByCategory = useMemo(() => {
-    const income = transactions.filter((t) => t.type === 'income');
+    const source = activeTab === 'categories' ? filteredTransactions : transactions;
+    const income = source.filter((t) => t.type === 'income');
     const grouped = income.reduce((acc, t) => {
       const catId = t.categoryId;
       if (!acc[catId]) {
@@ -80,7 +128,7 @@ export default function Reports() {
       return acc;
     }, {} as Record<string, { total: number; category: typeof transactions[0]['category']; transactions: typeof transactions }>);
     return Object.values(grouped).sort((a, b) => b.total - a.total);
-  }, [transactions]);
+  }, [transactions, filteredTransactions, activeTab]);
 
   const maxExpense = expensesByCategory[0]?.total || 1;
   const maxIncome = incomeByCategory[0]?.total || 1;
@@ -228,27 +276,41 @@ export default function Reports() {
                   Receita
                 </button>
               </div>
-              <Select value={selectedCategoryId} onValueChange={setSelectedCategoryId}>
-                <SelectTrigger className="w-full py-2.5 px-4 bg-secondary rounded-xl border border-border/50 text-xs font-medium hover:border-accent/30 transition-colors">
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <span className="material-symbols-outlined text-[18px]">category</span>
-                    <SelectValue placeholder="Todas as categorias" />
-                  </div>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas as categorias</SelectItem>
-                  {categories
-                    .filter((cat) => filterType === 'all' || cat.type === filterType)
-                    .map((cat) => (
-                      <SelectItem key={cat.id} value={cat.id}>
-                        {filterType === 'all' 
-                          ? `${cat.type === 'expense' ? 'Despesa' : 'Receita'} - ${cat.name}`
-                          : cat.name
-                        }
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
+              <div className="flex gap-2">
+                <Select value={selectedCategoryId} onValueChange={setSelectedCategoryId}>
+                  <SelectTrigger className="flex-1 py-2.5 px-4 bg-secondary rounded-xl border border-border/50 text-xs font-medium hover:border-accent/30 transition-colors">
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <span className="material-symbols-outlined text-[18px]">category</span>
+                      <SelectValue placeholder="Todas as categorias" />
+                    </div>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas as categorias</SelectItem>
+                    {categories
+                      .filter((cat) => filterType === 'all' || cat.type === filterType)
+                      .map((cat) => (
+                        <SelectItem key={cat.id} value={cat.id}>
+                          {filterType === 'all' 
+                            ? `${cat.type === 'expense' ? 'Despesa' : 'Receita'} - ${cat.name}`
+                            : cat.name
+                          }
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+                <div className="flex-1">
+                  <TagFilter
+                    availableTags={availableTagsInTransactions}
+                    selectedTagIds={selectedTagIds}
+                    includeNoTags={includeNoTags}
+                    onSelectionChange={(tagIds, noTags) => {
+                      setSelectedTagIds(tagIds);
+                      setIncludeNoTags(noTags);
+                    }}
+                    isLoading={isLoadingTags}
+                  />
+                </div>
+              </div>
             </div>
           )}
 
