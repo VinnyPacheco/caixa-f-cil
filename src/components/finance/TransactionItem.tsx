@@ -88,13 +88,13 @@ export const TransactionItem = forwardRef<HTMLDivElement, TransactionItemProps>(
         
         {/* Middle: description + category */}
         <div className="flex flex-col justify-center flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <p className="text-foreground text-base font-bold line-clamp-1">
+          <div className="flex items-center gap-1.5">
+            <p className="text-foreground text-sm font-bold line-clamp-1">
               {transaction.description}
             </p>
             {tags.length > 0 && <TagDots tags={tags} />}
           </div>
-          <p className="text-muted-foreground text-sm font-normal">
+          <p className="text-muted-foreground text-xs font-normal">
             {category?.name || 'Sem categoria'}
           </p>
         </div>
@@ -181,18 +181,18 @@ export function SortableTransactionItem({
         </span>
       </div>
       
-      {/* Middle: description + category */}
-      <div className="flex flex-col justify-center flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <p className="text-foreground text-base font-bold line-clamp-1">
-            {transaction.description}
+        {/* Middle: description + category */}
+        <div className="flex flex-col justify-center flex-1 min-w-0">
+          <div className="flex items-center gap-1.5">
+            <p className="text-foreground text-sm font-bold line-clamp-1">
+              {transaction.description}
+            </p>
+            {tags.length > 0 && <TagDots tags={tags} />}
+          </div>
+          <p className="text-muted-foreground text-xs font-normal">
+            {category?.name || 'Sem categoria'}
           </p>
-          {tags.length > 0 && <TagDots tags={tags} />}
         </div>
-        <p className="text-muted-foreground text-sm font-normal">
-          {category?.name || 'Sem categoria'}
-        </p>
-      </div>
       
       {/* Right: amount + balance */}
       <div className="shrink-0 text-right">
