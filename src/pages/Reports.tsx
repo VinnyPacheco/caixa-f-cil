@@ -324,8 +324,8 @@ export default function Reports() {
                       .filter((cat) => filterType === 'all' || cat.type === filterType)
                       .map((cat) => ({
                         ...cat,
-                        displayText: filterType === 'all' 
-                          ? `${cat.type === 'expense' ? 'Despesa' : 'Receita'} - ${cat.name}`
+                        displayText: cat.isSystem && cat.name === 'Outros'
+                          ? `Outros (${cat.type === 'expense' ? 'Despesa' : 'Receita'})`
                           : cat.name
                       }))
                       .sort((a, b) => a.displayText.localeCompare(b.displayText, 'pt-BR'))
@@ -579,7 +579,9 @@ export default function Reports() {
                               <div className="flex items-center gap-2">
                                 <div className="w-1 h-3 rounded-full" style={{ backgroundColor: displayColor }}></div>
                                 <span className="text-xs font-bold flex items-center gap-1" style={{ color: displayColor }}>
-                                  {category?.name || 'Sem categoria'}
+                                  {category?.isSystem && category?.name === 'Outros' 
+                                    ? `Outros (${type === 'expense' ? 'Despesa' : 'Receita'})`
+                                    : (category?.name || 'Sem categoria')}
                                   <span className="material-symbols-outlined text-[16px] transition-transform data-[state=open]:rotate-180">expand_more</span>
                                 </span>
                               </div>
