@@ -212,7 +212,8 @@ export async function toggleTransactionPaid(id: string, isPaid: boolean): Promis
 export async function reorderTransactions(
   updates: { id: string; orderIndex: number; date?: string }[]
 ): Promise<void> {
-  for (const update of updates) {
+  // Execute all updates in parallel for better performance
+  const promises = updates.map(update => {
     const updateData: { order_index: number; date?: string } = {
       order_index: update.orderIndex,
     };
@@ -220,11 +221,15 @@ export async function reorderTransactions(
       updateData.date = update.date;
     }
 
-    const { error } = await supabase
+    return supabase
       .from('transactions')
       .update(updateData)
       .eq('id', update.id);
+  });
 
-    if (error) throw error;
-  }
+  const results = await Promise.all(promises);
+  
+  // Check for any errors
+  const error = results.find(r => r.error)?.error;
+  if (error) throw error;
 }

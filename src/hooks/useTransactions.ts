@@ -353,16 +353,42 @@ export function useTransactions(selectedDate: Date) {
     newOrder: TransactionWithBalance[],
     dateChanges?: { id: string; newDate: string }[]
   ) => {
-    const updates = newOrder.map((t, index) => ({
-      id: t.id,
-      orderIndex: index + 1,
-      date: dateChanges?.find(d => d.id === t.id)?.newDate,
-    }));
+    // Only include real transaction IDs (not virtual instances)
+    const realUpdates = newOrder
+      .filter(t => !t.id.includes('-inst-') && !t.id.match(/-\d{4}-\d{2}$/))
+      .map((t, index) => ({
+        id: t.id,
+        orderIndex: index + 1,
+        date: dateChanges?.find(d => d.id === t.id)?.newDate,
+      }));
+
+    if (realUpdates.length === 0) return;
+
+    // Optimistic update: immediately update the cache
+    queryClient.setQueryData(['transactions'], (oldData: Transaction[] | undefined) => {
+      if (!oldData) return oldData;
+      
+      const updateMap = new Map(realUpdates.map(u => [u.id, u]));
+      return oldData.map(t => {
+        const update = updateMap.get(t.id);
+        if (update) {
+          return {
+            ...t,
+            orderIndex: update.orderIndex,
+            date: update.date || t.date,
+          };
+        }
+        return t;
+      });
+    });
 
     try {
-      await reorderTransactionsService(updates);
+      await reorderTransactionsService(realUpdates);
+      // Refetch to ensure consistency with server
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
     } catch (error) {
+      // Revert optimistic update on error
+      queryClient.invalidateQueries({ queryKey: ['transactions'] });
       toast({
         title: 'Erro ao reordenar transações',
         description: error instanceof Error ? error.message : 'Erro desconhecido',
