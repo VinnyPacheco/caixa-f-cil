@@ -400,14 +400,31 @@ export default function Reports() {
                     <stop offset="100%" style={{ stopColor: 'hsl(var(--accent))', stopOpacity: 0 }} />
                   </linearGradient>
                 </defs>
+                <style>
+                  {`
+                    @keyframes drawLine {
+                      from {
+                        stroke-dashoffset: 200;
+                      }
+                      to {
+                        stroke-dashoffset: 0;
+                      }
+                    }
+                    .chart-line {
+                      stroke-dasharray: 200;
+                      stroke-dashoffset: 200;
+                      animation: drawLine 1.2s ease-out forwards;
+                    }
+                  `}
+                </style>
                 {activeTab === 'budget' ? (
                   <>
                     {/* Income line */}
-                    <path d="M0,15 C20,15 30,8 50,12 S80,15 100,10" fill="none" stroke="hsl(var(--success))" strokeLinecap="round" strokeWidth="1.2" />
+                    <path className="chart-line" style={{ animationDelay: '0.1s' }} d="M0,15 C20,15 30,8 50,12 S80,15 100,10" fill="none" stroke="hsl(var(--success))" strokeLinecap="round" strokeWidth="1.2" />
                     {/* Expense line */}
-                    <path d="M0,40 C20,38 30,35 50,38 S80,42 100,35" fill="none" stroke="hsl(var(--destructive))" strokeLinecap="round" strokeWidth="1.2" />
+                    <path className="chart-line" style={{ animationDelay: '0.2s' }} d="M0,40 C20,38 30,35 50,38 S80,42 100,35" fill="none" stroke="hsl(var(--destructive))" strokeLinecap="round" strokeWidth="1.2" />
                     {/* Budget line */}
-                    <path d="M0,25 C20,25 35,15 50,20 S80,10 100,18" fill="url(#gradGold)" stroke="hsl(var(--accent))" strokeLinecap="round" strokeWidth="1.2" />
+                    <path className="chart-line" style={{ animationDelay: '0.3s' }} d="M0,25 C20,25 35,15 50,20 S80,10 100,18" fill="url(#gradGold)" stroke="hsl(var(--accent))" strokeLinecap="round" strokeWidth="1.2" />
                   </>
                 ) : (
                   <>
@@ -420,12 +437,13 @@ export default function Reports() {
                       return (
                         <path
                           key={`expense-${category?.id || index}`}
+                          className="chart-line"
+                          style={{ animationDelay: `${0.1 + index * 0.08}s`, opacity: 0.9 - (index * 0.08) }}
                           d={`M0,${baseY + variation} C20,${baseY + variation * 0.5} 30,${baseY - variation * 0.3} 50,${baseY} S80,${baseY + variation * 0.3} 100,${baseY - variation * 0.5}`}
                           fill="none"
                           stroke={category?.color || '#F43F5E'}
                           strokeLinecap="round"
                           strokeWidth="1.5"
-                          style={{ opacity: 0.9 - (index * 0.08) }}
                         />
                       );
                     })}
@@ -435,15 +453,17 @@ export default function Reports() {
                       const maxValue = 10000;
                       const baseY = 50 - (total / maxValue) * 50;
                       const variation = (index % 2) * 2 - 1;
+                      const delayOffset = filterType !== 'income' ? expensesByCategory.slice(0, 6).length : 0;
                       return (
                         <path
                           key={`income-${category?.id || index}`}
+                          className="chart-line"
+                          style={{ animationDelay: `${0.1 + (delayOffset + index) * 0.08}s`, opacity: 0.9 - (index * 0.08) }}
                           d={`M0,${baseY + variation} C20,${baseY + variation * 0.5} 30,${baseY - variation * 0.3} 50,${baseY} S80,${baseY + variation * 0.3} 100,${baseY - variation * 0.5}`}
                           fill="none"
                           stroke={category?.color || '#10B981'}
                           strokeLinecap="round"
                           strokeWidth="1.5"
-                          style={{ opacity: 0.9 - (index * 0.08) }}
                         />
                       );
                     })}
