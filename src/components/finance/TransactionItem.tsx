@@ -48,7 +48,8 @@ export const TransactionItem = forwardRef<HTMLDivElement, TransactionItemProps>(
           !isReadOnly && "cursor-pointer",
           isReadOnly && "opacity-75",
           dueStatus === 'overdue' && "border-l-4 border-l-destructive",
-          dueStatus === 'due-soon' && "border-l-4 border-l-amber-500"
+          dueStatus === 'due-soon' && "border-l-4 border-l-amber-500",
+          showBalance && transaction.runningBalance < 0 && "bg-destructive/10"
         )}
         onClick={!isReadOnly ? onClick : undefined}
       >
@@ -153,7 +154,8 @@ export function SortableTransactionItem({
         "transaction-card",
         isDragging ? 'shadow-xl scale-[1.02]' : '',
         dueStatus === 'overdue' && "border-l-4 border-l-destructive",
-        dueStatus === 'due-soon' && "border-l-4 border-l-amber-500"
+        dueStatus === 'due-soon' && "border-l-4 border-l-amber-500",
+        transaction.runningBalance < 0 && "bg-destructive/10"
       )}
       onClick={onClick}
     >
