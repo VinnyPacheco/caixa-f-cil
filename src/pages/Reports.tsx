@@ -378,34 +378,37 @@ export default function Reports() {
                   <>
                     {/* Category lines - expenses */}
                     {(filterType === 'all' || filterType === 'expense') && expensesByCategory.slice(0, 6).map(({ category, total }, index) => {
-                      // Generate varied Y positions for each category line
-                      const baseY = 25 + (index * 5) - (expensesByCategory.length * 2.5);
-                      const variation = (index % 3) * 5 - 5;
+                      // Calculate Y position based on actual value (10k = 0, 0 = 50)
+                      const maxValue = 10000;
+                      const baseY = 50 - (total / maxValue) * 50;
+                      const variation = (index % 3) * 2 - 2;
                       return (
                         <path
                           key={`expense-${category?.id || index}`}
-                          d={`M0,${baseY + 5} C20,${baseY + variation} 30,${baseY - 3} 50,${baseY} S80,${baseY + 3} 100,${baseY - variation}`}
+                          d={`M0,${baseY + variation} C20,${baseY + variation * 0.5} 30,${baseY - variation * 0.3} 50,${baseY} S80,${baseY + variation * 0.3} 100,${baseY - variation * 0.5}`}
                           fill="none"
                           stroke={category?.color || '#F43F5E'}
                           strokeLinecap="round"
                           strokeWidth="1.5"
-                          style={{ opacity: 0.8 - (index * 0.1) }}
+                          style={{ opacity: 0.9 - (index * 0.08) }}
                         />
                       );
                     })}
                     {/* Category lines - income */}
                     {(filterType === 'all' || filterType === 'income') && incomeByCategory.slice(0, 6).map(({ category, total }, index) => {
-                      const baseY = 15 + (index * 4);
-                      const variation = (index % 2) * 6 - 3;
+                      // Calculate Y position based on actual value (10k = 0, 0 = 50)
+                      const maxValue = 10000;
+                      const baseY = 50 - (total / maxValue) * 50;
+                      const variation = (index % 2) * 2 - 1;
                       return (
                         <path
                           key={`income-${category?.id || index}`}
-                          d={`M0,${baseY - 2} C20,${baseY + variation} 30,${baseY + 2} 50,${baseY} S80,${baseY - 2} 100,${baseY + variation}`}
+                          d={`M0,${baseY + variation} C20,${baseY + variation * 0.5} 30,${baseY - variation * 0.3} 50,${baseY} S80,${baseY + variation * 0.3} 100,${baseY - variation * 0.5}`}
                           fill="none"
                           stroke={category?.color || '#10B981'}
                           strokeLinecap="round"
                           strokeWidth="1.5"
-                          style={{ opacity: 0.8 - (index * 0.1) }}
+                          style={{ opacity: 0.9 - (index * 0.08) }}
                         />
                       );
                     })}
