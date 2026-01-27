@@ -155,7 +155,7 @@
 
   /* Transaction card */
   .transaction-card {
-    @apply flex items-center justify-between bg-card p-4 rounded-2xl shadow-sm border border-border/50 transition-all duration-200;
+    @apply flex items-center justify-between bg-card py-2.5 px-3 rounded-xl shadow-sm border border-border/50 transition-all duration-200;
   }
   
   .transaction-card:hover {
