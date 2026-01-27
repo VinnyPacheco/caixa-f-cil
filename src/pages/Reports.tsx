@@ -393,7 +393,12 @@ export default function Reports() {
               {/* Current month indicator */}
               <div className="absolute left-1/2 -translate-x-1/2 top-0 bottom-6 w-px bg-accent z-0 opacity-40"></div>
               {/* Chart lines */}
-              <svg className="absolute inset-0 w-full h-full pb-6 overflow-visible" preserveAspectRatio="none" viewBox="0 0 100 50">
+              <svg 
+                key={`chart-${activeTab}-${filterType}-${selectedDate.getTime()}`}
+                className="absolute inset-0 w-full h-full pb-6 overflow-visible" 
+                preserveAspectRatio="none" 
+                viewBox="0 0 100 50"
+              >
                 <defs>
                   <linearGradient id="gradGold" x1="0%" x2="0%" y1="0%" y2="100%">
                     <stop offset="0%" style={{ stopColor: 'hsl(var(--accent))', stopOpacity: 0.25 }} />
