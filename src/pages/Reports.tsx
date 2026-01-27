@@ -365,12 +365,52 @@ export default function Reports() {
                     <stop offset="100%" style={{ stopColor: 'hsl(var(--accent))', stopOpacity: 0 }} />
                   </linearGradient>
                 </defs>
-                {/* Income line */}
-                <path d="M0,15 C20,15 30,8 50,12 S80,15 100,10" fill="none" stroke="hsl(var(--success))" strokeLinecap="round" strokeWidth="1.2" />
-                {/* Expense line */}
-                <path d="M0,40 C20,38 30,35 50,38 S80,42 100,35" fill="none" stroke="hsl(var(--destructive))" strokeLinecap="round" strokeWidth="1.2" />
-                {/* Budget line */}
-                <path d="M0,25 C20,25 35,15 50,20 S80,10 100,18" fill="url(#gradGold)" stroke="hsl(var(--accent))" strokeLinecap="round" strokeWidth="1.2" />
+                {activeTab === 'budget' ? (
+                  <>
+                    {/* Income line */}
+                    <path d="M0,15 C20,15 30,8 50,12 S80,15 100,10" fill="none" stroke="hsl(var(--success))" strokeLinecap="round" strokeWidth="1.2" />
+                    {/* Expense line */}
+                    <path d="M0,40 C20,38 30,35 50,38 S80,42 100,35" fill="none" stroke="hsl(var(--destructive))" strokeLinecap="round" strokeWidth="1.2" />
+                    {/* Budget line */}
+                    <path d="M0,25 C20,25 35,15 50,20 S80,10 100,18" fill="url(#gradGold)" stroke="hsl(var(--accent))" strokeLinecap="round" strokeWidth="1.2" />
+                  </>
+                ) : (
+                  <>
+                    {/* Category lines - expenses */}
+                    {(filterType === 'all' || filterType === 'expense') && expensesByCategory.slice(0, 6).map(({ category, total }, index) => {
+                      // Generate varied Y positions for each category line
+                      const baseY = 25 + (index * 5) - (expensesByCategory.length * 2.5);
+                      const variation = (index % 3) * 5 - 5;
+                      return (
+                        <path
+                          key={`expense-${category?.id || index}`}
+                          d={`M0,${baseY + 5} C20,${baseY + variation} 30,${baseY - 3} 50,${baseY} S80,${baseY + 3} 100,${baseY - variation}`}
+                          fill="none"
+                          stroke={category?.color || '#F43F5E'}
+                          strokeLinecap="round"
+                          strokeWidth="1.5"
+                          style={{ opacity: 0.8 - (index * 0.1) }}
+                        />
+                      );
+                    })}
+                    {/* Category lines - income */}
+                    {(filterType === 'all' || filterType === 'income') && incomeByCategory.slice(0, 6).map(({ category, total }, index) => {
+                      const baseY = 15 + (index * 4);
+                      const variation = (index % 2) * 6 - 3;
+                      return (
+                        <path
+                          key={`income-${category?.id || index}`}
+                          d={`M0,${baseY - 2} C20,${baseY + variation} 30,${baseY + 2} 50,${baseY} S80,${baseY - 2} 100,${baseY + variation}`}
+                          fill="none"
+                          stroke={category?.color || '#10B981'}
+                          strokeLinecap="round"
+                          strokeWidth="1.5"
+                          style={{ opacity: 0.8 - (index * 0.1) }}
+                        />
+                      );
+                    })}
+                  </>
+                )}
               </svg>
               {/* Month labels */}
               <div className="absolute bottom-0 w-full flex justify-between text-[10px] font-medium text-muted-foreground">
