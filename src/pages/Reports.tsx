@@ -223,24 +223,26 @@ export default function Reports() {
 
         {/* Main Section */}
         <section className="w-full rounded-3xl bg-card p-6 shadow-lg border border-border/50">
-          {/* Month Selector */}
-          <div className="flex items-center justify-between mb-6">
-            <div className="w-full flex items-center justify-between gap-1 bg-secondary rounded-full p-2 px-4 border border-border/50">
-              <button
-                onClick={handlePrevMonth}
-                className="size-6 flex items-center justify-center rounded-full bg-card shadow-sm text-muted-foreground hover:text-foreground transition-transform active:scale-95"
-              >
-                <span className="material-symbols-outlined text-sm">chevron_left</span>
-              </button>
-              <span className="text-sm font-bold text-foreground mx-auto">{capitalizedMonth}</span>
-              <button
-                onClick={handleNextMonth}
-                className="size-6 flex items-center justify-center rounded-full bg-card shadow-sm text-muted-foreground hover:text-foreground transition-transform active:scale-95"
-              >
-                <span className="material-symbols-outlined text-sm">chevron_right</span>
-              </button>
+          {/* Month Selector - only visible on budget tab */}
+          {activeTab === 'budget' && (
+            <div className="flex items-center justify-between mb-6">
+              <div className="w-full flex items-center justify-between gap-1 bg-secondary rounded-full p-2 px-4 border border-border/50">
+                <button
+                  onClick={handlePrevMonth}
+                  className="size-6 flex items-center justify-center rounded-full bg-card shadow-sm text-muted-foreground hover:text-foreground transition-transform active:scale-95"
+                >
+                  <span className="material-symbols-outlined text-sm">chevron_left</span>
+                </button>
+                <span className="text-sm font-bold text-foreground mx-auto">{capitalizedMonth}</span>
+                <button
+                  onClick={handleNextMonth}
+                  className="size-6 flex items-center justify-center rounded-full bg-card shadow-sm text-muted-foreground hover:text-foreground transition-transform active:scale-95"
+                >
+                  <span className="material-symbols-outlined text-sm">chevron_right</span>
+                </button>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Filters based on active tab */}
           {activeTab === 'budget' ? (
@@ -347,6 +349,24 @@ export default function Reports() {
                     }}
                     isLoading={isLoadingTags}
                   />
+                </div>
+              </div>
+              {/* Month Selector - inside categories tab, below filters */}
+              <div className="flex items-center justify-between">
+                <div className="w-full flex items-center justify-between gap-1 bg-secondary rounded-full p-2 px-4 border border-border/50">
+                  <button
+                    onClick={handlePrevMonth}
+                    className="size-6 flex items-center justify-center rounded-full bg-card shadow-sm text-muted-foreground hover:text-foreground transition-transform active:scale-95"
+                  >
+                    <span className="material-symbols-outlined text-sm">chevron_left</span>
+                  </button>
+                  <span className="text-sm font-bold text-foreground mx-auto">{capitalizedMonth}</span>
+                  <button
+                    onClick={handleNextMonth}
+                    className="size-6 flex items-center justify-center rounded-full bg-card shadow-sm text-muted-foreground hover:text-foreground transition-transform active:scale-95"
+                  >
+                    <span className="material-symbols-outlined text-sm">chevron_right</span>
+                  </button>
                 </div>
               </div>
             </div>
