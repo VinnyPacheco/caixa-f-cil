@@ -102,14 +102,22 @@ export function useNotifications({ transactions, categories }: UseNotificationsP
   }, [notifications]);
 
   // Request push notification permission
-  const requestPushPermission = useCallback(async () => {
+  const requestPushPermission = useCallback(async (): Promise<boolean> => {
     if (!('Notification' in window)) {
       console.log('This browser does not support notifications');
       return false;
     }
 
+    // Check if permission was already denied permanently
+    if (Notification.permission === 'denied') {
+      setPushPermission('denied');
+      return false;
+    }
+
     try {
+      // Request permission - this will show the browser's permission dialog
       const permission = await Notification.requestPermission();
+      console.log('Notification permission result:', permission);
       setPushPermission(permission);
       localStorage.setItem(PUSH_PERMISSION_KEY, permission);
       return permission === 'granted';
