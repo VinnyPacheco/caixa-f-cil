@@ -533,15 +533,27 @@ export function useTransactions(selectedDate: Date) {
   ) => {
     if (!user) return;
 
-    // First try to find in expanded transactions (which includes virtual instances)
-    let originalTransaction = expandedTransactions.find(t => t.id === id || t.parentId === id);
+    // For recurring actions, id is already the clean parent ID
+    // First try to find in raw transactions (original DB records)
+    let originalTransaction = transactions.find(t => t.id === id);
     
-    // If not found, try to find in raw transactions
+    // If not found by direct ID, try to find by parentId in expanded transactions
     if (!originalTransaction) {
-      originalTransaction = transactions.find(t => t.id === id || t.parentId === id);
+      const expandedMatch = expandedTransactions.find(t => t.parentId === id || t.id === id);
+      if (expandedMatch) {
+        // Get the real DB transaction using the parentId
+        const realId = expandedMatch.parentId || expandedMatch.id;
+        originalTransaction = transactions.find(t => t.id === realId);
+      }
+    }
+    
+    // If still not found, try direct match in expanded
+    if (!originalTransaction) {
+      originalTransaction = expandedTransactions.find(t => t.id === id || t.parentId === id);
     }
     
     if (!originalTransaction) {
+      // Fallback: try to delete directly
       deleteMutation.mutate(id);
       return;
     }
@@ -555,7 +567,8 @@ export function useTransactions(selectedDate: Date) {
     }
 
     try {
-      const parentId = originalTransaction.parentId || id;
+      // Use the clean ID passed in (which is the real DB ID)
+      const parentId = id;
 
       switch (recurringAction.type) {
         case 'only_this':
