@@ -7,6 +7,7 @@ import { NotificationProvider } from "@/contexts/NotificationContext";
 import { NotificationSettingsProvider } from "@/contexts/NotificationSettingsContext";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { VoiceSettingsProvider } from "@/contexts/VoiceSettingsContext";
+import { useAutoSettle } from "@/hooks/useAutoSettle";
 import Home from "./pages/Home";
 import Auth from "./pages/Auth";
 import Transactions from "./pages/Transactions";
@@ -56,19 +57,28 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+// Component that runs auto-settle when user is authenticated
+function AutoSettleHandler() {
+  useAutoSettle();
+  return null;
+}
+
 const AppRoutes = () => (
-  <Routes>
-    <Route path="/auth" element={<PublicRoute><Auth /></PublicRoute>} />
-    <Route path="/" element={<ProtectedRoute><Home /></ProtectedRoute>} />
-    <Route path="/transactions" element={<ProtectedRoute><Transactions /></ProtectedRoute>} />
-    <Route path="/new-transaction" element={<ProtectedRoute><NewTransaction /></ProtectedRoute>} />
-    <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
-    <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-    <Route path="/accounts" element={<ProtectedRoute><Accounts /></ProtectedRoute>} />
-    <Route path="/categories" element={<ProtectedRoute><Categories /></ProtectedRoute>} />
-    <Route path="/import-transactions" element={<ProtectedRoute><ImportTransactions /></ProtectedRoute>} />
-    <Route path="*" element={<NotFound />} />
-  </Routes>
+  <>
+    <AutoSettleHandler />
+    <Routes>
+      <Route path="/auth" element={<PublicRoute><Auth /></PublicRoute>} />
+      <Route path="/" element={<ProtectedRoute><Home /></ProtectedRoute>} />
+      <Route path="/transactions" element={<ProtectedRoute><Transactions /></ProtectedRoute>} />
+      <Route path="/new-transaction" element={<ProtectedRoute><NewTransaction /></ProtectedRoute>} />
+      <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
+      <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+      <Route path="/accounts" element={<ProtectedRoute><Accounts /></ProtectedRoute>} />
+      <Route path="/categories" element={<ProtectedRoute><Categories /></ProtectedRoute>} />
+      <Route path="/import-transactions" element={<ProtectedRoute><ImportTransactions /></ProtectedRoute>} />
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+  </>
 );
 
 const App = () => {

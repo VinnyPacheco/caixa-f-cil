@@ -1,1 +1,4 @@
 project_id = "mldvkuayrwgixozvwiaq"
+
+[functions.auto-settle-transactions]
+verify_jwt = false
