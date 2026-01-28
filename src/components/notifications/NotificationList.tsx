@@ -1,7 +1,6 @@
 import { AppNotification } from '@/hooks/useNotifications';
 import { cn } from '@/lib/utils';
-import { formatCurrency } from '@/lib/format';
-import { Bell, BellOff, Check, CheckCheck, AlertTriangle, Clock } from 'lucide-react';
+import { Bell, BellOff, Check, CheckCheck, AlertTriangle, Clock, Loader2 } from 'lucide-react';
 import {
   Popover,
   PopoverContent,
@@ -9,6 +8,8 @@ import {
 } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useToast } from '@/hooks/use-toast';
+import { useState } from 'react';
 
 interface NotificationListProps {
   notifications: AppNotification[];
@@ -17,7 +18,7 @@ interface NotificationListProps {
   onMarkAllAsRead: () => void;
   onNotificationClick?: (transactionId: string) => void;
   pushPermission: NotificationPermission;
-  onRequestPushPermission: () => void;
+  onRequestPushPermission: () => Promise<boolean>;
 }
 
 export function NotificationList({
@@ -29,6 +30,48 @@ export function NotificationList({
   pushPermission,
   onRequestPushPermission,
 }: NotificationListProps) {
+  const { toast } = useToast();
+  const [isRequesting, setIsRequesting] = useState(false);
+
+  const handleRequestPermission = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (isRequesting) return;
+    
+    setIsRequesting(true);
+    
+    try {
+      const granted = await onRequestPushPermission();
+      
+      if (granted) {
+        toast({
+          title: 'Notificações ativadas',
+          description: 'Você receberá alertas sobre lançamentos vencidos.',
+        });
+      } else if (Notification.permission === 'denied') {
+        toast({
+          title: 'Notificações bloqueadas',
+          description: 'Você bloqueou as notificações. Para ativá-las, acesse as configurações do seu navegador.',
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: 'Notificações não ativadas',
+          description: 'As notificações não foram ativadas.',
+        });
+      }
+    } catch (error) {
+      console.error('Error requesting permission:', error);
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível ativar as notificações.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsRequesting(false);
+    }
+  };
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -67,17 +110,26 @@ export function NotificationList({
               <BellOff className="size-4 text-amber-600 mt-0.5 shrink-0" />
               <div className="flex-1">
                 <p className="text-xs text-amber-700 dark:text-amber-400">
-                  Ative as notificações para ser avisado mesmo com o app fechado
+                  {pushPermission === 'denied' 
+                    ? 'Notificações bloqueadas. Acesse as configurações do navegador para ativá-las.'
+                    : 'Ative as notificações para ser avisado mesmo com o app fechado'}
                 </p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="mt-2 h-7 text-xs"
-                  onClick={onRequestPushPermission}
-                >
-                  <Bell className="size-3 mr-1" />
-                  Ativar notificações
-                </Button>
+                {pushPermission !== 'denied' && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-2 h-7 text-xs"
+                    onClick={handleRequestPermission}
+                    disabled={isRequesting}
+                  >
+                    {isRequesting ? (
+                      <Loader2 className="size-3 mr-1 animate-spin" />
+                    ) : (
+                      <Bell className="size-3 mr-1" />
+                    )}
+                    {isRequesting ? 'Ativando...' : 'Ativar notificações'}
+                  </Button>
+                )}
               </div>
             </div>
           </div>
