@@ -348,19 +348,69 @@ export function useTransactions(selectedDate: Date) {
     },
   });
 
+  // Helper to extract real DB ID from virtual instance ID
+  const getRealTransactionId = useCallback((virtualId: string, transaction: TransactionWithBalance): string | null => {
+    // Check if it's a virtual installment ID (e.g., "uuid-inst-2")
+    if (virtualId.includes('-inst-')) {
+      // Extract the parent ID (everything before -inst-)
+      const parentId = virtualId.replace(/-inst-\d+$/, '');
+      return parentId;
+    }
+    
+    // Check if it's a virtual recurring ID (e.g., "uuid-2026-01")
+    if (virtualId.match(/-\d{4}-\d{2}$/)) {
+      // Extract the parent ID (everything before -YYYY-MM)
+      const parentId = virtualId.replace(/-\d{4}-\d{2}$/, '');
+      return parentId;
+    }
+    
+    // It's a real ID, but verify it exists in DB transactions
+    const existsInDb = transactions.some(t => t.id === virtualId);
+    if (existsInDb) {
+      return virtualId;
+    }
+    
+    // Fallback: check if transaction has parentId
+    if (transaction.parentId) {
+      return transaction.parentId;
+    }
+    
+    return virtualId;
+  }, [transactions]);
+
   // Reorder transactions and optionally update dates
   const reorderTransactions = useCallback(async (
     newOrder: TransactionWithBalance[],
     dateChanges?: { id: string; newDate: string }[]
   ) => {
-    // Only include real transaction IDs (not virtual instances)
-    const realUpdates = newOrder
-      .filter(t => !t.id.includes('-inst-') && !t.id.match(/-\d{4}-\d{2}$/))
-      .map((t, index) => ({
-        id: t.id,
+    // Map virtual IDs to real DB IDs and deduplicate
+    const seenIds = new Set<string>();
+    const realUpdates: { id: string; orderIndex: number; date?: string }[] = [];
+    
+    newOrder.forEach((t, index) => {
+      const realId = getRealTransactionId(t.id, t);
+      if (!realId) return;
+      
+      // Skip if we've already processed this real ID
+      if (seenIds.has(realId)) return;
+      seenIds.add(realId);
+      
+      // Find date change by either virtual ID or real ID
+      const dateChange = dateChanges?.find(d => {
+        const changeRealId = d.id.includes('-inst-') 
+          ? d.id.replace(/-inst-\d+$/, '')
+          : d.id.match(/-\d{4}-\d{2}$/)
+            ? d.id.replace(/-\d{4}-\d{2}$/, '')
+            : d.id;
+        return changeRealId === realId || d.id === t.id;
+      });
+      
+      realUpdates.push({
+        id: realId,
         orderIndex: index + 1,
-        date: dateChanges?.find(d => d.id === t.id)?.newDate,
-      }));
+        date: dateChange?.newDate,
+      });
+    });
 
     if (realUpdates.length === 0) return;
 
@@ -395,7 +445,7 @@ export function useTransactions(selectedDate: Date) {
         variant: 'destructive',
       });
     }
-  }, [queryClient, toast]);
+  }, [queryClient, toast, getRealTransactionId]);
 
   // Toggle paid status
   const togglePaid = useCallback((id: string) => {
