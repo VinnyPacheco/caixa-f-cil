@@ -617,8 +617,9 @@ export function useTransactions(selectedDate: Date) {
     }
 
     try {
-      // Use the clean ID passed in (which is the real DB ID)
-      const parentId = id;
+      // IMPORTANT: always use the REAL DB parent id (UUID).
+      // `id` may be a virtual instance id like "<uuid>-inst-2" or "<uuid>-2026-01".
+      const parentId = originalTransaction.parentId || originalTransaction.id;
 
       switch (recurringAction.type) {
         case 'only_this':
