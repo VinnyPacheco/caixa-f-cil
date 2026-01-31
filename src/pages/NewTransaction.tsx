@@ -57,8 +57,8 @@ export default function NewTransaction() {
   const [categoryId, setCategoryId] = useState('');
   const [accountId, setAccountId] = useState('');
   const [date, setDate] = useState<Date | undefined>(new Date());
-  const [recurrence, setRecurrence] = useState<RecurrenceType>('once');
-  const [installmentCount, setInstallmentCount] = useState(2);
+  // Sempre exibir número de parcelas; 1x = lançamento único
+  const [installmentCount, setInstallmentCount] = useState(1);
   const [autoPay, setAutoPay] = useState(false);
   const [notes, setNotes] = useState('');
   const [selectedTags, setSelectedTags] = useState<Tag[]>([]);
@@ -78,8 +78,7 @@ export default function NewTransaction() {
     setCategoryId('');
     setAccountId('');
     setDate(new Date());
-    setRecurrence('once');
-    setInstallmentCount(2);
+    setInstallmentCount(1);
     setAutoPay(false);
     setNotes('');
     setSelectedTags([]);
@@ -130,10 +129,8 @@ export default function NewTransaction() {
     if (parsed.categoryName) fieldsList.push(`Categoria: ${parsed.categoryName}`);
     if (parsed.accountName) fieldsList.push(`Conta: ${parsed.accountName}`);
     if (parsed.type) fieldsList.push(`Tipo: ${parsed.type === 'expense' ? 'Despesa' : 'Receita'}`);
-    if (parsed.recurrence && parsed.recurrence !== 'once') {
-      fieldsList.push(
-        `Recorrência: ${parsed.recurrence === 'installment' ? `${parsed.installmentCount}x` : 'Mensal'}`,
-      );
+    if (parsed.installmentCount && parsed.installmentCount > 1) {
+      fieldsList.push(`Parcelas: ${parsed.installmentCount}x`);
     }
 
     // Toast 2: Show parsed fields (with delay so both toasts are visible)
@@ -185,10 +182,6 @@ export default function NewTransaction() {
 
     if (parsed.date) {
       setDate(parsed.date);
-    }
-
-    if (parsed.recurrence) {
-      setRecurrence(parsed.recurrence);
     }
 
     if (parsed.installmentCount) {
@@ -253,7 +246,10 @@ export default function NewTransaction() {
       // Auto-save the transaction
       const numericAmount = parsedAmountCents / 100;
 
-      addTransaction({
+       const effectiveRecurrence: RecurrenceType =
+         parsed.installmentCount && parsed.installmentCount > 1 ? 'installment' : 'once';
+
+       addTransaction({
         accountId: parsedAccountId,
         categoryId: parsedCategoryId,
         description: parsedDescription,
@@ -261,12 +257,12 @@ export default function NewTransaction() {
         date: parsed.date ? format(parsed.date, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
         type: typeToUse,
         isPaid: false,
-        recurrenceType: parsed.recurrence || 'once',
+         recurrenceType: effectiveRecurrence,
         installmentTotal:
-          parsed.recurrence === 'installment' && parsed.installmentCount
-            ? parsed.installmentCount
-            : undefined,
-        installmentCurrent: parsed.recurrence === 'installment' ? 1 : undefined,
+           effectiveRecurrence === 'installment' && parsed.installmentCount
+             ? parsed.installmentCount
+             : undefined,
+         installmentCurrent: effectiveRecurrence === 'installment' ? 1 : undefined,
         autoSettle: parsed.autoPay || false,
         notes: undefined,
         startDate: parsed.date ? format(parsed.date, 'yyyy-MM-dd') : undefined,
@@ -372,6 +368,7 @@ export default function NewTransaction() {
     setIsSubmitting(true);
 
     const numericAmount = amountCents / 100;
+    const effectiveRecurrence: RecurrenceType = installmentCount > 1 ? 'installment' : 'once';
 
     try {
       const tagIds = selectedTags.map(t => t.id);
@@ -383,9 +380,9 @@ export default function NewTransaction() {
         date: date ? format(date, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
         type,
         isPaid: false,
-        recurrenceType: recurrence,
-        installmentTotal: recurrence === 'installment' ? installmentCount : undefined,
-        installmentCurrent: recurrence === 'installment' ? 1 : undefined,
+        recurrenceType: effectiveRecurrence,
+        installmentTotal: effectiveRecurrence === 'installment' ? installmentCount : undefined,
+        installmentCurrent: effectiveRecurrence === 'installment' ? 1 : undefined,
         autoSettle: autoPay,
         notes: notes || undefined,
         startDate: date ? format(date, 'yyyy-MM-dd') : undefined,
@@ -558,52 +555,28 @@ export default function NewTransaction() {
             </div>
           </div>
 
-          {/* Recurrence */}
+          {/* Número de Parcelas (sempre visível; 1x = lançamento único) */}
           <div className="space-y-2">
             <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">
-              Recorrência
+              Número de Parcelas
             </label>
-            <div className="grid grid-cols-3 gap-2">
-              {(['once', 'installment', 'recurring'] as RecurrenceType[]).map((r) => (
+            <div className="grid grid-cols-6 gap-2">
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((num) => (
                 <button
-                  key={r}
-                  onClick={() => setRecurrence(r)}
+                  key={num}
+                  type="button"
+                  onClick={() => setInstallmentCount(num)}
                   className={`py-3 px-2 rounded-xl font-semibold text-sm transition-all ${
-                    recurrence === r
+                    installmentCount === num
                       ? 'bg-accent text-accent-foreground shadow-sm'
                       : 'bg-secondary text-muted-foreground hover:bg-muted'
                   }`}
                 >
-                  {r === 'once' ? 'Única' : r === 'installment' ? 'Parcelada' : 'Contínua'}
+                  {num}x
                 </button>
               ))}
             </div>
           </div>
-
-          {/* Installment Count - Only show when installment is selected */}
-          {recurrence === 'installment' && (
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">
-                Número de Parcelas
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((num) => (
-                  <button
-                    key={num}
-                    type="button"
-                    onClick={() => setInstallmentCount(num)}
-                    className={`w-12 h-12 rounded-xl font-bold text-base transition-all ${
-                      installmentCount === num
-                        ? 'bg-accent text-accent-foreground shadow-sm'
-                        : 'bg-secondary text-muted-foreground hover:bg-muted'
-                    }`}
-                  >
-                    {num}x
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
 
           {/* Auto Pay Toggle */}
           <div className="flex items-center justify-between bg-secondary p-4 rounded-2xl">
