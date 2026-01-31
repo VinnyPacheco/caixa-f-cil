@@ -25,10 +25,10 @@ export function RecurringActionDialog({
   actionType,
   isInstallment = false,
 }: RecurringActionDialogProps) {
-  const title = actionType === 'delete' ? 'Excluir lançamento recorrente' : 'Editar lançamento recorrente';
+  const title = actionType === 'delete' ? 'Excluir lançamento parcelado' : 'Editar lançamento parcelado';
   const description = actionType === 'delete' 
-    ? 'Este é um lançamento recorrente. Qual ação você deseja realizar?'
-    : 'Este é um lançamento recorrente. Qual ação você deseja realizar?';
+    ? 'Este é um lançamento parcelado. Qual ação você deseja realizar?'
+    : 'Este é um lançamento parcelado. Qual ação você deseja realizar?';
 
   const handleAction = (action: RecurringActionType) => {
     onAction(action);
@@ -51,13 +51,11 @@ export function RecurringActionDialog({
             onClick={() => handleAction('only_this')}
           >
             <div className="flex flex-col items-start gap-1">
-              <span className="font-semibold">
-                {isInstallment ? 'Apenas esta parcela' : 'Apenas este lançamento'}
-              </span>
+              <span className="font-semibold">Apenas esta parcela</span>
               <span className="text-xs text-muted-foreground">
                 {actionType === 'delete' 
-                  ? 'Remove apenas este mês específico' 
-                  : 'Modifica apenas este mês específico'}
+                  ? 'Remove apenas esta parcela específica' 
+                  : 'Modifica apenas esta parcela específica'}
               </span>
             </div>
           </Button>
@@ -68,13 +66,11 @@ export function RecurringActionDialog({
             onClick={() => handleAction('this_and_future')}
           >
             <div className="flex flex-col items-start gap-1">
-              <span className="font-semibold">
-                {isInstallment ? 'Esta e as próximas parcelas' : 'Este e os próximos'}
-              </span>
+              <span className="font-semibold">Esta e as próximas parcelas</span>
               <span className="text-xs text-muted-foreground">
                 {actionType === 'delete' 
-                  ? 'Remove este mês e todos os seguintes' 
-                  : 'Modifica este mês e todos os seguintes'}
+                  ? 'Remove esta parcela e todas as seguintes' 
+                  : 'Modifica esta parcela e todas as seguintes'}
               </span>
             </div>
           </Button>
@@ -85,13 +81,11 @@ export function RecurringActionDialog({
             onClick={() => handleAction('all')}
           >
             <div className="flex flex-col items-start gap-1">
-              <span className="font-semibold">
-                {isInstallment ? 'Todas as parcelas' : 'Todas as ocorrências'}
-              </span>
+              <span className="font-semibold">Todas as parcelas</span>
               <span className="text-xs text-muted-foreground">
                 {actionType === 'delete' 
-                  ? 'Remove todas as ocorrências (passadas e futuras)' 
-                  : 'Modifica todas as ocorrências (passadas e futuras)'}
+                  ? 'Remove todas as parcelas deste lançamento' 
+                  : 'Modifica todas as parcelas deste lançamento'}
               </span>
             </div>
           </Button>

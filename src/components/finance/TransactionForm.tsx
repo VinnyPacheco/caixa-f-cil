@@ -59,10 +59,9 @@ export function TransactionForm({
   const { tags: transactionTags } = useTransactionTags(transaction?.id);
   const [selectedTags, setSelectedTags] = useState<Tag[]>([]);
 
-  // Check if this is a recurring or installment transaction
-  const isRecurring = transaction?.recurrenceType === 'recurring';
+  // Check if this is an installment transaction
   const isInstallment = transaction?.recurrenceType === 'installment';
-  const needsRecurringAction = isRecurring || isInstallment;
+  const needsRecurringAction = isInstallment;
   const [type, setType] = useState<TransactionType>('expense');
   const [amountCents, setAmountCents] = useState(0);
   const [description, setDescription] = useState('');
@@ -199,19 +198,17 @@ export function TransactionForm({
     if (!transaction) return;
 
     const instanceDate = transaction.date;
-    const originalId = transaction.parentId || transaction.id;
-    const cleanId = originalId.includes('-inst-') || originalId.match(/-\d{4}-\d{2}$/)
-      ? originalId.split('-inst-')[0].replace(/-\d{4}-\d{2}$/, '')
-      : originalId;
+    // Use the actual transaction ID directly (no more virtual IDs)
+    const transactionId = transaction.id;
 
     const tagIds = selectedTags.map(t => t.id);
 
     if (recurringActionType === 'delete' && onDelete) {
-      onDelete(cleanId, { type: action, instanceDate });
+      onDelete(transactionId, { type: action, instanceDate });
       setShowDeleteConfirm(false);
       onOpenChange(false);
     } else if (recurringActionType === 'edit' && onUpdate && pendingSubmitData) {
-      onUpdate(cleanId, pendingSubmitData, { type: action, instanceDate }, tagIds);
+      onUpdate(transactionId, pendingSubmitData, { type: action, instanceDate }, tagIds);
       toast({
         title: 'Lançamento atualizado!',
         description: `${type === 'income' ? 'Receita' : 'Despesa'} atualizada com sucesso.`,
@@ -246,12 +243,8 @@ export function TransactionForm({
 
   const handleSimpleDelete = () => {
     if (transaction && onDelete) {
-      const originalId = transaction.parentId || transaction.id;
-      const cleanId = originalId.includes('-inst-') || originalId.match(/-\d{4}-\d{2}$/)
-        ? originalId.split('-inst-')[0].replace(/-\d{4}-\d{2}$/, '')
-        : originalId;
-      
-      onDelete(cleanId);
+      // Use the actual transaction ID directly (no more virtual IDs)
+      onDelete(transaction.id);
       setShowDeleteConfirm(false);
       onOpenChange(false);
     }
@@ -393,12 +386,12 @@ export function TransactionForm({
             {isEditing ? (
               <div className="bg-secondary/50 p-4 rounded-xl">
                 <span className="text-foreground text-sm font-medium">
-                  {recurrence === 'once' ? 'Única' : recurrence === 'installment' ? 'Parcelada' : 'Contínua'}
+                  {recurrence === 'once' ? 'Única' : 'Parcelada'}
                 </span>
               </div>
             ) : (
-              <div className="grid grid-cols-3 gap-2">
-                {(['once', 'installment', 'recurring'] as RecurrenceType[]).map((r) => (
+              <div className="grid grid-cols-2 gap-2">
+                {(['once', 'installment'] as RecurrenceType[]).map((r) => (
                   <button
                     key={r}
                     type="button"
@@ -409,7 +402,7 @@ export function TransactionForm({
                         : 'bg-secondary text-muted-foreground hover:bg-muted'
                     }`}
                   >
-                    {r === 'once' ? 'Única' : r === 'installment' ? 'Parcelada' : 'Contínua'}
+                    {r === 'once' ? 'Única' : 'Parcelada'}
                   </button>
                 ))}
               </div>
