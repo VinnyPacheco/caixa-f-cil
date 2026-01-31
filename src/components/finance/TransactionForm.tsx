@@ -69,8 +69,7 @@ export function TransactionForm({
   const [accountId, setAccountId] = useState('');
   const [date, setDate] = useState(new Date());
   const [calendarMonth, setCalendarMonth] = useState(new Date());
-  const [recurrence, setRecurrence] = useState<RecurrenceType>('once');
-  const [installmentCount, setInstallmentCount] = useState('2');
+  const [installmentCount, setInstallmentCount] = useState('1');
   const [isPaid, setIsPaid] = useState(false);
   const [autoSettle, setAutoSettle] = useState(false);
   const [notes, setNotes] = useState('');
@@ -106,8 +105,7 @@ export function TransactionForm({
       setAccountId(transaction.accountId);
       setDate(parsedDate);
       setCalendarMonth(parsedDate);
-      setRecurrence(transaction.recurrenceType);
-      setInstallmentCount(transaction.installmentTotal?.toString() || '2');
+      setInstallmentCount(transaction.installmentTotal?.toString() || '1');
       setIsPaid(transaction.isPaid);
       setAutoSettle(transaction.autoSettle || false);
       setNotes(transaction.notes || '');
@@ -120,8 +118,7 @@ export function TransactionForm({
       setAccountId(accounts[0]?.id || '');
       setDate(today);
       setCalendarMonth(today);
-      setRecurrence('once');
-      setInstallmentCount('2');
+      setInstallmentCount('1');
       setIsPaid(false);
       setAutoSettle(false);
       setNotes('');
@@ -149,7 +146,8 @@ export function TransactionForm({
     }
 
     const numericAmount = amountCents / 100;
-    const installments = recurrence === 'installment' ? parseInt(installmentCount) || 2 : undefined;
+    const installments = parseInt(installmentCount) || 1;
+    const isInstallmentTransaction = installments > 1;
 
     const transactionData = {
       type,
@@ -158,13 +156,13 @@ export function TransactionForm({
       categoryId: categoryId || filteredCategories[0]?.id || '',
       accountId: accountId || accounts[0]?.id || '',
       date: format(date, 'yyyy-MM-dd'),
-      recurrenceType: recurrence,
+      recurrenceType: isInstallmentTransaction ? 'installment' as RecurrenceType : 'once' as RecurrenceType,
       isPaid,
       autoSettle,
       notes: notes.trim() || undefined,
-      installmentTotal: installments,
-      installmentCurrent: installments ? 1 : undefined,
-      startDate: recurrence !== 'once' ? format(date, 'yyyy-MM-dd') : undefined,
+      installmentTotal: isInstallmentTransaction ? installments : undefined,
+      installmentCurrent: isInstallmentTransaction ? 1 : undefined,
+      startDate: isInstallmentTransaction ? format(date, 'yyyy-MM-dd') : undefined,
     };
 
     const tagIds = selectedTags.map(t => t.id);
@@ -378,58 +376,51 @@ export function TransactionForm({
             </div>
           </div>
 
-          {/* Recurrence - Read-only when editing */}
+          {/* Installment Count - Always visible */}
           <div className="space-y-2">
             <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">
-              Recorrência
+              Número de Parcelas
             </label>
             {isEditing ? (
               <div className="bg-secondary/50 p-4 rounded-xl">
                 <span className="text-foreground text-sm font-medium">
-                  {recurrence === 'once' ? 'Única' : 'Parcelada'}
+                  {installmentCount}x
                 </span>
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-2">
-                {(['once', 'installment'] as RecurrenceType[]).map((r) => (
+              <div className="grid grid-cols-6 gap-2">
+                {['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'].map((count) => (
                   <button
-                    key={r}
+                    key={count}
                     type="button"
-                    onClick={() => setRecurrence(r)}
+                    onClick={() => setInstallmentCount(count)}
                     className={`py-3 px-2 rounded-xl font-semibold text-sm transition-all ${
-                      recurrence === r
+                      installmentCount === count
                         ? 'bg-accent text-accent-foreground shadow-sm'
                         : 'bg-secondary text-muted-foreground hover:bg-muted'
                     }`}
                   >
-                    {r === 'once' ? 'Única' : 'Parcelada'}
+                    {count}x
                   </button>
                 ))}
               </div>
             )}
-          </div>
-
-          {/* Installment Count - Only show when installment is selected and not editing */}
-          {recurrence === 'installment' && !isEditing && (
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">
-                Número de Parcelas
-              </label>
-              <div className="flex items-center gap-3 bg-secondary p-4 rounded-xl">
+            {!isEditing && (
+              <div className="flex items-center gap-3 bg-secondary p-4 rounded-xl mt-2">
                 <span className="material-symbols-outlined text-muted-foreground">format_list_numbered</span>
                 <input
                   type="number"
-                  min="2"
+                  min="1"
                   max="60"
                   value={installmentCount}
                   onChange={(e) => setInstallmentCount(e.target.value)}
-                  placeholder="Ex: 12"
+                  placeholder="Ou digite..."
                   className="w-full bg-transparent border-none p-0 focus:ring-0 focus:outline-none text-foreground placeholder-muted-foreground text-base font-medium"
                 />
                 <span className="text-muted-foreground text-sm">parcelas</span>
               </div>
-            </div>
-          )}
+            )}
+          </div>
 
           {/* Auto Settle Toggle */}
           <div className="flex items-center justify-between bg-secondary p-4 rounded-2xl">
