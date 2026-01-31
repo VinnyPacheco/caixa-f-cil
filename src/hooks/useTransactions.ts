@@ -8,14 +8,10 @@ import {
   deleteTransaction,
   toggleTransactionPaid,
   reorderTransactions as reorderTransactionsService,
-  setTransactionEndDate,
-  setTransactionStartDate,
+  deleteInstallment,
+  deleteInstallmentAndFuture,
+  deleteAllInstallments,
 } from '@/services/transactionsService';
-import { 
-  createRecurringException, 
-  fetchRecurringExceptions,
-  RecurringException,
-} from '@/services/recurringExceptionsService';
 import { fetchAccounts } from '@/services/accountsService';
 import { fetchCategories } from '@/services/categoriesService';
 import { setTransactionTags } from '@/services/tagsService';
@@ -23,7 +19,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { calculateRunningBalances } from '@/lib/format';
 import { FilterType } from '@/components/finance/FilterPills';
-import { format, startOfMonth, endOfMonth, isWithinInterval, parseISO, addMonths, isBefore, isAfter } from 'date-fns';
+import { startOfMonth, endOfMonth, isWithinInterval, parseISO } from 'date-fns';
 import { useState } from 'react';
 import { RecurringUpdateAction } from '@/components/finance/TransactionForm';
 
@@ -54,174 +50,25 @@ export function useTransactions(selectedDate: Date) {
     enabled: !!user,
   });
 
-  const exceptionsQuery = useQuery({
-    queryKey: ['recurring-exceptions'],
-    queryFn: fetchRecurringExceptions,
-    enabled: !!user,
-  });
-
   const transactions = transactionsQuery.data || [];
   const accounts = accountsQuery.data || [];
   const categories = categoriesQuery.data || [];
-  const exceptions = exceptionsQuery.data || [];
 
   // Calculate opening balance from accounts
   const openingBalance = useMemo(() => {
     return accounts.reduce((sum, acc) => sum + acc.initialBalance, 0);
   }, [accounts]);
 
-  // Generate recurring transaction instances for the selected month
-  const expandedTransactions = useMemo(() => {
+  // Filter transactions for the selected month (all transactions are now real DB records)
+  const monthTransactions = useMemo(() => {
     const start = startOfMonth(selectedDate);
     const end = endOfMonth(selectedDate);
-    const result: Transaction[] = [];
 
-    // Create a map of exceptions by parentId and date for quick lookup
-    const exceptionMap = new Map<string, RecurringException>();
-    exceptions.forEach(ex => {
-      exceptionMap.set(`${ex.parentId}-${ex.exceptionDate}`, ex);
-    });
-
-    transactions.forEach((t) => {
+    return transactions.filter((t) => {
       const transactionDate = parseISO(t.date);
-      const transactionStartDate = t.startDate ? parseISO(t.startDate) : transactionDate;
-      const transactionEndDate = t.endDate ? parseISO(t.endDate) : null;
-      
-      // For one-time transactions, include if in range
-      if (t.recurrenceType === 'once') {
-        if (isWithinInterval(transactionDate, { start, end })) {
-          result.push(t);
-        }
-        return;
-      }
-
-      // For recurring (continuous) transactions
-      if (t.recurrenceType === 'recurring') {
-        const dayOfMonth = transactionStartDate.getDate();
-        const instanceDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), dayOfMonth);
-        const instanceDateStr = format(instanceDate, 'yyyy-MM-dd');
-        
-        // Check if this instance has been ended
-        if (transactionEndDate && !isBefore(instanceDate, transactionEndDate)) {
-          return;
-        }
-
-        // Check for exceptions
-        const exceptionKey = `${t.parentId || t.id}-${instanceDateStr}`;
-        const exception = exceptionMap.get(exceptionKey);
-        
-        if (exception?.exceptionType === 'skip') {
-          // Skip this instance
-          return;
-        }
-
-        if (!isAfter(transactionStartDate, end)) {
-          if (isWithinInterval(transactionDate, { start, end })) {
-            // Apply any modifications from exception
-            if (exception?.exceptionType === 'modified') {
-              result.push({
-                ...t,
-                amount: exception.modifiedAmount ?? t.amount,
-                description: exception.modifiedDescription ?? t.description,
-                categoryId: exception.modifiedCategoryId ?? t.categoryId,
-                accountId: exception.modifiedAccountId ?? t.accountId,
-                isPaid: exception.modifiedIsPaid ?? t.isPaid,
-                notes: exception.modifiedNotes ?? t.notes,
-              });
-            } else {
-              result.push(t);
-            }
-          } else if (!isBefore(instanceDate, transactionStartDate)) {
-            const instanceId = `${t.parentId || t.id}-${format(instanceDate, 'yyyy-MM')}`;
-            
-            // Apply any modifications from exception
-            if (exception?.exceptionType === 'modified') {
-              result.push({
-                ...t,
-                id: instanceId,
-                parentId: t.parentId || t.id,
-                date: instanceDateStr,
-                amount: exception.modifiedAmount ?? t.amount,
-                description: exception.modifiedDescription ?? t.description,
-                categoryId: exception.modifiedCategoryId ?? t.categoryId,
-                accountId: exception.modifiedAccountId ?? t.accountId,
-                isPaid: exception.modifiedIsPaid ?? false,
-                notes: exception.modifiedNotes ?? t.notes,
-              });
-            } else {
-              result.push({
-                ...t,
-                id: instanceId,
-                parentId: t.parentId || t.id,
-                date: instanceDateStr,
-                isPaid: false,
-              });
-            }
-          }
-        }
-        return;
-      }
-
-      // For installment transactions
-      if (t.recurrenceType === 'installment' && t.installmentTotal) {
-        const totalInstallments = t.installmentTotal;
-        
-        for (let i = 0; i < totalInstallments; i++) {
-          const installmentDate = addMonths(transactionStartDate, i);
-          const installmentDateStr = format(installmentDate, 'yyyy-MM-dd');
-          
-          // Check if this instance has been ended
-          if (transactionEndDate && !isBefore(installmentDate, transactionEndDate)) {
-            continue;
-          }
-
-          // Check for exceptions
-          const exceptionKey = `${t.parentId || t.id}-${installmentDateStr}`;
-          const exception = exceptionMap.get(exceptionKey);
-          
-          if (exception?.exceptionType === 'skip') {
-            continue;
-          }
-          
-          if (isWithinInterval(installmentDate, { start, end })) {
-            const instanceId = i === 0 ? t.id : `${t.parentId || t.id}-inst-${i + 1}`;
-            
-            // Apply any modifications from exception
-            if (exception?.exceptionType === 'modified') {
-              result.push({
-                ...t,
-                id: instanceId,
-                parentId: t.parentId || t.id,
-                date: installmentDateStr,
-                installmentCurrent: i + 1,
-                amount: exception.modifiedAmount ?? t.amount,
-                description: exception.modifiedDescription ?? `${t.description} (${i + 1}/${totalInstallments})`,
-                categoryId: exception.modifiedCategoryId ?? t.categoryId,
-                accountId: exception.modifiedAccountId ?? t.accountId,
-                isPaid: exception.modifiedIsPaid ?? (i === 0 ? t.isPaid : false),
-                notes: exception.modifiedNotes ?? t.notes,
-              });
-            } else {
-              result.push({
-                ...t,
-                id: instanceId,
-                parentId: t.parentId || t.id,
-                date: installmentDateStr,
-                installmentCurrent: i + 1,
-                isPaid: i === 0 ? t.isPaid : false,
-                description: `${t.description} (${i + 1}/${totalInstallments})`,
-              });
-            }
-          }
-        }
-      }
+      return isWithinInterval(transactionDate, { start, end });
     });
-
-    return result;
-  }, [transactions, selectedDate, exceptions]);
-
-  // Get transactions for the selected month (already filtered by expandedTransactions)
-  const monthTransactions = useMemo(() => expandedTransactions, [expandedTransactions]);
+  }, [transactions, selectedDate]);
 
   // Apply filter
   const filteredTransactions = useMemo(() => {
@@ -348,77 +195,27 @@ export function useTransactions(selectedDate: Date) {
     },
   });
 
-  // Helper to extract real DB ID from virtual instance ID
-  const getRealTransactionId = useCallback((virtualId: string, transaction: TransactionWithBalance): string | null => {
-    // Check if it's a virtual installment ID (e.g., "uuid-inst-2")
-    if (virtualId.includes('-inst-')) {
-      // Extract the parent ID (everything before -inst-)
-      const parentId = virtualId.replace(/-inst-\d+$/, '');
-      return parentId;
-    }
-    
-    // Check if it's a virtual recurring ID (e.g., "uuid-2026-01")
-    if (virtualId.match(/-\d{4}-\d{2}$/)) {
-      // Extract the parent ID (everything before -YYYY-MM)
-      const parentId = virtualId.replace(/-\d{4}-\d{2}$/, '');
-      return parentId;
-    }
-    
-    // It's a real ID, but verify it exists in DB transactions
-    const existsInDb = transactions.some(t => t.id === virtualId);
-    if (existsInDb) {
-      return virtualId;
-    }
-    
-    // Fallback: check if transaction has parentId
-    if (transaction.parentId) {
-      return transaction.parentId;
-    }
-    
-    return virtualId;
-  }, [transactions]);
-
   // Reorder transactions and optionally update dates
   const reorderTransactions = useCallback(async (
     newOrder: TransactionWithBalance[],
     dateChanges?: { id: string; newDate: string }[]
   ) => {
-    // Map virtual IDs to real DB IDs and deduplicate
-    const seenIds = new Set<string>();
-    const realUpdates: { id: string; orderIndex: number; date?: string }[] = [];
-    
-    newOrder.forEach((t, index) => {
-      const realId = getRealTransactionId(t.id, t);
-      if (!realId) return;
-      
-      // Skip if we've already processed this real ID
-      if (seenIds.has(realId)) return;
-      seenIds.add(realId);
-      
-      // Find date change by either virtual ID or real ID
-      const dateChange = dateChanges?.find(d => {
-        const changeRealId = d.id.includes('-inst-') 
-          ? d.id.replace(/-inst-\d+$/, '')
-          : d.id.match(/-\d{4}-\d{2}$/)
-            ? d.id.replace(/-\d{4}-\d{2}$/, '')
-            : d.id;
-        return changeRealId === realId || d.id === t.id;
-      });
-      
-      realUpdates.push({
-        id: realId,
+    const updates = newOrder.map((t, index) => {
+      const dateChange = dateChanges?.find(d => d.id === t.id);
+      return {
+        id: t.id,
         orderIndex: index + 1,
         date: dateChange?.newDate,
-      });
+      };
     });
 
-    if (realUpdates.length === 0) return;
+    if (updates.length === 0) return;
 
     // Optimistic update: immediately update the cache
     queryClient.setQueryData(['transactions'], (oldData: Transaction[] | undefined) => {
       if (!oldData) return oldData;
       
-      const updateMap = new Map(realUpdates.map(u => [u.id, u]));
+      const updateMap = new Map(updates.map(u => [u.id, u]));
       return oldData.map(t => {
         const update = updateMap.get(t.id);
         if (update) {
@@ -433,7 +230,7 @@ export function useTransactions(selectedDate: Date) {
     });
 
     try {
-      await reorderTransactionsService(realUpdates);
+      await reorderTransactionsService(updates);
       // Refetch to ensure consistency with server
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
     } catch (error) {
@@ -445,7 +242,7 @@ export function useTransactions(selectedDate: Date) {
         variant: 'destructive',
       });
     }
-  }, [queryClient, toast, getRealTransactionId]);
+  }, [queryClient, toast]);
 
   // Toggle paid status
   const togglePaid = useCallback((id: string) => {
@@ -469,7 +266,7 @@ export function useTransactions(selectedDate: Date) {
     }
   }, [createMutation, user, queryClient]);
 
-  // Update existing transaction with recurring action support
+  // Update existing transaction
   const updateTransactionFn = useCallback(async (
     id: string, 
     updates: Partial<Transaction>,
@@ -478,30 +275,16 @@ export function useTransactions(selectedDate: Date) {
   ) => {
     if (!user) return;
 
-    // First try to find in expanded transactions (which includes virtual instances)
-    let originalTransaction = expandedTransactions.find(t => t.id === id || t.parentId === id);
-    
-    // If not found, try to find in raw transactions
-    if (!originalTransaction) {
-      originalTransaction = transactions.find(t => t.id === id || t.parentId === id);
-    }
-    
+    const originalTransaction = transactions.find(t => t.id === id);
     if (!originalTransaction) {
       updateMutation.mutate({ id, data: updates });
       return;
     }
 
-    const isRecurringOrInstallment = originalTransaction.recurrenceType === 'recurring' || 
-                                      originalTransaction.recurrenceType === 'installment';
-
-    // Handle tags update for the real transaction id
-    const realTransactionId = originalTransaction.parentId || id;
-    // Only update tags if it's a real DB ID (not a virtual instance ID)
-    const isRealId = !id.includes('-inst-') && !id.match(/-\d{4}-\d{2}$/);
-    
-    if (tagIds !== undefined && isRealId) {
+    // Handle tags update
+    if (tagIds !== undefined) {
       try {
-        await setTransactionTags(realTransactionId, tagIds, user.id);
+        await setTransactionTags(id, tagIds, user.id);
         queryClient.invalidateQueries({ queryKey: ['transaction-tags-bulk'] });
         queryClient.invalidateQueries({ queryKey: ['transaction-tags'] });
       } catch (error) {
@@ -509,146 +292,119 @@ export function useTransactions(selectedDate: Date) {
       }
     }
 
-    if (!isRecurringOrInstallment || !recurringAction) {
-      updateMutation.mutate({ id, data: updates });
-      return;
-    }
+    const isInstallment = originalTransaction.recurrenceType === 'installment';
 
-    try {
-      const parentId = originalTransaction.parentId || id;
-
+    // For installment transactions with recurring action
+    if (isInstallment && recurringAction) {
       switch (recurringAction.type) {
         case 'only_this':
-          // Create a modified exception for this specific date
-          await createRecurringException({
-            parentId,
-            exceptionDate: recurringAction.instanceDate,
-            exceptionType: 'modified',
-            modifiedAmount: updates.amount,
-            modifiedDescription: updates.description,
-            modifiedCategoryId: updates.categoryId,
-            modifiedAccountId: updates.accountId,
-            modifiedIsPaid: updates.isPaid,
-            modifiedNotes: updates.notes,
-          }, user.id);
-          queryClient.invalidateQueries({ queryKey: ['recurring-exceptions'] });
-          toast({
-            title: 'Lançamento atualizado',
-            description: 'Apenas esta ocorrência foi modificada.',
-          });
+          // Just update this specific installment record
+          updateMutation.mutate({ id, data: updates });
           break;
 
         case 'this_and_future':
-          // Set end_date on current transaction and create a new one from this date
-          const endDate = recurringAction.instanceDate;
-          await setTransactionEndDate(parentId, endDate);
+        case 'all':
+          // For installments, update all related records
+          // Get the series parent ID
+          const seriesParentId = originalTransaction.parentId || id;
           
-          // Create a new transaction starting from this date with the updates
-          const newTransaction = {
-            ...originalTransaction,
-            ...updates,
-            startDate: endDate,
-            date: endDate,
-            parentId: undefined,
-          };
-          delete (newTransaction as { id?: string }).id;
-          delete (newTransaction as { orderIndex?: number }).orderIndex;
+          // Update the parent if it's different from current
+          if (seriesParentId !== id) {
+            await updateTransaction(seriesParentId, updates);
+          }
           
-          await createTransaction(newTransaction as Omit<Transaction, 'id' | 'orderIndex'>, user.id);
+          // Update current transaction
+          await updateTransaction(id, updates);
+          
+          // Update all siblings
+          const siblings = transactions.filter(t => t.parentId === seriesParentId);
+          
+          if (recurringAction.type === 'this_and_future') {
+            // Only update those with date >= current transaction date
+            const currentDate = originalTransaction.date;
+            for (const sibling of siblings) {
+              if (sibling.date >= currentDate && sibling.id !== id) {
+                await updateTransaction(sibling.id, updates);
+              }
+            }
+          } else {
+            // Update all siblings
+            for (const sibling of siblings) {
+              if (sibling.id !== id) {
+                await updateTransaction(sibling.id, updates);
+              }
+            }
+          }
+          
           queryClient.invalidateQueries({ queryKey: ['transactions'] });
           toast({
             title: 'Lançamento atualizado',
-            description: 'Esta e as próximas ocorrências foram modificadas.',
+            description: recurringAction.type === 'all' 
+              ? 'Todas as parcelas foram atualizadas.' 
+              : 'Esta e as próximas parcelas foram atualizadas.',
           });
           break;
-
-        case 'all':
-          // Update the parent transaction directly
-          updateMutation.mutate({ id: parentId, data: updates });
-          break;
       }
-    } catch (error) {
-      toast({
-        title: 'Erro ao atualizar transação',
-        description: error instanceof Error ? error.message : 'Erro desconhecido',
-        variant: 'destructive',
-      });
+    } else {
+      // For non-installment transactions or without recurring action
+      updateMutation.mutate({ id, data: updates });
     }
-  }, [updateMutation, user, transactions, expandedTransactions, queryClient, toast]);
+  }, [updateMutation, user, transactions, queryClient, toast]);
 
-  // Delete transaction with recurring action support
+  // Delete transaction with installment action support
   const deleteTransactionFn = useCallback(async (
     id: string,
     recurringAction?: RecurringUpdateAction
   ) => {
     if (!user) return;
 
-    // For recurring actions, id is already the clean parent ID
-    // First try to find in raw transactions (original DB records)
-    let originalTransaction = transactions.find(t => t.id === id);
-    
-    // If not found by direct ID, try to find by parentId in expanded transactions
+    const originalTransaction = transactions.find(t => t.id === id);
     if (!originalTransaction) {
-      const expandedMatch = expandedTransactions.find(t => t.parentId === id || t.id === id);
-      if (expandedMatch) {
-        // Get the real DB transaction using the parentId
-        const realId = expandedMatch.parentId || expandedMatch.id;
-        originalTransaction = transactions.find(t => t.id === realId);
-      }
-    }
-    
-    // If still not found, try direct match in expanded
-    if (!originalTransaction) {
-      originalTransaction = expandedTransactions.find(t => t.id === id || t.parentId === id);
-    }
-    
-    if (!originalTransaction) {
-      // Fallback: try to delete directly
       deleteMutation.mutate(id);
       return;
     }
 
-    const isRecurringOrInstallment = originalTransaction.recurrenceType === 'recurring' || 
-                                      originalTransaction.recurrenceType === 'installment';
+    const isInstallment = originalTransaction.recurrenceType === 'installment';
 
-    if (!isRecurringOrInstallment || !recurringAction) {
+    if (!isInstallment || !recurringAction) {
       deleteMutation.mutate(id);
       return;
     }
 
     try {
-      // IMPORTANT: always use the REAL DB parent id (UUID).
-      // `id` may be a virtual instance id like "<uuid>-inst-2" or "<uuid>-2026-01".
-      const parentId = originalTransaction.parentId || originalTransaction.id;
-
       switch (recurringAction.type) {
         case 'only_this':
-          // Create a skip exception for this specific date
-          await createRecurringException({
-            parentId,
-            exceptionDate: recurringAction.instanceDate,
-            exceptionType: 'skip',
-          }, user.id);
-          queryClient.invalidateQueries({ queryKey: ['recurring-exceptions'] });
+          // Delete only this specific installment record
+          await deleteInstallment(id);
+          queryClient.invalidateQueries({ queryKey: ['transactions'] });
           toast({
-            title: 'Lançamento excluído',
-            description: 'Apenas esta ocorrência foi removida.',
+            title: 'Parcela excluída',
+            description: 'Apenas esta parcela foi removida.',
           });
           break;
 
         case 'this_and_future':
-          // Set end_date on the transaction
-          await setTransactionEndDate(parentId, recurringAction.instanceDate);
+          // Delete this and all future installments
+          await deleteInstallmentAndFuture(
+            id, 
+            originalTransaction.parentId || null, 
+            originalTransaction.date
+          );
           queryClient.invalidateQueries({ queryKey: ['transactions'] });
           toast({
-            title: 'Lançamento excluído',
-            description: 'Esta e as próximas ocorrências foram removidas.',
+            title: 'Parcelas excluídas',
+            description: 'Esta e as próximas parcelas foram removidas.',
           });
           break;
 
         case 'all':
-          // Delete the parent transaction completely
-          deleteMutation.mutate(parentId);
+          // Delete all installments in the series
+          await deleteAllInstallments(id, originalTransaction.parentId || null);
+          queryClient.invalidateQueries({ queryKey: ['transactions'] });
+          toast({
+            title: 'Lançamento excluído',
+            description: 'Todas as parcelas foram removidas.',
+          });
           break;
       }
     } catch (error) {
@@ -658,7 +414,7 @@ export function useTransactions(selectedDate: Date) {
         variant: 'destructive',
       });
     }
-  }, [deleteMutation, user, transactions, expandedTransactions, queryClient, toast]);
+  }, [deleteMutation, user, transactions, queryClient, toast]);
 
   return {
     transactions: transactionsWithBalance,
@@ -672,7 +428,7 @@ export function useTransactions(selectedDate: Date) {
     addTransaction,
     updateTransaction: updateTransactionFn,
     deleteTransaction: deleteTransactionFn,
-    isLoading: transactionsQuery.isLoading || accountsQuery.isLoading || categoriesQuery.isLoading || exceptionsQuery.isLoading,
-    isError: transactionsQuery.isError || accountsQuery.isError || categoriesQuery.isError || exceptionsQuery.isError,
+    isLoading: transactionsQuery.isLoading || accountsQuery.isLoading || categoriesQuery.isLoading,
+    isError: transactionsQuery.isError || accountsQuery.isError || categoriesQuery.isError,
   };
 }

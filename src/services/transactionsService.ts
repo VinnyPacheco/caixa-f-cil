@@ -140,6 +140,11 @@ export async function createTransaction(
 
   const maxOrderIndex = maxData?.[0]?.order_index ?? 0;
 
+  // For installment transactions, create individual records for each installment
+  if (transaction.recurrenceType === 'installment' && transaction.installmentTotal && transaction.installmentTotal > 1) {
+    return createInstallmentTransactions(transaction, userId, maxOrderIndex);
+  }
+
   const insertData = {
     ...transactionToDb(transaction, userId),
     order_index: maxOrderIndex + 1,
@@ -153,6 +158,62 @@ export async function createTransaction(
 
   if (error) throw error;
   return dbToTransaction(data);
+}
+
+// Create individual records for each installment
+async function createInstallmentTransactions(
+  transaction: Omit<Transaction, 'id' | 'orderIndex'>,
+  userId: string,
+  baseOrderIndex: number
+): Promise<Transaction> {
+  const totalInstallments = transaction.installmentTotal!;
+  const baseDate = new Date(transaction.date + 'T12:00:00');
+  
+  // Create the first installment (parent)
+  const firstInstallmentData = {
+    ...transactionToDb(transaction, userId),
+    order_index: baseOrderIndex + 1,
+    installment_current: 1,
+    description: `${transaction.description} (1/${totalInstallments})`,
+  };
+
+  const { data: firstData, error: firstError } = await supabase
+    .from('transactions')
+    .insert([firstInstallmentData])
+    .select()
+    .single();
+
+  if (firstError) throw firstError;
+
+  const parentId = firstData.id;
+
+  // Create remaining installments
+  const remainingInstallments = [];
+  for (let i = 2; i <= totalInstallments; i++) {
+    const installmentDate = new Date(baseDate);
+    installmentDate.setMonth(installmentDate.getMonth() + (i - 1));
+    const dateStr = installmentDate.toISOString().split('T')[0];
+
+    remainingInstallments.push({
+      ...transactionToDb(transaction, userId),
+      order_index: 1,
+      parent_id: parentId,
+      installment_current: i,
+      date: dateStr,
+      description: `${transaction.description} (${i}/${totalInstallments})`,
+      is_paid: false, // Future installments start as unpaid
+    });
+  }
+
+  if (remainingInstallments.length > 0) {
+    const { error: batchError } = await supabase
+      .from('transactions')
+      .insert(remainingInstallments);
+
+    if (batchError) throw batchError;
+  }
+
+  return dbToTransaction(firstData);
 }
 
 export async function updateTransaction(
@@ -232,4 +293,84 @@ export async function reorderTransactions(
   // Check for any errors
   const error = results.find(r => r.error)?.error;
   if (error) throw error;
+}
+
+// Delete a single installment
+export async function deleteInstallment(id: string): Promise<void> {
+  const { error } = await supabase
+    .from('transactions')
+    .delete()
+    .eq('id', id);
+
+  if (error) throw error;
+}
+
+// Delete this installment and all future installments (by date)
+export async function deleteInstallmentAndFuture(
+  id: string,
+  parentId: string | null,
+  fromDate: string
+): Promise<void> {
+  // Determine the series parent ID
+  const seriesParentId = parentId || id;
+  
+  // If this is the first installment (parentId is null), delete all in the series
+  if (!parentId) {
+    // Delete the parent and all children
+    const { error: deleteChildrenError } = await supabase
+      .from('transactions')
+      .delete()
+      .eq('parent_id', id);
+    
+    if (deleteChildrenError) throw deleteChildrenError;
+
+    const { error: deleteParentError } = await supabase
+      .from('transactions')
+      .delete()
+      .eq('id', id);
+
+    if (deleteParentError) throw deleteParentError;
+  } else {
+    // Delete this record
+    const { error: deleteThisError } = await supabase
+      .from('transactions')
+      .delete()
+      .eq('id', id);
+    
+    if (deleteThisError) throw deleteThisError;
+
+    // Delete all siblings with same parent_id and date >= fromDate
+    const { error: deleteFutureError } = await supabase
+      .from('transactions')
+      .delete()
+      .eq('parent_id', seriesParentId)
+      .gte('date', fromDate);
+
+    if (deleteFutureError) throw deleteFutureError;
+  }
+}
+
+// Delete all installments in a series
+export async function deleteAllInstallments(
+  id: string,
+  parentId: string | null
+): Promise<void> {
+  // Determine the series parent ID
+  const seriesParentId = parentId || id;
+  
+  // Delete all children first
+  const { error: deleteChildrenError } = await supabase
+    .from('transactions')
+    .delete()
+    .eq('parent_id', seriesParentId);
+
+  if (deleteChildrenError) throw deleteChildrenError;
+
+  // Delete the parent
+  const { error: deleteParentError } = await supabase
+    .from('transactions')
+    .delete()
+    .eq('id', seriesParentId);
+
+  if (deleteParentError) throw deleteParentError;
 }

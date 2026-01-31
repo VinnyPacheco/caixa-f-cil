@@ -8,13 +8,10 @@ import {
   deleteTransaction,
   toggleTransactionPaid,
   reorderTransactions as reorderTransactionsService,
-  setTransactionEndDate,
+  deleteInstallment,
+  deleteInstallmentAndFuture,
+  deleteAllInstallments,
 } from '@/services/transactionsService';
-import { 
-  createRecurringException,
-  fetchRecurringExceptions,
-  RecurringException,
-} from '@/services/recurringExceptionsService';
 import { fetchAccounts } from '@/services/accountsService';
 import { fetchCategories } from '@/services/categoriesService';
 import { setTransactionTags } from '@/services/tagsService';
@@ -22,12 +19,12 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { calculateRunningBalances } from '@/lib/format';
 import { FilterType } from '@/components/finance/FilterPills';
-import { format, startOfMonth, endOfMonth, isWithinInterval, parseISO, addMonths, isBefore, isAfter } from 'date-fns';
+import { format, startOfMonth, endOfMonth, isWithinInterval, parseISO, addMonths, isBefore } from 'date-fns';
 import { useState } from 'react';
 import { RecurringUpdateAction } from '@/components/finance/TransactionForm';
 
-// Helper function to expand transactions for a specific month
-function expandTransactionsForMonth(
+// Helper function to get transactions for a specific month (all are real DB records now)
+function getTransactionsForMonth(
   transactions: Transaction[],
   targetDate: Date,
   categories: Category[],
@@ -36,70 +33,14 @@ function expandTransactionsForMonth(
 ): TransactionWithBalance[] {
   const start = startOfMonth(targetDate);
   const end = endOfMonth(targetDate);
-  const result: Transaction[] = [];
 
-  transactions.forEach((t) => {
+  const monthTransactions = transactions.filter((t) => {
     const transactionDate = parseISO(t.date);
-    const transactionStartDate = t.startDate ? parseISO(t.startDate) : transactionDate;
-    
-    if (t.recurrenceType === 'once') {
-      if (isWithinInterval(transactionDate, { start, end })) {
-        result.push(t);
-      }
-      return;
-    }
-
-    if (t.recurrenceType === 'recurring') {
-      const dayOfMonth = transactionStartDate.getDate();
-      const instanceDate = new Date(targetDate.getFullYear(), targetDate.getMonth(), dayOfMonth);
-      const transactionEndDate = t.endDate ? parseISO(t.endDate) : null;
-      
-      // Check if this instance is within valid range (after start, before end)
-      if (!isAfter(transactionStartDate, end)) {
-        // If the original transaction date is in this month, use it
-        if (isWithinInterval(transactionDate, { start, end })) {
-          result.push(t);
-        } 
-        // Otherwise, generate a virtual instance if within start/end bounds
-        else if (!isBefore(instanceDate, transactionStartDate) && 
-                 (!transactionEndDate || isBefore(instanceDate, transactionEndDate))) {
-          const instanceId = `${t.parentId || t.id}-${format(instanceDate, 'yyyy-MM')}`;
-          result.push({
-            ...t,
-            id: instanceId,
-            parentId: t.parentId || t.id,
-            date: format(instanceDate, 'yyyy-MM-dd'),
-            isPaid: false,
-          });
-        }
-      }
-      return;
-    }
-
-    if (t.recurrenceType === 'installment' && t.installmentTotal) {
-      const totalInstallments = t.installmentTotal;
-      
-      for (let i = 0; i < totalInstallments; i++) {
-        const installmentDate = addMonths(transactionStartDate, i);
-        
-        if (isWithinInterval(installmentDate, { start, end })) {
-          const instanceId = i === 0 ? t.id : `${t.parentId || t.id}-inst-${i + 1}`;
-          result.push({
-            ...t,
-            id: instanceId,
-            parentId: t.parentId || t.id,
-            date: format(installmentDate, 'yyyy-MM-dd'),
-            installmentCurrent: i + 1,
-            isPaid: i === 0 ? t.isPaid : false,
-            description: `${t.description} (${i + 1}/${totalInstallments})`,
-          });
-        }
-      }
-    }
+    return isWithinInterval(transactionDate, { start, end });
   });
 
   // Add category and account info
-  const withRelations = result.map((t) => ({
+  const withRelations = monthTransactions.map((t) => ({
     ...t,
     category: categories.find((c) => c.id === t.categoryId),
     account: accounts.find((a) => a.id === t.accountId),
@@ -150,12 +91,12 @@ export function useMultiMonthTransactions(selectedDate: Date, additionalMonths: 
     return accounts.reduce((sum, acc) => sum + acc.initialBalance, 0);
   }, [accounts]);
 
-  // Helper to calculate month summary (income, expense, opening/closing balance)
+  // Helper to calculate month summary
   const calculateMonthSummary = useCallback((
     monthDate: Date,
     monthOpeningBalance: number
   ): { expanded: TransactionWithBalance[]; summary: MonthSummary } => {
-    const expanded = expandTransactionsForMonth(transactions, monthDate, categories, accounts, monthOpeningBalance);
+    const expanded = getTransactionsForMonth(transactions, monthDate, categories, accounts, monthOpeningBalance);
     
     const totalIncome = expanded
       .filter((t) => t.type === 'income')
@@ -181,48 +122,15 @@ export function useMultiMonthTransactions(selectedDate: Date, additionalMonths: 
   const monthsData = useMemo(() => {
     const result: MonthData[] = [];
     
-    // First, calculate the opening balance for the selected month
-    // by computing all previous months from the account initial balance
+    // Calculate the opening balance for the selected month
     let currentOpeningBalance = openingBalance;
-    
-    // Calculate balance from the beginning of time until the selected month
-    // We need to process all transactions before the selected month
     const selectedMonthStart = startOfMonth(selectedDate);
     
-    // Get all transactions before selected month and calculate their impact
-    // For 'once' transactions, we simply check if the date is before the selected month
-    // For recurring/installment, we need to expand and count each instance
+    // Sum all transactions before the selected month
     transactions.forEach((t) => {
       const transactionDate = parseISO(t.date);
-      const transactionStartDate = t.startDate ? parseISO(t.startDate) : transactionDate;
-      const transactionEndDate = t.endDate ? parseISO(t.endDate) : null;
-      
-      if (t.recurrenceType === 'once') {
-        if (isBefore(transactionDate, selectedMonthStart)) {
-          currentOpeningBalance += t.type === 'income' ? t.amount : -t.amount;
-        }
-      } else if (t.recurrenceType === 'recurring') {
-        // Count all instances before selected month, respecting end_date
-        const dayOfMonth = transactionStartDate.getDate();
-        let instanceDate = new Date(transactionStartDate.getFullYear(), transactionStartDate.getMonth(), dayOfMonth);
-        
-        while (isBefore(instanceDate, selectedMonthStart)) {
-          // Check if instance is after start date and before end date (if any)
-          if (!isBefore(instanceDate, transactionStartDate)) {
-            if (!transactionEndDate || isBefore(instanceDate, transactionEndDate)) {
-              currentOpeningBalance += t.type === 'income' ? t.amount : -t.amount;
-            }
-          }
-          instanceDate = addMonths(instanceDate, 1);
-        }
-      } else if (t.recurrenceType === 'installment' && t.installmentTotal) {
-        // Count all installments before selected month
-        for (let i = 0; i < t.installmentTotal; i++) {
-          const installmentDate = addMonths(transactionStartDate, i);
-          if (isBefore(installmentDate, selectedMonthStart)) {
-            currentOpeningBalance += t.type === 'income' ? t.amount : -t.amount;
-          }
-        }
+      if (isBefore(transactionDate, selectedMonthStart)) {
+        currentOpeningBalance += t.type === 'income' ? t.amount : -t.amount;
       }
     });
 
@@ -233,7 +141,7 @@ export function useMultiMonthTransactions(selectedDate: Date, additionalMonths: 
       
       const { expanded, summary } = calculateMonthSummary(monthDate, monthOpeningBalance);
       
-      // Apply filter but keep the original running balances from the full list
+      // Apply filter
       let filtered = expanded;
       switch (filter) {
         case 'pending':
@@ -383,7 +291,7 @@ export function useMultiMonthTransactions(selectedDate: Date, additionalMonths: 
     }
   }, [createMutation, user, queryClient]);
 
-  // Update existing transaction with recurring action support
+  // Update existing transaction
   const updateTransactionFn = useCallback(async (
     id: string, 
     updates: Partial<Transaction>,
@@ -391,18 +299,17 @@ export function useMultiMonthTransactions(selectedDate: Date, additionalMonths: 
     tagIds?: string[]
   ) => {
     if (!user) return;
-    const originalTransaction = transactions.find(t => t.id === id || t.parentId === id);
-    const isRecurringOrInstallment = originalTransaction && 
-      (originalTransaction.recurrenceType === 'recurring' || originalTransaction.recurrenceType === 'installment');
 
-    // Handle tags update for the real transaction id
-    const realTransactionId = originalTransaction?.parentId || id;
-    // Only update tags if it's a real DB ID (not a virtual instance ID)
-    const isRealId = !id.includes('-inst-') && !id.match(/-\d{4}-\d{2}$/);
-    
-    if (tagIds !== undefined && isRealId) {
+    const originalTransaction = transactions.find(t => t.id === id);
+    if (!originalTransaction) {
+      updateMutation.mutate({ id, data: updates });
+      return;
+    }
+
+    // Handle tags update
+    if (tagIds !== undefined) {
       try {
-        await setTransactionTags(realTransactionId, tagIds, user.id);
+        await setTransactionTags(id, tagIds, user.id);
         queryClient.invalidateQueries({ queryKey: ['transaction-tags-bulk'] });
         queryClient.invalidateQueries({ queryKey: ['transaction-tags'] });
       } catch (error) {
@@ -410,72 +317,127 @@ export function useMultiMonthTransactions(selectedDate: Date, additionalMonths: 
       }
     }
 
-    if (!isRecurringOrInstallment || !recurringAction) {
-      updateMutation.mutate({ id, data: updates });
-      return;
-    }
+    const isInstallment = originalTransaction.recurrenceType === 'installment';
 
-    const parentId = originalTransaction.parentId || id;
-    try {
-      if (recurringAction.type === 'only_this') {
-        await createRecurringException({
-          parentId,
-          exceptionDate: recurringAction.instanceDate,
-          exceptionType: 'modified',
-          modifiedAmount: updates.amount,
-          modifiedDescription: updates.description,
-          modifiedCategoryId: updates.categoryId,
-          modifiedAccountId: updates.accountId,
-          modifiedIsPaid: updates.isPaid,
-          modifiedNotes: updates.notes,
-        }, user.id);
-        queryClient.invalidateQueries({ queryKey: ['recurring-exceptions'] });
-      } else if (recurringAction.type === 'this_and_future') {
-        await setTransactionEndDate(parentId, recurringAction.instanceDate);
-        const newTx = { ...originalTransaction, ...updates, startDate: recurringAction.instanceDate, date: recurringAction.instanceDate, parentId: undefined };
-        delete (newTx as { id?: string }).id;
-        delete (newTx as { orderIndex?: number }).orderIndex;
-        await createTransaction(newTx as Omit<Transaction, 'id' | 'orderIndex'>, user.id);
-        queryClient.invalidateQueries({ queryKey: ['transactions'] });
-      } else {
-        updateMutation.mutate({ id: parentId, data: updates });
+    if (isInstallment && recurringAction) {
+      switch (recurringAction.type) {
+        case 'only_this':
+          updateMutation.mutate({ id, data: updates });
+          break;
+
+        case 'this_and_future':
+        case 'all':
+          const seriesParentId = originalTransaction.parentId || id;
+          
+          if (seriesParentId !== id) {
+            await updateTransaction(seriesParentId, updates);
+          }
+          await updateTransaction(id, updates);
+          
+          const siblings = transactions.filter(t => t.parentId === seriesParentId);
+          
+          if (recurringAction.type === 'this_and_future') {
+            const currentDate = originalTransaction.date;
+            for (const sibling of siblings) {
+              if (sibling.date >= currentDate && sibling.id !== id) {
+                await updateTransaction(sibling.id, updates);
+              }
+            }
+          } else {
+            for (const sibling of siblings) {
+              if (sibling.id !== id) {
+                await updateTransaction(sibling.id, updates);
+              }
+            }
+          }
+          
+          queryClient.invalidateQueries({ queryKey: ['transactions'] });
+          toast({
+            title: 'Lançamento atualizado',
+            description: recurringAction.type === 'all' 
+              ? 'Todas as parcelas foram atualizadas.' 
+              : 'Esta e as próximas parcelas foram atualizadas.',
+          });
+          break;
       }
-    } catch (error) {
-      toast({ title: 'Erro', description: error instanceof Error ? error.message : 'Erro', variant: 'destructive' });
+    } else {
+      updateMutation.mutate({ id, data: updates });
     }
   }, [updateMutation, user, transactions, queryClient, toast]);
 
-  // Delete transaction with recurring action support
-  const deleteTransactionFn = useCallback(async (id: string, recurringAction?: RecurringUpdateAction) => {
+  // Delete transaction with installment action support
+  const deleteTransactionFn = useCallback(async (
+    id: string,
+    recurringAction?: RecurringUpdateAction
+  ) => {
     if (!user) return;
-    const originalTransaction = transactions.find(t => t.id === id || t.parentId === id);
-    const isRecurringOrInstallment = originalTransaction && 
-      (originalTransaction.recurrenceType === 'recurring' || originalTransaction.recurrenceType === 'installment');
 
-    if (!isRecurringOrInstallment || !recurringAction) {
+    const originalTransaction = transactions.find(t => t.id === id);
+    if (!originalTransaction) {
       deleteMutation.mutate(id);
       return;
     }
 
-    const parentId = originalTransaction.parentId || id;
+    const isInstallment = originalTransaction.recurrenceType === 'installment';
+
+    if (!isInstallment || !recurringAction) {
+      deleteMutation.mutate(id);
+      return;
+    }
+
     try {
-      if (recurringAction.type === 'only_this') {
-        await createRecurringException({ parentId, exceptionDate: recurringAction.instanceDate, exceptionType: 'skip' }, user.id);
-        queryClient.invalidateQueries({ queryKey: ['recurring-exceptions'] });
-      } else if (recurringAction.type === 'this_and_future') {
-        await setTransactionEndDate(parentId, recurringAction.instanceDate);
-        queryClient.invalidateQueries({ queryKey: ['transactions'] });
-      } else {
-        deleteMutation.mutate(parentId);
+      switch (recurringAction.type) {
+        case 'only_this':
+          await deleteInstallment(id);
+          queryClient.invalidateQueries({ queryKey: ['transactions'] });
+          toast({
+            title: 'Parcela excluída',
+            description: 'Apenas esta parcela foi removida.',
+          });
+          break;
+
+        case 'this_and_future':
+          await deleteInstallmentAndFuture(
+            id, 
+            originalTransaction.parentId || null, 
+            originalTransaction.date
+          );
+          queryClient.invalidateQueries({ queryKey: ['transactions'] });
+          toast({
+            title: 'Parcelas excluídas',
+            description: 'Esta e as próximas parcelas foram removidas.',
+          });
+          break;
+
+        case 'all':
+          await deleteAllInstallments(id, originalTransaction.parentId || null);
+          queryClient.invalidateQueries({ queryKey: ['transactions'] });
+          toast({
+            title: 'Lançamento excluído',
+            description: 'Todas as parcelas foram removidas.',
+          });
+          break;
       }
     } catch (error) {
-      toast({ title: 'Erro', description: error instanceof Error ? error.message : 'Erro', variant: 'destructive' });
+      toast({
+        title: 'Erro ao excluir transação',
+        description: error instanceof Error ? error.message : 'Erro desconhecido',
+        variant: 'destructive',
+      });
     }
   }, [deleteMutation, user, transactions, queryClient, toast]);
 
+  // Convenience: get first month data for mobile view
+  const currentMonth = monthsData[0] || {
+    date: selectedDate,
+    label: '',
+    transactions: [],
+    summary: { totalIncome: 0, totalExpense: 0, balance: 0, openingBalance: 0, closingBalance: 0 }
+  };
+
   return {
     monthsData,
-    currentMonth: monthsData[0] || { date: selectedDate, label: '', transactions: [], summary: { totalIncome: 0, totalExpense: 0, balance: 0, openingBalance: 0, closingBalance: 0 } },
+    currentMonth,
     categories,
     accounts,
     filter,
