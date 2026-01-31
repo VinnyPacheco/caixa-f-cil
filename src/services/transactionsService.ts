@@ -160,6 +160,23 @@ export async function createTransaction(
   return dbToTransaction(data);
 }
 
+// Helper to calculate the correct date for an installment
+// Adjusts to the last valid day of the month if needed
+function calculateInstallmentDate(baseDate: Date, monthsToAdd: number): string {
+  const originalDay = baseDate.getDate();
+  const targetDate = new Date(baseDate);
+  targetDate.setMonth(targetDate.getMonth() + monthsToAdd);
+  
+  // If the day changed (e.g., Jan 31 -> Feb 28), it means the target month
+  // doesn't have that day, so we need to go back to the last valid day
+  if (targetDate.getDate() !== originalDay) {
+    // Set to day 0 of the next month = last day of current target month
+    targetDate.setDate(0);
+  }
+  
+  return targetDate.toISOString().split('T')[0];
+}
+
 // Create individual records for each installment
 async function createInstallmentTransactions(
   transaction: Omit<Transaction, 'id' | 'orderIndex'>,
@@ -190,9 +207,7 @@ async function createInstallmentTransactions(
   // Create remaining installments
   const remainingInstallments = [];
   for (let i = 2; i <= totalInstallments; i++) {
-    const installmentDate = new Date(baseDate);
-    installmentDate.setMonth(installmentDate.getMonth() + (i - 1));
-    const dateStr = installmentDate.toISOString().split('T')[0];
+    const dateStr = calculateInstallmentDate(baseDate, i - 1);
 
     remainingInstallments.push({
       ...transactionToDb(transaction, userId),
