@@ -14,13 +14,14 @@ import { formatCurrency } from '@/lib/format';
 import { ArrowUpDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { TransactionWithBalance } from '@/types/finance';
-import { format, addMonths, subMonths } from 'date-fns';
+import { format, addMonths, subMonths, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 const SORT_ORDER_KEY = 'transactions-sort-order';
 
 interface LocationState {
   newTransaction?: boolean;
+  selectedMonth?: string;
 }
 
 export default function Transactions() {
@@ -51,10 +52,13 @@ export default function Transactions() {
     deleteTransaction,
   } = useMultiMonthTransactions(selectedDate, additionalMonths);
 
-  // Clean up location state if coming from auto-save
+  // Handle navigation state (selected month or new transaction)
   useEffect(() => {
     const state = location.state as LocationState | null;
-    if (state?.newTransaction) {
+    if (state?.selectedMonth) {
+      setSelectedDate(parseISO(state.selectedMonth));
+      window.history.replaceState({}, document.title);
+    } else if (state?.newTransaction) {
       window.history.replaceState({}, document.title);
     }
   }, [location.state]);
