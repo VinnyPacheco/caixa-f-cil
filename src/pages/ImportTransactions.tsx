@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Header } from '@/components/layout/Header';
@@ -23,12 +23,28 @@ import { useCategories } from '@/hooks/useCategoriesData';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { importParsers, getParserById, ParsedTransaction } from '@/services/importParsers';
-import { createTransaction } from '@/services/transactionsService';
+import { createTransaction, toggleTransactionPaid } from '@/services/transactionsService';
+import { supabase } from '@/integrations/supabase/client';
 import { formatCurrency } from '@/lib/format';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useQueryClient } from '@tanstack/react-query';
+import { Badge } from '@/components/ui/badge';
+import { Transaction } from '@/types/finance';
+
+interface MatchCandidate {
+  id: string;
+  description: string;
+  amount: number;
+  date: string;
+  isPaid: boolean;
+  categoryId: string;
+  accountId: string;
+}
+
+// "create" = new transaction, string = existing transaction ID to settle
+type ImportAction = 'create' | string;
 
 export default function ImportTransactions() {
   const navigate = useNavigate();
@@ -48,15 +64,66 @@ export default function ImportTransactions() {
   const [isImporting, setIsImporting] = useState(false);
   const [fileName, setFileName] = useState<string>('');
 
+  // Duplicate detection state
+  const [matchCandidates, setMatchCandidates] = useState<Record<number, MatchCandidate[]>>({});
+  const [importActions, setImportActions] = useState<Record<number, ImportAction>>({});
+
   const selectedParser = selectedParserId ? getParserById(selectedParserId) : undefined;
 
-  // Find default categories ("Outros" for expense and income)
   const defaultExpenseCategory = categories.find(
     (c) => c.name.toLowerCase() === 'outros' && c.type === 'expense'
   );
   const defaultIncomeCategory = categories.find(
     (c) => c.name.toLowerCase() === 'outros' && c.type === 'income'
   );
+
+  // Search for matching existing transactions after file is parsed
+  const findMatches = async (transactions: ParsedTransaction[]) => {
+    if (!user || transactions.length === 0) return;
+
+    // Get unique dates from parsed transactions
+    const dates = [...new Set(transactions.map((t) => t.date))];
+
+    const { data, error } = await supabase
+      .from('transactions')
+      .select('*')
+      .in('date', dates)
+      .eq('user_id', user.id);
+
+    if (error || !data) return;
+
+    const matches: Record<number, MatchCandidate[]> = {};
+    const actions: Record<number, ImportAction> = {};
+
+    transactions.forEach((parsed, index) => {
+      const candidates = data
+        .filter(
+          (dbTx) =>
+            dbTx.date === parsed.date &&
+            Number(dbTx.amount) === parsed.amount
+        )
+        .map((dbTx) => ({
+          id: dbTx.id,
+          description: dbTx.description,
+          amount: Number(dbTx.amount),
+          date: dbTx.date,
+          isPaid: dbTx.is_paid,
+          categoryId: dbTx.category_id,
+          accountId: dbTx.account_id,
+        }));
+
+      if (candidates.length > 0) {
+        matches[index] = candidates;
+        // Default: if exactly 1 match, auto-select it; otherwise "create"
+        actions[index] = candidates.length === 1 ? candidates[0].id : 'create';
+      } else {
+        actions[index] = 'create';
+      }
+    });
+
+    setMatchCandidates(matches);
+    setImportActions((prev) => ({ ...prev, ...actions }));
+  };
 
   const handleFileSelect = () => {
     if (!selectedParser) {
@@ -74,7 +141,6 @@ export default function ImportTransactions() {
     const file = e.target.files?.[0];
     if (!file || !selectedParser) return;
 
-    // Validate file extension
     if (!file.name.toLowerCase().endsWith(selectedParser.fileExtension)) {
       toast({
         title: 'Arquivo inválido',
@@ -100,9 +166,8 @@ export default function ImportTransactions() {
       }
 
       setParsedTransactions(transactions);
-      // Select all by default
       setSelectedItems(new Set(transactions.map((_, index) => index)));
-      // Set default categories based on transaction type
+
       const defaultCategories: Record<number, string> = {};
       transactions.forEach((t, index) => {
         const defaultCat = t.type === 'expense' ? defaultExpenseCategory : defaultIncomeCategory;
@@ -111,6 +176,9 @@ export default function ImportTransactions() {
         }
       });
       setTransactionCategories(defaultCategories);
+
+      // Find duplicate matches
+      await findMatches(transactions);
 
       toast({
         title: 'Arquivo lido com sucesso',
@@ -125,7 +193,6 @@ export default function ImportTransactions() {
       });
     }
 
-    // Reset input
     e.target.value = '';
   };
 
@@ -175,67 +242,74 @@ export default function ImportTransactions() {
       return;
     }
 
-    const transactionsToImport = parsedTransactions.filter((_, index) =>
-      selectedItems.has(index)
-    );
-
     setIsImporting(true);
 
     try {
       let successCount = 0;
+      let settledCount = 0;
       let errorCount = 0;
 
       for (let i = 0; i < parsedTransactions.length; i++) {
         if (!selectedItems.has(i)) continue;
-        
+
         const parsed = parsedTransactions[i];
         const categoryId = transactionCategories[i];
+        const action = importActions[i] || 'create';
 
-        if (!categoryId) {
+        if (!categoryId && action === 'create') {
           errorCount++;
           continue;
         }
-        
-        // Get category to determine type (in case user changed category to a different type)
-        const category = categories.find(c => c.id === categoryId);
-        const transactionType = category?.type || parsed.type;
 
         try {
-          await createTransaction(
-            {
-              accountId: selectedAccountId,
-              categoryId,
-              description: transactionDescriptions[i] ?? parsed.description,
-              amount: parsed.amount,
-              date: parsed.date,
-              type: transactionType,
-              isPaid: true,
-              recurrenceType: 'once',
-            },
-            user.id
-          );
-          successCount++;
+          if (action !== 'create') {
+            // Settle existing transaction (set is_paid = true)
+            await toggleTransactionPaid(action, true);
+            settledCount++;
+          } else {
+            const category = categories.find((c) => c.id === categoryId);
+            const transactionType = category?.type || parsed.type;
+
+            await createTransaction(
+              {
+                accountId: selectedAccountId,
+                categoryId,
+                description: transactionDescriptions[i] ?? parsed.description,
+                amount: parsed.amount,
+                date: parsed.date,
+                type: transactionType,
+                isPaid: true,
+                recurrenceType: 'once',
+              },
+              user.id
+            );
+            successCount++;
+          }
         } catch (err) {
-          console.error('Error creating transaction:', err);
+          console.error('Error processing transaction:', err);
           errorCount++;
         }
       }
 
-      // Invalidate transactions query to refresh data
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
 
-      if (successCount > 0) {
+      const totalProcessed = successCount + settledCount;
+      if (totalProcessed > 0) {
+        const parts: string[] = [];
+        if (successCount > 0) parts.push(`${successCount} criado(s)`);
+        if (settledCount > 0) parts.push(`${settledCount} baixado(s)`);
+        if (errorCount > 0) parts.push(`${errorCount} erro(s)`);
+
         toast({
           title: 'Importação concluída',
-          description: `${successCount} lançamento(s) importado(s) com sucesso.${
-            errorCount > 0 ? ` ${errorCount} erro(s).` : ''
-          }`,
+          description: `${parts.join(', ')}.`,
         });
-        // Clear state and navigate
         setParsedTransactions([]);
         setSelectedItems(new Set());
         setTransactionCategories({});
         setTransactionDescriptions({});
+        setMatchCandidates({});
+        setImportActions({});
         setFileName('');
         navigate('/transactions');
       } else {
@@ -259,7 +333,7 @@ export default function ImportTransactions() {
 
   const formatDate = (dateStr: string) => {
     try {
-      return format(new Date(dateStr + 'T12:00:00'), "dd/MM/yyyy", { locale: ptBR });
+      return format(new Date(dateStr + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR });
     } catch {
       return dateStr;
     }
@@ -372,75 +446,182 @@ export default function ImportTransactions() {
                           <TableHead>Descrição</TableHead>
                           <TableHead>Categoria</TableHead>
                           <TableHead className="text-right">Valor</TableHead>
+                          <TableHead>Ação</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {parsedTransactions.map((transaction, index) => (
-                          <TableRow key={index}>
-                            <TableCell>
-                              <Checkbox
-                                checked={selectedItems.has(index)}
-                                onCheckedChange={() => toggleItem(index)}
-                              />
-                            </TableCell>
-                            <TableCell className="whitespace-nowrap text-sm">
-                              {formatDate(transaction.date)}
-                            </TableCell>
-                            <TableCell className="min-w-[200px]">
-                              <input
-                                type="text"
-                                value={transactionDescriptions[index] ?? transaction.description}
-                                onChange={(e) => {
-                                  setTransactionDescriptions(prev => ({
-                                    ...prev,
-                                    [index]: e.target.value
-                                  }));
-                                }}
-                                className="w-full h-8 px-2 text-sm bg-background border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
-                              />
-                            </TableCell>
-                            <TableCell className="min-w-[150px]">
-                              <Select
-                                value={transactionCategories[index] || ''}
-                                onValueChange={(value) => {
-                                  setTransactionCategories(prev => ({
-                                    ...prev,
-                                    [index]: value
-                                  }));
-                                }}
+                        {parsedTransactions.map((transaction, index) => {
+                          const candidates = matchCandidates[index];
+                          const action = importActions[index] || 'create';
+                          const hasMatch = candidates && candidates.length > 0;
+
+                          return (
+                            <TableRow key={index} className={hasMatch ? 'bg-warning/5' : ''}>
+                              <TableCell>
+                                <Checkbox
+                                  checked={selectedItems.has(index)}
+                                  onCheckedChange={() => toggleItem(index)}
+                                />
+                              </TableCell>
+                              <TableCell className="whitespace-nowrap text-sm">
+                                {formatDate(transaction.date)}
+                              </TableCell>
+                              <TableCell className="min-w-[200px]">
+                                <input
+                                  type="text"
+                                  value={transactionDescriptions[index] ?? transaction.description}
+                                  onChange={(e) => {
+                                    setTransactionDescriptions((prev) => ({
+                                      ...prev,
+                                      [index]: e.target.value,
+                                    }));
+                                  }}
+                                  className="w-full h-8 px-2 text-sm bg-background border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                                />
+                              </TableCell>
+                              <TableCell className="min-w-[150px]">
+                                <Select
+                                  value={transactionCategories[index] || ''}
+                                  onValueChange={(value) => {
+                                    setTransactionCategories((prev) => ({
+                                      ...prev,
+                                      [index]: value,
+                                    }));
+                                  }}
+                                >
+                                  <SelectTrigger className="h-8 text-xs">
+                                    <SelectValue placeholder="Categoria" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {categories
+                                      .filter((cat) => cat.type === transaction.type)
+                                      .map((cat) => (
+                                        <SelectItem key={cat.id} value={cat.id}>
+                                          <span className="flex items-center gap-2">
+                                            <span
+                                              className="size-2 rounded-full"
+                                              style={{ backgroundColor: cat.color }}
+                                            />
+                                            {cat.name}
+                                          </span>
+                                        </SelectItem>
+                                      ))}
+                                  </SelectContent>
+                                </Select>
+                              </TableCell>
+                              <TableCell
+                                className={`text-right whitespace-nowrap text-sm font-medium ${
+                                  transaction.type === 'income'
+                                    ? 'text-success'
+                                    : 'text-destructive'
+                                }`}
                               >
-                                <SelectTrigger className="h-8 text-xs">
-                                  <SelectValue placeholder="Categoria" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {categories
-                                    .filter((cat) => cat.type === transaction.type)
-                                    .map((cat) => (
-                                      <SelectItem key={cat.id} value={cat.id}>
-                                        <span className="flex items-center gap-2">
-                                          <span
-                                            className="size-2 rounded-full"
-                                            style={{ backgroundColor: cat.color }}
-                                          />
-                                          {cat.name}
-                                        </span>
-                                      </SelectItem>
-                                    ))}
-                                </SelectContent>
-                              </Select>
-                            </TableCell>
-                            <TableCell
-                              className={`text-right whitespace-nowrap text-sm font-medium ${
-                                transaction.type === 'income'
-                                  ? 'text-success'
-                                  : 'text-destructive'
-                              }`}
-                            >
-                              {transaction.type === 'income' ? '+' : '-'}
-                              {formatCurrency(transaction.amount)}
-                            </TableCell>
-                          </TableRow>
-                        ))}
+                                {transaction.type === 'income' ? '+' : '-'}
+                                {formatCurrency(transaction.amount)}
+                              </TableCell>
+                              <TableCell className="min-w-[180px]">
+                                {hasMatch ? (
+                                  <div className="space-y-1">
+                                    {candidates.length === 1 ? (
+                                      <div className="flex flex-col gap-1">
+                                        <Badge
+                                          variant="outline"
+                                          className="text-[10px] border-warning text-warning whitespace-nowrap"
+                                        >
+                                          <span className="material-symbols-outlined text-xs mr-1">
+                                            warning
+                                          </span>
+                                          Possível duplicata
+                                        </Badge>
+                                        <Select
+                                          value={action}
+                                          onValueChange={(value) =>
+                                            setImportActions((prev) => ({
+                                              ...prev,
+                                              [index]: value as ImportAction,
+                                            }))
+                                          }
+                                        >
+                                          <SelectTrigger className="h-7 text-[11px]">
+                                            <SelectValue />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            <SelectItem value={candidates[0].id}>
+                                              <span className="flex items-center gap-1">
+                                                <span className="material-symbols-outlined text-xs">
+                                                  check_circle
+                                                </span>
+                                                Dar baixa: {candidates[0].description.substring(0, 25)}
+                                                {candidates[0].description.length > 25 ? '…' : ''}
+                                              </span>
+                                            </SelectItem>
+                                            <SelectItem value="create">
+                                              <span className="flex items-center gap-1">
+                                                <span className="material-symbols-outlined text-xs">
+                                                  add_circle
+                                                </span>
+                                                Criar novo
+                                              </span>
+                                            </SelectItem>
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
+                                    ) : (
+                                      <div className="flex flex-col gap-1">
+                                        <Badge
+                                          variant="outline"
+                                          className="text-[10px] border-warning text-warning whitespace-nowrap"
+                                        >
+                                          <span className="material-symbols-outlined text-xs mr-1">
+                                            warning
+                                          </span>
+                                          {candidates.length} possíveis
+                                        </Badge>
+                                        <Select
+                                          value={action}
+                                          onValueChange={(value) =>
+                                            setImportActions((prev) => ({
+                                              ...prev,
+                                              [index]: value as ImportAction,
+                                            }))
+                                          }
+                                        >
+                                          <SelectTrigger className="h-7 text-[11px]">
+                                            <SelectValue placeholder="Selecione a ação" />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            <SelectItem value="create">
+                                              <span className="flex items-center gap-1">
+                                                <span className="material-symbols-outlined text-xs">
+                                                  add_circle
+                                                </span>
+                                                Criar novo
+                                              </span>
+                                            </SelectItem>
+                                            {candidates.map((candidate) => (
+                                              <SelectItem key={candidate.id} value={candidate.id}>
+                                                <span className="flex items-center gap-1">
+                                                  <span className="material-symbols-outlined text-xs">
+                                                    check_circle
+                                                  </span>
+                                                  Baixar: {candidate.description.substring(0, 25)}
+                                                  {candidate.description.length > 25 ? '…' : ''}
+                                                  {candidate.isPaid ? ' (já pago)' : ''}
+                                                </span>
+                                              </SelectItem>
+                                            ))}
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground">Criar novo</span>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
                       </TableBody>
                     </Table>
                   </div>
@@ -473,6 +654,8 @@ export default function ImportTransactions() {
                       setSelectedItems(new Set());
                       setTransactionCategories({});
                       setTransactionDescriptions({});
+                      setMatchCandidates({});
+                      setImportActions({});
                       setFileName('');
                     }}
                     disabled={isImporting}
