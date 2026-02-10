@@ -33,23 +33,26 @@ export function useTransactions(selectedDate: Date) {
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState<FilterType>('all');
 
-  // Fetch all data from Supabase
+  // Fetch all data from Supabase (prevent refetch in simulation mode)
   const transactionsQuery = useQuery({
     queryKey: ['transactions'],
     queryFn: fetchTransactions,
     enabled: !!user,
+    staleTime: isSimulation ? Infinity : 0,
   });
 
   const accountsQuery = useQuery({
     queryKey: ['accounts'],
     queryFn: fetchAccounts,
     enabled: !!user,
+    staleTime: isSimulation ? Infinity : 0,
   });
 
   const categoriesQuery = useQuery({
     queryKey: ['categories'],
     queryFn: fetchCategories,
     enabled: !!user,
+    staleTime: isSimulation ? Infinity : 0,
   });
 
   const transactions = transactionsQuery.data || [];

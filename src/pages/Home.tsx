@@ -8,6 +8,7 @@ import { TransactionItem } from '@/components/finance/TransactionItem';
 import { useTransactions } from '@/hooks/useTransactions';
 import { useProfile } from '@/hooks/useProfile';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSimulation } from '@/contexts/SimulationContext';
 import { fetchTransactions } from '@/services/transactionsService';
 import { fetchAccounts } from '@/services/accountsService';
 import { fetchCategories } from '@/services/categoriesService';
@@ -19,6 +20,7 @@ export default function Home() {
   const navigate = useNavigate();
   const { displayName } = useProfile();
   const { user } = useAuth();
+  const { isSimulation } = useSimulation();
   const [selectedDate] = useState(new Date());
   const { monthSummary, togglePaid, isLoading } = useTransactions(selectedDate);
 
@@ -27,16 +29,19 @@ export default function Home() {
     queryKey: ['transactions'],
     queryFn: fetchTransactions,
     enabled: !!user,
+    staleTime: isSimulation ? Infinity : 0,
   });
   const categoriesQuery = useQuery({
     queryKey: ['categories'],
     queryFn: fetchCategories,
     enabled: !!user,
+    staleTime: isSimulation ? Infinity : 0,
   });
   const accountsQuery = useQuery({
     queryKey: ['accounts'],
     queryFn: fetchAccounts,
     enabled: !!user,
+    staleTime: isSimulation ? Infinity : 0,
   });
 
   const allTransactions = allTransactionsQuery.data || [];

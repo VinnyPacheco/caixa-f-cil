@@ -20,6 +20,7 @@ export function useAccounts() {
     queryKey: ['accounts'],
     queryFn: fetchAccounts,
     enabled: !!user,
+    staleTime: isSimulation ? Infinity : 0,
   });
 
   const createMutation = useMutation({
