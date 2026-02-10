@@ -16,6 +16,7 @@ import { fetchAccounts } from '@/services/accountsService';
 import { fetchCategories } from '@/services/categoriesService';
 import { setTransactionTags } from '@/services/tagsService';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSimulation } from '@/contexts/SimulationContext';
 import { useToast } from '@/hooks/use-toast';
 import { calculateRunningBalances } from '@/lib/format';
 import { FilterType } from '@/components/finance/FilterPills';
@@ -27,6 +28,7 @@ export type { RecurringUpdateAction } from '@/components/finance/TransactionForm
 
 export function useTransactions(selectedDate: Date) {
   const { user } = useAuth();
+  const { isSimulation } = useSimulation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState<FilterType>('all');
@@ -123,12 +125,26 @@ export function useTransactions(selectedDate: Date) {
 
   // Mutations
   const createMutation = useMutation({
-    mutationFn: (transaction: Omit<Transaction, 'id' | 'orderIndex'>) => {
+    mutationFn: async (transaction: Omit<Transaction, 'id' | 'orderIndex'>) => {
       if (!user) throw new Error('User not authenticated');
+      if (isSimulation) {
+        const fakeId = crypto.randomUUID();
+        const fakeTx: Transaction = {
+          ...transaction,
+          id: fakeId,
+          orderIndex: 0,
+        };
+        queryClient.setQueryData(['transactions'], (old: Transaction[] | undefined) => 
+          [fakeTx, ...(old || [])]
+        );
+        return fakeTx;
+      }
       return createTransaction(transaction, user.id);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      if (!isSimulation) {
+        queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      }
       toast({
         title: 'Transação criada',
         description: 'A transação foi criada com sucesso.',
@@ -144,10 +160,19 @@ export function useTransactions(selectedDate: Date) {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Partial<Omit<Transaction, 'id'>> }) => 
-      updateTransaction(id, data),
+    mutationFn: async ({ id, data }: { id: string; data: Partial<Omit<Transaction, 'id'>> }) => {
+      if (isSimulation) {
+        queryClient.setQueryData(['transactions'], (old: Transaction[] | undefined) =>
+          (old || []).map(t => t.id === id ? { ...t, ...data } : t)
+        );
+        return { id, ...data } as Transaction;
+      }
+      return updateTransaction(id, data);
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      if (!isSimulation) {
+        queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      }
       toast({
         title: 'Transação atualizada',
         description: 'A transação foi atualizada com sucesso.',
@@ -163,10 +188,19 @@ export function useTransactions(selectedDate: Date) {
   });
 
   const togglePaidMutation = useMutation({
-    mutationFn: ({ id, isPaid }: { id: string; isPaid: boolean }) => 
-      toggleTransactionPaid(id, isPaid),
+    mutationFn: async ({ id, isPaid }: { id: string; isPaid: boolean }) => {
+      if (isSimulation) {
+        queryClient.setQueryData(['transactions'], (old: Transaction[] | undefined) =>
+          (old || []).map(t => t.id === id ? { ...t, isPaid } : t)
+        );
+        return { id, isPaid } as Transaction;
+      }
+      return toggleTransactionPaid(id, isPaid);
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      if (!isSimulation) {
+        queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      }
     },
     onError: (error) => {
       toast({
@@ -178,9 +212,19 @@ export function useTransactions(selectedDate: Date) {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => deleteTransaction(id),
+    mutationFn: async (id: string) => {
+      if (isSimulation) {
+        queryClient.setQueryData(['transactions'], (old: Transaction[] | undefined) =>
+          (old || []).filter(t => t.id !== id)
+        );
+        return;
+      }
+      return deleteTransaction(id);
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      if (!isSimulation) {
+        queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      }
       toast({
         title: 'Transação excluída',
         description: 'A transação foi excluída com sucesso.',
@@ -229,12 +273,15 @@ export function useTransactions(selectedDate: Date) {
       });
     });
 
+    if (isSimulation) {
+      // In simulation mode, just keep the optimistic update (already done above)
+      return;
+    }
+
     try {
       await reorderTransactionsService(updates);
-      // Refetch to ensure consistency with server
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
     } catch (error) {
-      // Revert optimistic update on error
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
       toast({
         title: 'Erro ao reordenar transações',
@@ -242,7 +289,7 @@ export function useTransactions(selectedDate: Date) {
         variant: 'destructive',
       });
     }
-  }, [queryClient, toast]);
+  }, [queryClient, toast, isSimulation]);
 
   // Toggle paid status
   const togglePaid = useCallback((id: string) => {
@@ -257,14 +304,14 @@ export function useTransactions(selectedDate: Date) {
     if (!user) return;
     try {
       const createdTransaction = await createMutation.mutateAsync(transaction);
-      if (tagIds && tagIds.length > 0 && createdTransaction) {
+      if (tagIds && tagIds.length > 0 && createdTransaction && !isSimulation) {
         await setTransactionTags(createdTransaction.id, tagIds, user.id);
         queryClient.invalidateQueries({ queryKey: ['transaction-tags-bulk'] });
       }
     } catch (error) {
       // Error already handled by mutation
     }
-  }, [createMutation, user, queryClient]);
+  }, [createMutation, user, queryClient, isSimulation]);
 
   // Update existing transaction
   const updateTransactionFn = useCallback(async (
@@ -281,8 +328,8 @@ export function useTransactions(selectedDate: Date) {
       return;
     }
 
-    // Handle tags update
-    if (tagIds !== undefined) {
+    // Handle tags update (skip in simulation mode)
+    if (tagIds !== undefined && !isSimulation) {
       try {
         await setTransactionTags(id, tagIds, user.id);
         queryClient.invalidateQueries({ queryKey: ['transaction-tags-bulk'] });
@@ -304,52 +351,58 @@ export function useTransactions(selectedDate: Date) {
 
         case 'this_and_future':
         case 'all':
-          // For installments, update all related records
-          // Get the series parent ID
-          const seriesParentId = originalTransaction.parentId || id;
-          
-          // Update the parent if it's different from current
-          if (seriesParentId !== id) {
-            await updateTransaction(seriesParentId, updates);
-          }
-          
-          // Update current transaction
-          await updateTransaction(id, updates);
-          
-          // Update all siblings
-          const siblings = transactions.filter(t => t.parentId === seriesParentId);
-          
-          if (recurringAction.type === 'this_and_future') {
-            // Only update those with date >= current transaction date
-            const currentDate = originalTransaction.date;
-            for (const sibling of siblings) {
-              if (sibling.date >= currentDate && sibling.id !== id) {
-                await updateTransaction(sibling.id, updates);
-              }
-            }
+          if (isSimulation) {
+            // In simulation, update cache directly for all related installments
+            const simSeriesParentId = originalTransaction.parentId || id;
+            queryClient.setQueryData(['transactions'], (old: Transaction[] | undefined) =>
+              (old || []).map(t => {
+                const isRelated = t.id === id || t.id === simSeriesParentId || t.parentId === simSeriesParentId;
+                if (!isRelated) return t;
+                if (recurringAction.type === 'this_and_future' && t.date < originalTransaction.date) return t;
+                return { ...t, ...updates };
+              })
+            );
+            toast({
+              title: 'Lançamento atualizado',
+              description: recurringAction.type === 'all'
+                ? 'Todas as parcelas foram atualizadas.'
+                : 'Esta e as próximas parcelas foram atualizadas.',
+            });
           } else {
-            // Update all siblings
-            for (const sibling of siblings) {
-              if (sibling.id !== id) {
-                await updateTransaction(sibling.id, updates);
+            const seriesParentId = originalTransaction.parentId || id;
+            if (seriesParentId !== id) {
+              await updateTransaction(seriesParentId, updates);
+            }
+            await updateTransaction(id, updates);
+            const siblings = transactions.filter(t => t.parentId === seriesParentId);
+            if (recurringAction.type === 'this_and_future') {
+              const currentDate = originalTransaction.date;
+              for (const sibling of siblings) {
+                if (sibling.date >= currentDate && sibling.id !== id) {
+                  await updateTransaction(sibling.id, updates);
+                }
+              }
+            } else {
+              for (const sibling of siblings) {
+                if (sibling.id !== id) {
+                  await updateTransaction(sibling.id, updates);
+                }
               }
             }
+            queryClient.invalidateQueries({ queryKey: ['transactions'] });
+            toast({
+              title: 'Lançamento atualizado',
+              description: recurringAction.type === 'all' 
+                ? 'Todas as parcelas foram atualizadas.' 
+                : 'Esta e as próximas parcelas foram atualizadas.',
+            });
           }
-          
-          queryClient.invalidateQueries({ queryKey: ['transactions'] });
-          toast({
-            title: 'Lançamento atualizado',
-            description: recurringAction.type === 'all' 
-              ? 'Todas as parcelas foram atualizadas.' 
-              : 'Esta e as próximas parcelas foram atualizadas.',
-          });
           break;
       }
     } else {
-      // For non-installment transactions or without recurring action
       updateMutation.mutate({ id, data: updates });
     }
-  }, [updateMutation, user, transactions, queryClient, toast]);
+  }, [updateMutation, user, transactions, queryClient, toast, isSimulation]);
 
   // Delete transaction with installment action support
   const deleteTransactionFn = useCallback(async (
@@ -372,39 +425,51 @@ export function useTransactions(selectedDate: Date) {
     }
 
     try {
+      if (isSimulation) {
+        // In simulation mode, handle installment deletions in cache
+        const simSeriesParentId = originalTransaction.parentId || id;
+        switch (recurringAction.type) {
+          case 'only_this':
+            queryClient.setQueryData(['transactions'], (old: Transaction[] | undefined) =>
+              (old || []).filter(t => t.id !== id)
+            );
+            toast({ title: 'Parcela excluída', description: 'Apenas esta parcela foi removida.' });
+            break;
+          case 'this_and_future':
+            queryClient.setQueryData(['transactions'], (old: Transaction[] | undefined) =>
+              (old || []).filter(t => {
+                if (t.id === id) return false;
+                if ((t.parentId === simSeriesParentId || t.id === simSeriesParentId) && t.date >= originalTransaction.date) return false;
+                return true;
+              })
+            );
+            toast({ title: 'Parcelas excluídas', description: 'Esta e as próximas parcelas foram removidas.' });
+            break;
+          case 'all':
+            queryClient.setQueryData(['transactions'], (old: Transaction[] | undefined) =>
+              (old || []).filter(t => t.id !== simSeriesParentId && t.parentId !== simSeriesParentId)
+            );
+            toast({ title: 'Lançamento excluído', description: 'Todas as parcelas foram removidas.' });
+            break;
+        }
+        return;
+      }
+
       switch (recurringAction.type) {
         case 'only_this':
-          // Delete only this specific installment record
           await deleteInstallment(id);
           queryClient.invalidateQueries({ queryKey: ['transactions'] });
-          toast({
-            title: 'Parcela excluída',
-            description: 'Apenas esta parcela foi removida.',
-          });
+          toast({ title: 'Parcela excluída', description: 'Apenas esta parcela foi removida.' });
           break;
-
         case 'this_and_future':
-          // Delete this and all future installments
-          await deleteInstallmentAndFuture(
-            id, 
-            originalTransaction.parentId || null, 
-            originalTransaction.date
-          );
+          await deleteInstallmentAndFuture(id, originalTransaction.parentId || null, originalTransaction.date);
           queryClient.invalidateQueries({ queryKey: ['transactions'] });
-          toast({
-            title: 'Parcelas excluídas',
-            description: 'Esta e as próximas parcelas foram removidas.',
-          });
+          toast({ title: 'Parcelas excluídas', description: 'Esta e as próximas parcelas foram removidas.' });
           break;
-
         case 'all':
-          // Delete all installments in the series
           await deleteAllInstallments(id, originalTransaction.parentId || null);
           queryClient.invalidateQueries({ queryKey: ['transactions'] });
-          toast({
-            title: 'Lançamento excluído',
-            description: 'Todas as parcelas foram removidas.',
-          });
+          toast({ title: 'Lançamento excluído', description: 'Todas as parcelas foram removidas.' });
           break;
       }
     } catch (error) {
@@ -414,7 +479,7 @@ export function useTransactions(selectedDate: Date) {
         variant: 'destructive',
       });
     }
-  }, [deleteMutation, user, transactions, queryClient, toast]);
+  }, [deleteMutation, user, transactions, queryClient, toast, isSimulation]);
 
   return {
     transactions: transactionsWithBalance,

@@ -7,6 +7,7 @@ import { useVoiceSettings } from '@/contexts/VoiceSettingsContext';
 import { useNotificationSettings } from '@/contexts/NotificationSettingsContext';
 import { useProfile } from '@/hooks/useProfile';
 import { usePWAInstall } from '@/hooks/usePWAInstall';
+import { useSimulation } from '@/contexts/SimulationContext';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
@@ -18,6 +19,7 @@ export default function Settings() {
   const { autoSaveVoiceTransaction, setAutoSaveVoiceTransaction } = useVoiceSettings();
   const { notificationsEnabled, setNotificationsEnabled } = useNotificationSettings();
   const { displayName } = useProfile();
+  const { isSimulation, enableSimulation, disableSimulation } = useSimulation();
   const { isInstallable, isInstalled, promptInstall, showIOSInstructions } = usePWAInstall();
   
   const [fullName, setFullName] = useState('');
@@ -214,6 +216,30 @@ export default function Settings() {
             <div className="flex-1 text-left">
               <p className="font-semibold text-foreground">Lançamento automático por áudio</p>
               <p className="text-sm text-muted-foreground">Salvar automaticamente quando usar voz</p>
+            </div>
+          </button>
+
+          {/* Simulation Mode Toggle */}
+          <button
+            onClick={() => isSimulation ? disableSimulation() : enableSimulation()}
+            className="w-full flex items-center gap-4 p-4 hover:bg-secondary/50 transition-colors"
+          >
+            <div className={`size-10 rounded-xl flex items-center justify-center ${
+              isSimulation ? 'bg-amber-500/10' : 'bg-muted'
+            }`}>
+              <span 
+                className={`material-symbols-outlined ${
+                  isSimulation ? 'text-amber-500' : 'text-muted-foreground'
+                }`}
+              >
+                science
+              </span>
+            </div>
+            <div className="flex-1 text-left">
+              <p className="font-semibold text-foreground">Modo Simulação</p>
+              <p className="text-sm text-muted-foreground">
+                {isSimulation ? 'Ativo — alterações não são salvas' : 'Testar sem salvar no banco'}
+              </p>
             </div>
           </button>
 
