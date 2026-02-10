@@ -7,6 +7,7 @@ import { NotificationProvider } from "@/contexts/NotificationContext";
 import { NotificationSettingsProvider } from "@/contexts/NotificationSettingsContext";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { VoiceSettingsProvider } from "@/contexts/VoiceSettingsContext";
+import { SimulationProvider } from "@/contexts/SimulationContext";
 import { useAutoSettle } from "@/hooks/useAutoSettle";
 import Home from "./pages/Home";
 import Auth from "./pages/Auth";
@@ -89,11 +90,13 @@ const App = () => {
           <NotificationSettingsProvider>
             <NotificationProvider>
               <VoiceSettingsProvider>
-                <Toaster />
-                <Sonner />
-                <BrowserRouter>
-                  <AppRoutes />
-                </BrowserRouter>
+                <SimulationProvider>
+                  <Toaster />
+                  <Sonner />
+                  <BrowserRouter>
+                    <AppRoutes />
+                  </BrowserRouter>
+                </SimulationProvider>
               </VoiceSettingsProvider>
             </NotificationProvider>
           </NotificationSettingsProvider>

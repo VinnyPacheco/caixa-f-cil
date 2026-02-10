@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { NotificationList } from '@/components/notifications/NotificationList';
 import { useNotificationContext } from '@/contexts/NotificationContext';
+import { useSimulation } from '@/contexts/SimulationContext';
 
 interface HeaderProps {
   title?: string;
@@ -22,6 +23,7 @@ export function Header({
   onBack,
 }: HeaderProps) {
   const navigate = useNavigate();
+  const { isSimulation, disableSimulation } = useSimulation();
   const { 
     notifications, 
     unreadCount, 
@@ -36,8 +38,23 @@ export function Header({
   };
 
   return (
-    <header className="flex items-center px-6 pt-6 pb-2 justify-between sticky top-0 z-10 bg-background/95 backdrop-blur-sm">
-      {showBack ? (
+    <>
+      {isSimulation && (
+        <div className="sticky top-0 z-20 bg-amber-500 text-amber-950 px-4 py-2 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-sm">science</span>
+            <span className="text-sm font-bold">Modo Simulação</span>
+          </div>
+          <button
+            onClick={disableSimulation}
+            className="text-xs font-bold bg-amber-950/20 hover:bg-amber-950/30 rounded-full px-3 py-1 transition-colors"
+          >
+            Desativar
+          </button>
+        </div>
+      )}
+      <header className="flex items-center px-6 pt-6 pb-2 justify-between sticky top-0 z-10 bg-background/95 backdrop-blur-sm">
+        {showBack ? (
         <button
           onClick={onBack || (() => navigate(-1))}
           className="flex items-center justify-center p-2 -ml-2 rounded-full hover:bg-foreground/5 transition-colors"
@@ -83,19 +100,20 @@ export function Header({
         </h1>
       )}
 
-      {showNotification ? (
-        <NotificationList
-          notifications={notifications}
-          unreadCount={unreadCount}
-          onMarkAsRead={markAsRead}
-          onMarkAllAsRead={markAllAsRead}
-          onNotificationClick={handleNotificationClick}
-          pushPermission={pushPermission}
-          onRequestPushPermission={requestPushPermission}
-        />
-      ) : showBack ? (
-        <div className="w-10" />
-      ) : null}
-    </header>
+        {showNotification ? (
+          <NotificationList
+            notifications={notifications}
+            unreadCount={unreadCount}
+            onMarkAsRead={markAsRead}
+            onMarkAllAsRead={markAllAsRead}
+            onNotificationClick={handleNotificationClick}
+            pushPermission={pushPermission}
+            onRequestPushPermission={requestPushPermission}
+          />
+        ) : showBack ? (
+          <div className="w-10" />
+        ) : null}
+      </header>
+    </>
   );
 }

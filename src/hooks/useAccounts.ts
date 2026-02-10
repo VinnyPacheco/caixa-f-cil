@@ -7,10 +7,12 @@ import {
   deleteAccount 
 } from '@/services/accountsService';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSimulation } from '@/contexts/SimulationContext';
 import { useToast } from '@/hooks/use-toast';
 
 export function useAccounts() {
   const { user } = useAuth();
+  const { isSimulation } = useSimulation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -21,60 +23,60 @@ export function useAccounts() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (account: Omit<Account, 'id'>) => {
+    mutationFn: async (account: Omit<Account, 'id'>) => {
       if (!user) throw new Error('User not authenticated');
+      if (isSimulation) {
+        const fake: Account = { ...account, id: crypto.randomUUID() };
+        queryClient.setQueryData(['accounts'], (old: Account[] | undefined) => [...(old || []), fake]);
+        return fake;
+      }
       return createAccount(account, user.id);
     },
     onSuccess: (newAccount) => {
-      queryClient.invalidateQueries({ queryKey: ['accounts'] });
-      toast({
-        title: 'Conta criada',
-        description: `A conta "${newAccount.name}" foi criada com sucesso.`,
-      });
+      if (!isSimulation) queryClient.invalidateQueries({ queryKey: ['accounts'] });
+      toast({ title: 'Conta criada', description: `A conta "${newAccount.name}" foi criada com sucesso.` });
     },
     onError: (error) => {
-      toast({
-        title: 'Erro ao criar conta',
-        description: error.message,
-        variant: 'destructive',
-      });
+      toast({ title: 'Erro ao criar conta', description: error.message, variant: 'destructive' });
     },
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Partial<Omit<Account, 'id'>> }) => 
-      updateAccount(id, data),
+    mutationFn: async ({ id, data }: { id: string; data: Partial<Omit<Account, 'id'>> }) => {
+      if (isSimulation) {
+        const updated = { id, ...data } as Account;
+        queryClient.setQueryData(['accounts'], (old: Account[] | undefined) =>
+          (old || []).map(a => a.id === id ? { ...a, ...data } : a)
+        );
+        return updated;
+      }
+      return updateAccount(id, data);
+    },
     onSuccess: (updatedAccount) => {
-      queryClient.invalidateQueries({ queryKey: ['accounts'] });
-      toast({
-        title: 'Conta atualizada',
-        description: `A conta "${updatedAccount.name}" foi atualizada com sucesso.`,
-      });
+      if (!isSimulation) queryClient.invalidateQueries({ queryKey: ['accounts'] });
+      toast({ title: 'Conta atualizada', description: `A conta "${updatedAccount.name}" foi atualizada com sucesso.` });
     },
     onError: (error) => {
-      toast({
-        title: 'Erro ao atualizar conta',
-        description: error.message,
-        variant: 'destructive',
-      });
+      toast({ title: 'Erro ao atualizar conta', description: error.message, variant: 'destructive' });
     },
   });
 
   const deleteMutation = useMutation({
-    mutationFn: deleteAccount,
+    mutationFn: async (id: string) => {
+      if (isSimulation) {
+        queryClient.setQueryData(['accounts'], (old: Account[] | undefined) =>
+          (old || []).filter(a => a.id !== id)
+        );
+        return;
+      }
+      return deleteAccount(id);
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['accounts'] });
-      toast({
-        title: 'Conta excluída',
-        description: 'A conta foi excluída com sucesso.',
-      });
+      if (!isSimulation) queryClient.invalidateQueries({ queryKey: ['accounts'] });
+      toast({ title: 'Conta excluída', description: 'A conta foi excluída com sucesso.' });
     },
     onError: (error) => {
-      toast({
-        title: 'Erro ao excluir conta',
-        description: error.message,
-        variant: 'destructive',
-      });
+      toast({ title: 'Erro ao excluir conta', description: error.message, variant: 'destructive' });
     },
   });
 
