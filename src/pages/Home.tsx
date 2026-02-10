@@ -1,33 +1,67 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Header } from '@/components/layout/Header';
 import { BalanceCard } from '@/components/finance/BalanceCard';
 import { TransactionItem } from '@/components/finance/TransactionItem';
 import { useTransactions } from '@/hooks/useTransactions';
 import { useProfile } from '@/hooks/useProfile';
+import { useAuth } from '@/contexts/AuthContext';
+import { fetchTransactions } from '@/services/transactionsService';
+import { fetchAccounts } from '@/services/accountsService';
+import { fetchCategories } from '@/services/categoriesService';
 import { Loader2, AlertTriangle } from 'lucide-react';
-import { addDays, parseISO, isAfter, isBefore, isEqual, startOfDay } from 'date-fns';
+import { addDays, parseISO, isBefore, isEqual, startOfDay } from 'date-fns';
+import { TransactionWithBalance } from '@/types/finance';
 
 export default function Home() {
   const navigate = useNavigate();
   const { displayName } = useProfile();
+  const { user } = useAuth();
   const [selectedDate] = useState(new Date());
-  const { transactions, monthSummary, togglePaid, isLoading } = useTransactions(selectedDate);
+  const { monthSummary, togglePaid, isLoading } = useTransactions(selectedDate);
 
-  // Filter pending transactions that are overdue or due within 3 days
-  const pendingUrgent = useMemo(() => {
+  // Fetch ALL transactions (not month-filtered) for pending list
+  const allTransactionsQuery = useQuery({
+    queryKey: ['transactions'],
+    queryFn: fetchTransactions,
+    enabled: !!user,
+  });
+  const categoriesQuery = useQuery({
+    queryKey: ['categories'],
+    queryFn: fetchCategories,
+    enabled: !!user,
+  });
+  const accountsQuery = useQuery({
+    queryKey: ['accounts'],
+    queryFn: fetchAccounts,
+    enabled: !!user,
+  });
+
+  const allTransactions = allTransactionsQuery.data || [];
+  const categories = categoriesQuery.data || [];
+  const accounts = accountsQuery.data || [];
+
+  // Filter pending transactions that are overdue or due within 3 days across ALL months
+  const pendingUrgent: TransactionWithBalance[] = useMemo(() => {
     const today = startOfDay(new Date());
     const threshold = addDays(today, 3);
     
-    return transactions
+    return allTransactions
       .filter((t) => {
         if (t.isPaid) return false;
         const txDate = startOfDay(parseISO(t.date));
         return isBefore(txDate, threshold) || isEqual(txDate, threshold);
       })
-      .sort((a, b) => a.date.localeCompare(b.date));
-  }, [transactions]);
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .map((t) => ({
+        ...t,
+        runningBalance: 0,
+        category: categories.find((c) => c.id === t.categoryId),
+        account: accounts.find((a) => a.id === t.accountId),
+      }));
+  }, [allTransactions, categories, accounts]);
 
   const percentChange = monthSummary.balance > 0 ? 2.5 : -1.8;
 
