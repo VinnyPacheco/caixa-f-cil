@@ -1,13 +1,13 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Header } from '@/components/layout/Header';
 import { BalanceCard } from '@/components/finance/BalanceCard';
-import { SummaryCards } from '@/components/finance/SummaryCards';
 import { TransactionItem } from '@/components/finance/TransactionItem';
 import { useTransactions } from '@/hooks/useTransactions';
 import { useProfile } from '@/hooks/useProfile';
-import { Loader2 } from 'lucide-react';
+import { Loader2, AlertTriangle } from 'lucide-react';
+import { addDays, parseISO, isAfter, isBefore, isEqual, startOfDay } from 'date-fns';
 
 export default function Home() {
   const navigate = useNavigate();
@@ -15,10 +15,20 @@ export default function Home() {
   const [selectedDate] = useState(new Date());
   const { transactions, monthSummary, togglePaid, isLoading } = useTransactions(selectedDate);
 
-  // Get recent transactions (last 4)
-  const recentTransactions = transactions.slice(0, 4);
+  // Filter pending transactions that are overdue or due within 3 days
+  const pendingUrgent = useMemo(() => {
+    const today = startOfDay(new Date());
+    const threshold = addDays(today, 3);
+    
+    return transactions
+      .filter((t) => {
+        if (t.isPaid) return false;
+        const txDate = startOfDay(parseISO(t.date));
+        return isBefore(txDate, threshold) || isEqual(txDate, threshold);
+      })
+      .sort((a, b) => a.date.localeCompare(b.date));
+  }, [transactions]);
 
-  // Calculate percentage change (mock for now)
   const percentChange = monthSummary.balance > 0 ? 2.5 : -1.8;
 
   if (isLoading) {
@@ -47,15 +57,13 @@ export default function Home() {
           onViewStatement={() => navigate('/transactions')}
         />
 
-        <SummaryCards
-          income={monthSummary.totalIncome}
-          expense={monthSummary.totalExpense}
-        />
-
         <div className="flex items-center justify-between pt-2">
-          <h3 className="text-foreground text-lg font-bold leading-tight tracking-tight">
-            Transações Recentes
-          </h3>
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 text-amber-500" />
+            <h3 className="text-foreground text-lg font-bold leading-tight tracking-tight">
+              Pendentes
+            </h3>
+          </div>
           <button
             onClick={() => navigate('/transactions')}
             className="text-sm font-bold text-accent hover:opacity-80"
@@ -64,19 +72,13 @@ export default function Home() {
           </button>
         </div>
 
-        <div className="flex flex-col gap-3">
-          {recentTransactions.length === 0 ? (
+        <div className="flex flex-col gap-1.5">
+          {pendingUrgent.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              <p>Nenhuma transação encontrada</p>
-              <button
-                onClick={() => navigate('/new-transaction')}
-                className="mt-2 text-accent hover:underline"
-              >
-                Criar primeira transação
-              </button>
+              <p>Nenhum lançamento pendente 🎉</p>
             </div>
           ) : (
-            recentTransactions.map((transaction) => (
+            pendingUrgent.map((transaction) => (
               <TransactionItem
                 key={transaction.id}
                 transaction={transaction}
