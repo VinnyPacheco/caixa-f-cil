@@ -20,6 +20,7 @@ export function useCategories() {
     queryKey: ['categories'],
     queryFn: fetchCategories,
     enabled: !!user,
+    staleTime: isSimulation ? Infinity : 0,
   });
 
   const createMutation = useMutation({
