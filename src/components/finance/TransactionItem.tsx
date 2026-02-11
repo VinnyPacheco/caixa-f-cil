@@ -105,8 +105,8 @@ export const TransactionItem = forwardRef<HTMLDivElement, TransactionItemProps>(
             {formatCurrency(transaction.amount)}
           </p>
           {showBalance && (
-            <p className={cn("text-xs", transaction.runningBalance < 0 ? "text-destructive" : "text-muted-foreground")}>
-              Saldo: {formatCurrency(transaction.runningBalance)}
+            <p className="text-xs text-muted-foreground">
+              Saldo: <span className={transaction.runningBalance < 0 ? "text-destructive" : ""}>{formatCurrency(transaction.runningBalance)}</span>
             </p>
           )}
         </div>
@@ -199,8 +199,8 @@ export function SortableTransactionItem({
           {formatCurrency(transaction.amount)}
         </p>
         {showBalance && (
-            <p className={cn("text-xs", transaction.runningBalance < 0 ? "text-destructive" : "text-muted-foreground")}>
-              Saldo: {formatCurrency(transaction.runningBalance)}
+            <p className="text-xs text-muted-foreground">
+              Saldo: <span className={transaction.runningBalance < 0 ? "text-destructive" : ""}>{formatCurrency(transaction.runningBalance)}</span>
             </p>
         )}
       </div>
