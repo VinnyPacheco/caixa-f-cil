@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Header } from '@/components/layout/Header';
@@ -6,7 +6,8 @@ import { MonthSelector } from '@/components/finance/MonthSelector';
 import { FilterPills } from '@/components/finance/FilterPills';
 import { TransactionList } from '@/components/finance/TransactionList';
 import { TransactionForm } from '@/components/finance/TransactionForm';
-import { MonthColumn } from '@/components/finance/MonthColumn';
+import { TransactionListContent } from '@/components/finance/TransactionListContent';
+import { TransactionItem } from '@/components/finance/TransactionItem';
 import { useMultiMonthTransactions } from '@/hooks/useMultiMonthTransactions';
 import { useDeviceType } from '@/hooks/use-responsive';
 import { useProfile } from '@/hooks/useProfile';
@@ -16,6 +17,21 @@ import { Button } from '@/components/ui/button';
 import { TransactionWithBalance } from '@/types/finance';
 import { format, addMonths, subMonths, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+  DragStartEvent,
+  DragOverlay,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  sortableKeyboardCoordinates,
+} from '@dnd-kit/sortable';
 
 const SORT_ORDER_KEY = 'transactions-sort-order';
 
@@ -34,6 +50,7 @@ export default function Transactions() {
   });
   const [editingTransaction, setEditingTransaction] = useState<TransactionWithBalance | null>(null);
   const [formOpen, setFormOpen] = useState(false);
+  const [activeTransaction, setActiveTransaction] = useState<TransactionWithBalance | null>(null);
 
   const deviceType = useDeviceType();
   const additionalMonths = deviceType === 'desktop' ? 2 : deviceType === 'tablet' ? 1 : 0;
@@ -51,6 +68,12 @@ export default function Transactions() {
     updateTransaction,
     deleteTransaction,
   } = useMultiMonthTransactions(selectedDate, additionalMonths);
+
+  // All transactions across visible months for cross-month DnD
+  const allVisibleTransactions = useMemo(
+    () => monthsData.flatMap((m) => m.transactions),
+    [monthsData]
+  );
 
   // Handle navigation state (selected month or new transaction)
   useEffect(() => {
@@ -84,6 +107,60 @@ export default function Transactions() {
   };
 
   const isMobile = deviceType === 'mobile';
+
+  // Cross-month DnD sensors and handlers
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  const handleDragStart = (event: DragStartEvent) => {
+    const tx = allVisibleTransactions.find((t) => t.id === event.active.id);
+    setActiveTransaction(tx || null);
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveTransaction(null);
+    if (!over) return;
+
+    const activeIdStr = active.id as string;
+    const overIdStr = over.id as string;
+    const activeTx = allVisibleTransactions.find((t) => t.id === activeIdStr);
+    if (!activeTx) return;
+
+    let newTransactions = [...allVisibleTransactions];
+    const dateChanges: { id: string; newDate: string }[] = [];
+
+    if (overIdStr.startsWith('date-')) {
+      const newDate = over.data.current?.date;
+      if (newDate && newDate !== activeTx.date) {
+        dateChanges.push({ id: activeIdStr, newDate });
+        newTransactions = newTransactions.map((t) =>
+          t.id === activeIdStr ? { ...t, date: newDate } : t
+        );
+      }
+    } else {
+      const overTx = allVisibleTransactions.find((t) => t.id === overIdStr);
+      if (overTx) {
+        if (activeTx.date !== overTx.date) {
+          dateChanges.push({ id: activeIdStr, newDate: overTx.date });
+          newTransactions = newTransactions.map((t) =>
+            t.id === activeIdStr ? { ...t, date: overTx.date } : t
+          );
+        }
+        if (activeIdStr !== overIdStr) {
+          const oldIndex = newTransactions.findIndex((t) => t.id === activeIdStr);
+          const newIndex = newTransactions.findIndex((t) => t.id === overIdStr);
+          if (oldIndex !== -1 && newIndex !== -1) {
+            newTransactions = arrayMove(newTransactions, oldIndex, newIndex);
+          }
+        }
+      }
+    }
+
+    reorderTransactions(newTransactions, dateChanges.length > 0 ? dateChanges : undefined);
+  };
 
   return (
     <AppLayout>
@@ -150,93 +227,97 @@ export default function Transactions() {
           />
         )}
 
-        {/* Tablet/Desktop Layout - Multi Column */}
+        {/* Tablet/Desktop Layout - Multi Column with cross-month DnD */}
         {!isMobile && (
-          <div className="flex flex-col gap-4">
-            {/* Navigation Header - Desktop and Tablet */}
-            <div className="flex items-center justify-between">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setSelectedDate(subMonths(selectedDate, 1))}
-                className="h-8 w-8"
-              >
-                <ChevronLeft className="h-5 w-5" />
-              </Button>
-              
-              <div className="flex-1 grid gap-6" style={{ gridTemplateColumns: `repeat(${additionalMonths + 1}, minmax(0, 1fr))` }}>
-                {monthsData.map((monthData, index) => {
-                  const monthLabel = format(monthData.date, 'MMMM', { locale: ptBR });
-                  const isCurrentMonth = index === 0;
-                  
-                  return (
-                    <button
-                      key={monthData.date.toISOString()}
-                      onClick={() => !isCurrentMonth && setSelectedDate(monthData.date)}
-                      className={`text-center capitalize ${isCurrentMonth ? 'cursor-default' : 'cursor-pointer hover:text-primary transition-colors'}`}
-                    >
-                      <h3 className={`text-lg font-bold ${isCurrentMonth ? 'text-foreground' : 'text-muted-foreground'}`}>
-                        {monthLabel}
-                      </h3>
-                      <p className="text-xs text-muted-foreground">
-                        {isCurrentMonth ? 'Editável • Arraste para reorganizar' : format(monthData.date, 'yyyy')}
-                      </p>
-                    </button>
-                  );
-                })}
-              </div>
-              
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setSelectedDate(addMonths(selectedDate, 1))}
-                className="h-8 w-8"
-              >
-                <ChevronRight className="h-5 w-5" />
-              </Button>
-            </div>
-
-            <div className="grid gap-6" style={{ gridTemplateColumns: `repeat(${additionalMonths + 1}, minmax(0, 1fr))` }}>
-              {/* Current Month - Editable */}
-              <div className="flex flex-col gap-4">
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+          >
+            <div className="flex flex-col gap-4">
+              {/* Navigation Header */}
+              <div className="flex items-center justify-between">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setSelectedDate(subMonths(selectedDate, 1))}
+                  className="h-8 w-8"
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </Button>
                 
-                <div className="flex items-center justify-between bg-card p-3 rounded-xl border border-border/50">
-                  <div>
-                    <p className="text-[10px] text-muted-foreground font-medium">Saldo Inicial</p>
-                    <p className="text-sm font-bold text-foreground">
-                      {formatCurrency(currentMonth.summary.openingBalance)}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-[10px] text-muted-foreground font-medium">Saldo Final</p>
-                    <p className={`text-sm font-bold ${currentMonth.summary.closingBalance >= 0 ? 'text-success' : 'text-destructive'}`}>
-                      {formatCurrency(currentMonth.summary.closingBalance)}
-                    </p>
-                  </div>
+                <div className="flex-1 grid gap-6" style={{ gridTemplateColumns: `repeat(${additionalMonths + 1}, minmax(0, 1fr))` }}>
+                  {monthsData.map((monthData) => {
+                    const monthLabel = format(monthData.date, 'MMMM', { locale: ptBR });
+                    return (
+                      <div
+                        key={monthData.date.toISOString()}
+                        className="text-center capitalize"
+                      >
+                        <h3 className="text-lg font-bold text-foreground">
+                          {monthLabel}
+                        </h3>
+                        <p className="text-xs text-muted-foreground">
+                          Arraste para reorganizar
+                        </p>
+                      </div>
+                    );
+                  })}
                 </div>
-
-                <div className="flex-1 overflow-y-auto max-h-[calc(100vh-350px)]">
-                  <TransactionList
-                    transactions={currentMonth.transactions}
-                    onReorder={reorderTransactions}
-                    onTogglePaid={togglePaid}
-                    onTransactionClick={handleTransactionClick}
-                    sortOrder={sortOrder}
-                  />
-                </div>
+                
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setSelectedDate(addMonths(selectedDate, 1))}
+                  className="h-8 w-8"
+                >
+                  <ChevronRight className="h-5 w-5" />
+                </Button>
               </div>
 
-              {/* Future Months - Read Only */}
-              {monthsData.slice(1).map((monthData) => (
-                <MonthColumn
-                  key={monthData.date.toISOString()}
-                  monthData={monthData}
-                  sortOrder={sortOrder}
-                  onMonthClick={() => setSelectedDate(monthData.date)}
-                />
-              ))}
+              <div className="grid gap-6" style={{ gridTemplateColumns: `repeat(${additionalMonths + 1}, minmax(0, 1fr))` }}>
+                {monthsData.map((monthData) => (
+                  <div key={monthData.date.toISOString()} className="flex flex-col gap-4 min-w-0">
+                    {/* Summary Card */}
+                    <div className="flex items-center justify-between bg-card p-3 rounded-xl border border-border/50">
+                      <div>
+                        <p className="text-[10px] text-muted-foreground font-medium">Saldo Inicial</p>
+                        <p className="text-sm font-bold text-foreground">
+                          {formatCurrency(monthData.summary.openingBalance)}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[10px] text-muted-foreground font-medium">Saldo Final</p>
+                        <p className={`text-sm font-bold ${monthData.summary.closingBalance >= 0 ? 'text-success' : 'text-destructive'}`}>
+                          {formatCurrency(monthData.summary.closingBalance)}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Transactions */}
+                    <div className="flex-1 overflow-y-auto max-h-[calc(100vh-350px)]">
+                      <TransactionListContent
+                        transactions={monthData.transactions}
+                        onTogglePaid={togglePaid}
+                        onTransactionClick={handleTransactionClick}
+                        sortOrder={sortOrder}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
+
+            <DragOverlay>
+              {activeTransaction && (
+                <TransactionItem
+                  transaction={activeTransaction}
+                  showDragHandle={false}
+                />
+              )}
+            </DragOverlay>
+          </DndContext>
         )}
       </main>
 
