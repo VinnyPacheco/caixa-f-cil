@@ -49,7 +49,6 @@ export const TransactionItem = forwardRef<HTMLDivElement, TransactionItemProps>(
           isReadOnly && "opacity-75",
           dueStatus === 'overdue' && "border-l-4 border-l-destructive",
           dueStatus === 'due-soon' && "border-l-4 border-l-amber-500",
-          showBalance && transaction.runningBalance < 0 && "bg-destructive/10"
         )}
         onClick={!isReadOnly ? onClick : undefined}
       >
@@ -106,7 +105,7 @@ export const TransactionItem = forwardRef<HTMLDivElement, TransactionItemProps>(
             {formatCurrency(transaction.amount)}
           </p>
           {showBalance && (
-            <p className="text-xs text-muted-foreground">
+            <p className={cn("text-xs", transaction.runningBalance < 0 ? "text-destructive" : "text-muted-foreground")}>
               Saldo: {formatCurrency(transaction.runningBalance)}
             </p>
           )}
@@ -155,7 +154,6 @@ export function SortableTransactionItem({
         isDragging ? 'shadow-xl scale-[1.02]' : '',
         dueStatus === 'overdue' && "border-l-4 border-l-destructive",
         dueStatus === 'due-soon' && "border-l-4 border-l-amber-500",
-        transaction.runningBalance < 0 && "bg-destructive/10"
       )}
       onClick={onClick}
     >
@@ -201,9 +199,9 @@ export function SortableTransactionItem({
           {formatCurrency(transaction.amount)}
         </p>
         {showBalance && (
-          <p className="text-xs text-muted-foreground">
-            Saldo: {formatCurrency(transaction.runningBalance)}
-          </p>
+            <p className={cn("text-xs", transaction.runningBalance < 0 ? "text-destructive" : "text-muted-foreground")}>
+              Saldo: {formatCurrency(transaction.runningBalance)}
+            </p>
         )}
       </div>
     </div>
