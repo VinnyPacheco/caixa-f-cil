@@ -478,29 +478,29 @@ export default function NewTransaction() {
 
         {/* Form Fields */}
         <div className="flex flex-col gap-5 bg-card p-6 rounded-3xl shadow-sm border border-border/50">
-          {/* Description */}
-          <div className="space-y-2">
-            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">
-              Descrição
-            </label>
-            <div className="input-gold p-4">
-              <div className="flex items-center gap-3">
-                <span className="material-symbols-outlined text-muted-foreground">edit</span>
-                <input
-                  type="text"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Ex: Compras no mercado"
-                  className="w-full bg-transparent border-none p-0 focus:ring-0 focus:outline-none text-foreground placeholder-muted-foreground text-base font-medium"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Category + Account (left) and Date (right) on md+ */}
+          {/* Description + Category + Account (left) and Date (right) on md+ */}
           <div className="flex flex-col md:flex-row md:gap-4">
-            {/* Category and Account - stacked on left */}
+            {/* Description, Category and Account - stacked on left */}
             <div className="flex flex-col gap-4 md:flex-1">
+              {/* Description */}
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">
+                  Descrição
+                </label>
+                <div className="input-gold p-4">
+                  <div className="flex items-center gap-3">
+                    <span className="material-symbols-outlined text-muted-foreground">edit</span>
+                    <input
+                      type="text"
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      placeholder="Ex: Compras no mercado"
+                      className="w-full bg-transparent border-none p-0 focus:ring-0 focus:outline-none text-foreground placeholder-muted-foreground text-base font-medium"
+                    />
+                  </div>
+                </div>
+              </div>
+
               <div className="space-y-2">
                 <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">
                   Categoria
@@ -539,11 +539,11 @@ export default function NewTransaction() {
                   </select>
                 </div>
               </div>
-            </div>
+            </div>{/* end left column */}
 
             {/* Date - right on md+, below on mobile */}
             <div className="space-y-2 mt-4 md:mt-0 md:flex-1">
-              <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">
+              <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block text-center">
                 Data
               </label>
               <div className="flex justify-center">
