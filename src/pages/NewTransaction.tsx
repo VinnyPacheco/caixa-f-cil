@@ -497,60 +497,110 @@ export default function NewTransaction() {
             </div>
           </div>
 
-          {/* Date - Exposed Calendar */}
-          <div className="space-y-2">
-            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">
-              Data
-            </label>
-            <div className="flex justify-center">
-              <Calendar
-                mode="single"
-                selected={date}
-                onSelect={setDate}
-                locale={ptBR}
-                className="rounded-xl border border-border/50 bg-card p-3"
-              />
-            </div>
-          </div>
+          {/* Date + Category + Account (mobile: side by side; desktop: stacked) */}
+          <div className="flex flex-col sm:flex-col gap-4">
+            {/* Mobile: category/account left, calendar right */}
+            <div className="flex flex-col sm:flex-col gap-4 sm:gap-4">
+              <div className="flex gap-4">
+                {/* Left column: Category + Account (mobile only) */}
+                <div className="flex flex-col gap-4 sm:hidden w-[45%] shrink-0">
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">
+                      Categoria
+                    </label>
+                    <div className="input-gold p-3">
+                      <select
+                        value={categoryId}
+                        onChange={(e) => setCategoryId(e.target.value)}
+                        className="w-full bg-transparent border-none p-0 focus:ring-0 focus:outline-none text-foreground text-sm font-medium appearance-none cursor-pointer"
+                      >
+                        <option value="">Selecione</option>
+                        {filteredCategories.map((cat) => (
+                          <option key={cat.id} value={cat.id}>
+                            {cat.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">
+                      Conta
+                    </label>
+                    <div className="input-gold p-3">
+                      <select
+                        value={accountId}
+                        onChange={(e) => setAccountId(e.target.value)}
+                        className="w-full bg-transparent border-none p-0 focus:ring-0 focus:outline-none text-foreground text-sm font-medium appearance-none cursor-pointer"
+                      >
+                        <option value="">Selecione</option>
+                        {accounts.map((acc) => (
+                          <option key={acc.id} value={acc.id}>
+                            {acc.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
 
-          {/* Category and Account */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">
-                Categoria
-              </label>
-              <div className="input-gold p-4">
-                <select
-                  value={categoryId}
-                  onChange={(e) => setCategoryId(e.target.value)}
-                  className="w-full bg-transparent border-none p-0 focus:ring-0 focus:outline-none text-foreground text-base font-medium appearance-none cursor-pointer"
-                >
-                  <option value="">Selecione</option>
-                  {filteredCategories.map((cat) => (
-                    <option key={cat.id} value={cat.id}>
-                      {cat.name}
-                    </option>
-                  ))}
-                </select>
+                {/* Calendar */}
+                <div className="space-y-2 flex-1">
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">
+                    Data
+                  </label>
+                  <div className="flex justify-center">
+                    <Calendar
+                      mode="single"
+                      selected={date}
+                      onSelect={setDate}
+                      locale={ptBR}
+                      className="rounded-xl border border-border/50 bg-card p-3 w-full"
+                    />
+                  </div>
+                </div>
               </div>
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">
-                Conta
-              </label>
-              <div className="input-gold p-4">
-                <select
-                  value={accountId}
-                  onChange={(e) => setAccountId(e.target.value)}
-                  className="w-full bg-transparent border-none p-0 focus:ring-0 focus:outline-none text-foreground text-base font-medium appearance-none cursor-pointer"
-                >
-                  <option value="">Selecione</option>
-                  {accounts.map((acc) => (
-                    <option key={acc.id} value={acc.id}>
-                      {acc.name}
-                    </option>
-                  ))}
-                </select>
+
+              {/* Category and Account - desktop only (hidden on mobile, shown above) */}
+              <div className="hidden sm:grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">
+                    Categoria
+                  </label>
+                  <div className="input-gold p-4">
+                    <select
+                      value={categoryId}
+                      onChange={(e) => setCategoryId(e.target.value)}
+                      className="w-full bg-transparent border-none p-0 focus:ring-0 focus:outline-none text-foreground text-base font-medium appearance-none cursor-pointer"
+                    >
+                      <option value="">Selecione</option>
+                      {filteredCategories.map((cat) => (
+                        <option key={cat.id} value={cat.id}>
+                          {cat.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">
+                    Conta
+                  </label>
+                  <div className="input-gold p-4">
+                    <select
+                      value={accountId}
+                      onChange={(e) => setAccountId(e.target.value)}
+                      className="w-full bg-transparent border-none p-0 focus:ring-0 focus:outline-none text-foreground text-base font-medium appearance-none cursor-pointer"
+                    >
+                      <option value="">Selecione</option>
+                      {accounts.map((acc) => (
+                        <option key={acc.id} value={acc.id}>
+                          {acc.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -578,55 +628,60 @@ export default function NewTransaction() {
             </div>
           </div>
 
-          {/* Auto Pay Toggle */}
-          <div className="flex flex-col gap-3 bg-secondary p-4 rounded-2xl">
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() => setAutoPay(!autoPay)}
-                className={`p-2 rounded-full transition-colors ${autoPay ? 'bg-accent/20 text-accent' : 'bg-muted text-muted-foreground'}`}
-                title={autoPay ? 'Desativar Baixa Automática' : 'Ativar Baixa Automática'}
-              >
-                <CalendarCheck className="w-5 h-5" />
-              </button>
-              <span className="text-base font-semibold text-foreground">Baixa Automática</span>
-            </div>
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              Quando ativada, este lançamento será marcado como <span className="font-semibold">Pago/Recebido</span> automaticamente no dia seguinte à sua data prevista.
-            </p>
-          </div>
+          {/* Auto Pay + Notes side by side on mobile */}
+          <div className="flex flex-col sm:flex-col gap-4">
+            <div className="flex gap-4 items-stretch">
+              {/* Auto Pay Toggle */}
+              <div className="flex flex-col gap-3 bg-secondary p-4 rounded-2xl flex-1">
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setAutoPay(!autoPay)}
+                    className={`p-2 rounded-full transition-colors ${autoPay ? 'bg-accent/20 text-accent' : 'bg-muted text-muted-foreground'}`}
+                    title={autoPay ? 'Desativar Baixa Automática' : 'Ativar Baixa Automática'}
+                  >
+                    <CalendarCheck className="w-5 h-5" />
+                  </button>
+                  <span className="text-sm font-semibold text-foreground">Baixa Automática</span>
+                </div>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Marcado como <span className="font-semibold">Pago/Recebido</span> automaticamente no dia seguinte à data prevista.
+                </p>
+              </div>
 
-          {/* Notes */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between ml-1">
-              <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                Observações
-              </label>
-              {notes && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    navigator.clipboard.writeText(notes);
-                    toast({
-                      title: 'Copiado!',
-                      description: 'Observações copiadas para a área de transferência.',
-                    });
-                  }}
-                  className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                  title="Copiar observações"
-                >
-                  <Copy className="w-4 h-4" />
-                </button>
-              )}
-            </div>
-            <div className="input-gold p-4">
-              <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Adicione observações sobre este lançamento..."
-                rows={3}
-                className="w-full bg-transparent border-none p-0 focus:ring-0 focus:outline-none text-foreground placeholder-muted-foreground text-sm font-medium resize-none"
-              />
+              {/* Notes */}
+              <div className="flex flex-col gap-2 flex-1">
+                <div className="flex items-center justify-between ml-1">
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                    Observações
+                  </label>
+                  {notes && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(notes);
+                        toast({
+                          title: 'Copiado!',
+                          description: 'Observações copiadas para a área de transferência.',
+                        });
+                      }}
+                      className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                      title="Copiar observações"
+                    >
+                      <Copy className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+                <div className="input-gold p-4 flex-1">
+                  <textarea
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder="Observações..."
+                    rows={4}
+                    className="w-full h-full bg-transparent border-none p-0 focus:ring-0 focus:outline-none text-foreground placeholder-muted-foreground text-sm font-medium resize-none"
+                  />
+                </div>
+              </div>
             </div>
           </div>
 
