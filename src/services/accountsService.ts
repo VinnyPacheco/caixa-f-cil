@@ -24,19 +24,26 @@ export function dbToAccount(dbAccount: DbAccount): Account {
     color: dbAccount.color,
     icon: dbAccount.icon,
     isPrimary: dbAccount.is_primary,
+    dueDay: (dbAccount as any).due_day ?? null,
+    statementClosingDay: (dbAccount as any).statement_closing_day ?? null,
+    creditLimit: (dbAccount as any).credit_limit != null ? Number((dbAccount as any).credit_limit) : null,
   };
 }
 
 // Convert frontend account to database format
-export function accountToDb(account: Omit<Account, 'id'>, userId: string) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function accountToDb(account: Omit<Account, 'id'>, userId: string): any {
   return {
     user_id: userId,
     name: account.name,
-    type: account.type as 'checking' | 'savings' | 'credit_card' | 'cash',
+    type: account.type,
     initial_balance: account.initialBalance,
     color: account.color,
     icon: account.icon,
     is_primary: account.isPrimary ?? false,
+    due_day: account.type === 'credit_card' ? (account.dueDay ?? null) : null,
+    statement_closing_day: account.type === 'credit_card' ? (account.statementClosingDay ?? null) : null,
+    credit_limit: account.type === 'credit_card' ? (account.creditLimit ?? null) : null,
   };
 }
 
@@ -69,10 +76,14 @@ export async function updateAccount(id: string, account: Partial<Omit<Account, '
   if (account.color !== undefined) updates.color = account.color;
   if (account.icon !== undefined) updates.icon = account.icon;
   if (account.isPrimary !== undefined) updates.is_primary = account.isPrimary;
+  // Credit card specific fields - always update them (null clears when not credit_card)
+  updates.due_day = account.type === 'credit_card' ? (account.dueDay ?? null) : null;
+  updates.statement_closing_day = account.type === 'credit_card' ? (account.statementClosingDay ?? null) : null;
+  updates.credit_limit = account.type === 'credit_card' ? (account.creditLimit ?? null) : null;
 
   const { data, error } = await supabase
     .from('accounts')
-    .update(updates)
+    .update(updates as any)
     .eq('id', id)
     .select()
     .single();

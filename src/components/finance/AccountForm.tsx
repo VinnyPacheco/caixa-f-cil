@@ -64,8 +64,13 @@ export function AccountForm({ open, onOpenChange, account, onSave }: AccountForm
   const [color, setColor] = useState(accountColors[0]);
   const [icon, setIcon] = useState(accountIcons[0]);
   const [isPrimary, setIsPrimary] = useState(false);
+  // Credit card specific
+  const [dueDay, setDueDay] = useState('');
+  const [statementClosingDay, setStatementClosingDay] = useState('');
+  const [creditLimit, setCreditLimit] = useState('');
 
   const isEditing = !!account;
+  const isCreditCard = type === 'credit_card';
 
   useEffect(() => {
     if (account) {
@@ -75,6 +80,9 @@ export function AccountForm({ open, onOpenChange, account, onSave }: AccountForm
       setColor(account.color);
       setIcon(account.icon);
       setIsPrimary(account.isPrimary ?? false);
+      setDueDay(account.dueDay != null ? account.dueDay.toString() : '');
+      setStatementClosingDay(account.statementClosingDay != null ? account.statementClosingDay.toString() : '');
+      setCreditLimit(account.creditLimit != null ? account.creditLimit.toString() : '');
     } else {
       setName('');
       setType('checking');
@@ -82,6 +90,9 @@ export function AccountForm({ open, onOpenChange, account, onSave }: AccountForm
       setColor(accountColors[0]);
       setIcon(accountIcons[0]);
       setIsPrimary(false);
+      setDueDay('');
+      setStatementClosingDay('');
+      setCreditLimit('');
     }
   }, [account, open]);
 
@@ -96,6 +107,9 @@ export function AccountForm({ open, onOpenChange, account, onSave }: AccountForm
       color,
       icon,
       isPrimary,
+      dueDay: isCreditCard && dueDay ? parseInt(dueDay) : null,
+      statementClosingDay: isCreditCard && statementClosingDay ? parseInt(statementClosingDay) : null,
+      creditLimit: isCreditCard && creditLimit ? parseFloat(creditLimit) : null,
     });
     
     onOpenChange(false);
@@ -103,7 +117,7 @@ export function AccountForm({ open, onOpenChange, account, onSave }: AccountForm
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{isEditing ? 'Editar Conta' : 'Nova Conta'}</DialogTitle>
         </DialogHeader>
@@ -135,6 +149,64 @@ export function AccountForm({ open, onOpenChange, account, onSave }: AccountForm
               </SelectContent>
             </Select>
           </div>
+
+          {/* Credit card specific fields */}
+          {isCreditCard && (
+            <div className="space-y-4 p-4 rounded-2xl bg-secondary/60 border border-border/50">
+              <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                <span className="material-symbols-outlined text-base text-accent">credit_card</span>
+                Dados do Cartão
+              </p>
+
+              <div className="space-y-2">
+                <Label htmlFor="dueDay">
+                  Dia de Vencimento <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="dueDay"
+                  type="number"
+                  min="1"
+                  max="31"
+                  value={dueDay}
+                  onChange={(e) => setDueDay(e.target.value)}
+                  placeholder="Ex: 10"
+                  required={isCreditCard}
+                />
+                <p className="text-xs text-muted-foreground">Dia do mês em que a fatura vence</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="statementClosingDay">
+                  Dia de Fechamento da Fatura <span className="text-muted-foreground text-xs">(opcional)</span>
+                </Label>
+                <Input
+                  id="statementClosingDay"
+                  type="number"
+                  min="1"
+                  max="31"
+                  value={statementClosingDay}
+                  onChange={(e) => setStatementClosingDay(e.target.value)}
+                  placeholder="Ex: 3"
+                />
+                <p className="text-xs text-muted-foreground">Dia do mês em que a fatura fecha</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="creditLimit">
+                  Limite do Cartão <span className="text-muted-foreground text-xs">(opcional)</span>
+                </Label>
+                <Input
+                  id="creditLimit"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={creditLimit}
+                  onChange={(e) => setCreditLimit(e.target.value)}
+                  placeholder="0,00"
+                />
+              </div>
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label htmlFor="balance">Saldo inicial</Label>
