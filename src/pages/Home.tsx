@@ -123,6 +123,7 @@ export default function Home() {
                 transaction={transaction}
                 showDragHandle={false}
                 showBalance={false}
+                showDate={true}
                 onTogglePaid={togglePaid}
                 onClick={() => navigate('/transactions', { state: { selectedMonth: transaction.date } })}
               />

@@ -4,7 +4,8 @@ import { CSS } from '@dnd-kit/utilities';
 import { TransactionWithBalance } from '@/types/finance';
 import { Tag } from '@/types/tag';
 import { formatCurrency } from '@/lib/format';
-import { differenceInDays, parseISO, startOfDay } from 'date-fns';
+import { differenceInDays, format, parseISO, startOfDay } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { TagDots } from './TagSelector';
 import { CalendarCheck } from 'lucide-react';
@@ -30,13 +31,14 @@ interface TransactionItemProps {
   tags?: Tag[];
   showDragHandle?: boolean;
   showBalance?: boolean;
+  showDate?: boolean;
   isReadOnly?: boolean;
   onTogglePaid?: (id: string) => void;
   onClick?: () => void;
 }
 
 export const TransactionItem = forwardRef<HTMLDivElement, TransactionItemProps>(
-  ({ transaction, tags = [], showDragHandle = true, showBalance = true, isReadOnly = false, onTogglePaid, onClick }, ref) => {
+  ({ transaction, tags = [], showDragHandle = true, showBalance = true, showDate = false, isReadOnly = false, onTogglePaid, onClick }, ref) => {
     const isIncome = transaction.type === 'income';
     const category = transaction.category;
     const dueStatus = getDueStatus(transaction);
@@ -78,7 +80,7 @@ export const TransactionItem = forwardRef<HTMLDivElement, TransactionItemProps>(
               e.stopPropagation();
               onTogglePaid?.(transaction.id);
             }}
-            className={transaction.isPaid ? 'status-paid' : 'status-pending'}
+            className={cn(transaction.isPaid ? 'status-paid' : 'status-pending', 'mr-3 shrink-0')}
           >
             {transaction.isPaid && (
               <span className="material-symbols-outlined text-sm font-bold">check</span>
@@ -100,6 +102,11 @@ export const TransactionItem = forwardRef<HTMLDivElement, TransactionItemProps>(
           <p className="text-muted-foreground text-xs font-normal">
             {category?.name || 'Sem categoria'}
           </p>
+          {showDate && (
+            <p className="text-muted-foreground text-xs font-normal mt-0.5">
+              {format(parseISO(transaction.date), "dd 'de' MMM", { locale: ptBR })}
+            </p>
+          )}
         </div>
         
         {/* Right: amount + balance */}
