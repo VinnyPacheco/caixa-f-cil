@@ -7,6 +7,7 @@ import { formatCurrency } from '@/lib/format';
 import { differenceInDays, parseISO, startOfDay } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { TagDots } from './TagSelector';
+import { CalendarCheck } from 'lucide-react';
 
 type DueStatus = 'overdue' | 'due-soon' | 'normal';
 
@@ -92,6 +93,9 @@ export const TransactionItem = forwardRef<HTMLDivElement, TransactionItemProps>(
               {transaction.description}
             </p>
             {tags.length > 0 && <TagDots tags={tags} />}
+            {transaction.autoSettle && (
+              <span title="Baixa Automática ativa"><CalendarCheck className="w-3.5 h-3.5 text-success shrink-0" /></span>
+            )}
           </div>
           <p className="text-muted-foreground text-xs font-normal">
             {category?.name || 'Sem categoria'}
@@ -186,6 +190,9 @@ export function SortableTransactionItem({
               {transaction.description}
             </p>
             {tags.length > 0 && <TagDots tags={tags} />}
+            {transaction.autoSettle && (
+              <span title="Baixa Automática ativa"><CalendarCheck className="w-3.5 h-3.5 text-success shrink-0" /></span>
+            )}
           </div>
           <p className="text-muted-foreground text-xs font-normal">
             {category?.name || 'Sem categoria'}
