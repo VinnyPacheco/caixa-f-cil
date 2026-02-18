@@ -10,6 +10,10 @@ export interface Account {
   color: string;
   icon: string;
   isPrimary?: boolean;
+  // Credit card specific fields
+  dueDay?: number | null;
+  statementClosingDay?: number | null;
+  creditLimit?: number | null;
 }
 
 export interface Category {

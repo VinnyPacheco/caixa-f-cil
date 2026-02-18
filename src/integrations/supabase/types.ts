@@ -18,11 +18,14 @@ export type Database = {
         Row: {
           color: string
           created_at: string
+          credit_limit: number | null
+          due_day: number | null
           icon: string
           id: string
           initial_balance: number
           is_primary: boolean
           name: string
+          statement_closing_day: number | null
           type: Database["public"]["Enums"]["account_type"]
           updated_at: string
           user_id: string
@@ -30,11 +33,14 @@ export type Database = {
         Insert: {
           color?: string
           created_at?: string
+          credit_limit?: number | null
+          due_day?: number | null
           icon?: string
           id?: string
           initial_balance?: number
           is_primary?: boolean
           name: string
+          statement_closing_day?: number | null
           type?: Database["public"]["Enums"]["account_type"]
           updated_at?: string
           user_id: string
@@ -42,11 +48,14 @@ export type Database = {
         Update: {
           color?: string
           created_at?: string
+          credit_limit?: number | null
+          due_day?: number | null
           icon?: string
           id?: string
           initial_balance?: number
           is_primary?: boolean
           name?: string
+          statement_closing_day?: number | null
           type?: Database["public"]["Enums"]["account_type"]
           updated_at?: string
           user_id?: string
