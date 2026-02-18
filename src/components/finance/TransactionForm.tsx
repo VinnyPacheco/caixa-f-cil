@@ -424,27 +424,16 @@ export function TransactionForm({
 
           {/* Auto Settle Toggle */}
           <div className="flex flex-col gap-3 bg-secondary p-4 rounded-2xl">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => setAutoSettle(!autoSettle)}
-                  className={`p-2 rounded-full transition-colors ${autoSettle ? 'bg-success/20 text-success' : 'bg-muted text-muted-foreground'}`}
-                  title={autoSettle ? 'Desativar Baixa Automática' : 'Ativar Baixa Automática'}
-                >
-                  <CalendarCheck className="w-5 h-5" />
-                </button>
-                <span className="text-base font-semibold text-foreground">Baixa Automática</span>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={autoSettle}
-                  onChange={(e) => setAutoSettle(e.target.checked)}
-                  className="sr-only peer"
-                />
-                <div className="w-11 h-6 bg-muted peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-border after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent"></div>
-              </label>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setAutoSettle(!autoSettle)}
+                className={`p-2 rounded-full transition-colors ${autoSettle ? 'bg-accent/20 text-accent' : 'bg-muted text-muted-foreground'}`}
+                title={autoSettle ? 'Desativar Baixa Automática' : 'Ativar Baixa Automática'}
+              >
+                <CalendarCheck className="w-5 h-5" />
+              </button>
+              <span className="text-base font-semibold text-foreground">Baixa Automática</span>
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed">
               Quando ativada, este lançamento será marcado como <span className="font-semibold">Pago/Recebido</span> automaticamente no dia seguinte à sua data prevista.

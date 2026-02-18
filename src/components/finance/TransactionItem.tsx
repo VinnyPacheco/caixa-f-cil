@@ -94,7 +94,7 @@ export const TransactionItem = forwardRef<HTMLDivElement, TransactionItemProps>(
             </p>
             {tags.length > 0 && <TagDots tags={tags} />}
             {transaction.autoSettle && (
-              <span title="Baixa Automática ativa"><CalendarCheck className="w-3.5 h-3.5 text-success shrink-0" /></span>
+              <span title="Baixa Automática ativa"><CalendarCheck className="w-3.5 h-3.5 text-accent shrink-0" /></span>
             )}
           </div>
           <p className="text-muted-foreground text-xs font-normal">
@@ -191,7 +191,7 @@ export function SortableTransactionItem({
             </p>
             {tags.length > 0 && <TagDots tags={tags} />}
             {transaction.autoSettle && (
-              <span title="Baixa Automática ativa"><CalendarCheck className="w-3.5 h-3.5 text-success shrink-0" /></span>
+              <span title="Baixa Automática ativa"><CalendarCheck className="w-3.5 h-3.5 text-accent shrink-0" /></span>
             )}
           </div>
           <p className="text-muted-foreground text-xs font-normal">
