@@ -169,12 +169,10 @@ export function TransactionForm({
 
     if (isEditing && onUpdate) {
       if (needsRecurringAction) {
-        // Show recurring action dialog for recurring/installment transactions
         setPendingSubmitData(transactionData);
         setRecurringActionType('edit');
         setShowRecurringDialog(true);
       } else {
-        // For one-time transactions, update directly
         onUpdate(transaction.id, transactionData, undefined, tagIds);
         toast({
           title: 'Lançamento atualizado!',
@@ -196,7 +194,6 @@ export function TransactionForm({
     if (!transaction) return;
 
     const instanceDate = transaction.date;
-    // Use the actual transaction ID directly (no more virtual IDs)
     const transactionId = transaction.id;
 
     const tagIds = selectedTags.map(t => t.id);
@@ -241,7 +238,6 @@ export function TransactionForm({
 
   const handleSimpleDelete = () => {
     if (transaction && onDelete) {
-      // Use the actual transaction ID directly (no more virtual IDs)
       onDelete(transaction.id);
       setShowDeleteConfirm(false);
       onOpenChange(false);
@@ -317,61 +313,65 @@ export function TransactionForm({
             </div>
           </div>
 
-          {/* Date with Calendar */}
-          <div className="space-y-2">
-            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">
-              Data
-            </label>
-            <div className="flex justify-center bg-secondary p-3 rounded-xl">
-              <Calendar
-                mode="single"
-                selected={date}
-                onSelect={(d) => d && setDate(d)}
-                month={calendarMonth}
-                onMonthChange={setCalendarMonth}
-                locale={ptBR}
-                className="rounded-md pointer-events-auto"
-              />
-            </div>
-          </div>
-
-          {/* Category and Account */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">
-                Categoria
-              </label>
-              <div className="bg-secondary p-4 rounded-xl">
-                <select
-                  value={categoryId}
-                  onChange={(e) => setCategoryId(e.target.value)}
-                  className="w-full bg-transparent border-none p-0 focus:ring-0 focus:outline-none text-foreground text-sm font-medium appearance-none cursor-pointer"
-                >
-                  <option value="">Selecione</option>
-                  {filteredCategories.map((cat) => (
-                    <option key={cat.id} value={cat.id}>
-                      {cat.name}
-                    </option>
-                  ))}
-                </select>
+          {/* Date + Category + Account
+              Mobile: stacked. Tablet/Web: Category+Account on left, Date on right */}
+          <div className="flex flex-col md:flex-row md:gap-4">
+            {/* Category and Account - left side on tablet/web */}
+            <div className="flex flex-col gap-4 md:flex-1">
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">
+                  Categoria
+                </label>
+                <div className="bg-secondary p-4 rounded-xl">
+                  <select
+                    value={categoryId}
+                    onChange={(e) => setCategoryId(e.target.value)}
+                    className="w-full bg-transparent border-none p-0 focus:ring-0 focus:outline-none text-foreground text-sm font-medium appearance-none cursor-pointer"
+                  >
+                    <option value="">Selecione</option>
+                    {filteredCategories.map((cat) => (
+                      <option key={cat.id} value={cat.id}>
+                        {cat.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">
+                  Conta
+                </label>
+                <div className="bg-secondary p-4 rounded-xl">
+                  <select
+                    value={accountId}
+                    onChange={(e) => setAccountId(e.target.value)}
+                    className="w-full bg-transparent border-none p-0 focus:ring-0 focus:outline-none text-foreground text-sm font-medium appearance-none cursor-pointer"
+                  >
+                    {accounts.map((acc) => (
+                      <option key={acc.id} value={acc.id}>
+                        {acc.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
-            <div className="space-y-2">
+
+            {/* Date - right side on tablet/web, below on mobile */}
+            <div className="space-y-2 mt-4 md:mt-0 md:flex-1">
               <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">
-                Conta
+                Data
               </label>
-              <div className="bg-secondary p-4 rounded-xl">
-                <select
-                  value={accountId}
-                  onChange={(e) => setAccountId(e.target.value)}
-                  className="w-full bg-transparent border-none p-0 focus:ring-0 focus:outline-none text-foreground text-sm font-medium appearance-none cursor-pointer"
-                >
-                  {accounts.map((acc) => (
-                    <option key={acc.id} value={acc.id}>
-                      {acc.name}
-                    </option>
-                  ))}
-                </select>
+              <div className="flex justify-center bg-secondary p-3 rounded-xl">
+                <Calendar
+                  mode="single"
+                  selected={date}
+                  onSelect={(d) => d && setDate(d)}
+                  month={calendarMonth}
+                  onMonthChange={setCalendarMonth}
+                  locale={ptBR}
+                  className="rounded-md pointer-events-auto"
+                />
               </div>
             </div>
           </div>
@@ -422,22 +422,59 @@ export function TransactionForm({
             )}
           </div>
 
-          {/* Auto Settle Toggle */}
-          <div className="flex flex-col gap-3 bg-secondary p-4 rounded-2xl">
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() => setAutoSettle(!autoSettle)}
-                className={`p-2 rounded-full transition-colors ${autoSettle ? 'bg-accent/20 text-accent' : 'bg-muted text-muted-foreground'}`}
-                title={autoSettle ? 'Desativar Baixa Automática' : 'Ativar Baixa Automática'}
-              >
-                <CalendarCheck className="w-5 h-5" />
-              </button>
-              <span className="text-base font-semibold text-foreground">Baixa Automática</span>
+          {/* Auto Settle + Notes side by side on tablet/web, stacked on mobile */}
+          <div className="flex flex-col md:flex-row md:gap-4 md:items-stretch">
+            {/* Auto Settle Toggle - left on tablet/web */}
+            <div className="flex flex-col gap-3 bg-secondary p-4 rounded-2xl md:flex-1">
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setAutoSettle(!autoSettle)}
+                  className={`p-2 rounded-full transition-colors ${autoSettle ? 'bg-accent/20 text-accent' : 'bg-muted text-muted-foreground'}`}
+                  title={autoSettle ? 'Desativar Baixa Automática' : 'Ativar Baixa Automática'}
+                >
+                  <CalendarCheck className="w-5 h-5" />
+                </button>
+                <span className="text-base font-semibold text-foreground">Baixa Automática</span>
+              </div>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Quando ativada, este lançamento será marcado como <span className="font-semibold">Pago/Recebido</span> automaticamente no dia seguinte à sua data prevista.
+              </p>
             </div>
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              Quando ativada, este lançamento será marcado como <span className="font-semibold">Pago/Recebido</span> automaticamente no dia seguinte à sua data prevista.
-            </p>
+
+            {/* Notes - right on tablet/web, below on mobile */}
+            <div className="space-y-2 mt-4 md:mt-0 md:flex-1">
+              <div className="flex items-center justify-between ml-1">
+                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                  Observações
+                </label>
+                {notes && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(notes);
+                      toast({
+                        title: 'Copiado!',
+                        description: 'Observações copiadas para a área de transferência.',
+                      });
+                    }}
+                    className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                    title="Copiar observações"
+                  >
+                    <Copy className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+              <div className="bg-secondary p-4 rounded-xl h-full">
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Adicione observações sobre este lançamento..."
+                  rows={3}
+                  className="w-full bg-transparent border-none p-0 focus:ring-0 focus:outline-none text-foreground placeholder-muted-foreground text-sm font-medium resize-none"
+                />
+              </div>
+            </div>
           </div>
 
           {/* Paid Status Toggle */}
@@ -467,40 +504,6 @@ export function TransactionForm({
             onRemoveTag={handleRemoveTag}
             onCreateTag={handleCreateTag}
           />
-
-          {/* Notes */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between ml-1">
-              <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                Observações
-              </label>
-              {notes && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    navigator.clipboard.writeText(notes);
-                    toast({
-                      title: 'Copiado!',
-                      description: 'Observações copiadas para a área de transferência.',
-                    });
-                  }}
-                  className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                  title="Copiar observações"
-                >
-                  <Copy className="w-4 h-4" />
-                </button>
-              )}
-            </div>
-            <div className="bg-secondary p-4 rounded-xl">
-              <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Adicione observações sobre este lançamento..."
-                rows={3}
-                className="w-full bg-transparent border-none p-0 focus:ring-0 focus:outline-none text-foreground placeholder-muted-foreground text-sm font-medium resize-none"
-              />
-            </div>
-          </div>
 
           {/* Submit Button */}
           <button
