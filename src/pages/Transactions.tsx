@@ -171,7 +171,7 @@ export default function Transactions() {
         {/* Header with MonthSelector - Only on mobile */}
         {isMobile && (
           <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold text-foreground">Extrato</h1>
+            <h1 className="text-2xl font-bold text-foreground sr-only">Extrato</h1>
             <MonthSelector
               currentDate={selectedDate}
               onChange={setSelectedDate}
