@@ -497,60 +497,63 @@ export default function NewTransaction() {
             </div>
           </div>
 
-          {/* Date - Exposed Calendar */}
-          <div className="space-y-2">
-            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">
-              Data
-            </label>
-            <div className="flex justify-center">
-              <Calendar
-                mode="single"
-                selected={date}
-                onSelect={setDate}
-                locale={ptBR}
-                className="rounded-xl border border-border/50 bg-card p-3"
-              />
-            </div>
-          </div>
-
-          {/* Category and Account */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">
-                Categoria
-              </label>
-              <div className="input-gold p-4">
-                <select
-                  value={categoryId}
-                  onChange={(e) => setCategoryId(e.target.value)}
-                  className="w-full bg-transparent border-none p-0 focus:ring-0 focus:outline-none text-foreground text-base font-medium appearance-none cursor-pointer"
-                >
-                  <option value="">Selecione</option>
-                  {filteredCategories.map((cat) => (
-                    <option key={cat.id} value={cat.id}>
-                      {cat.name}
-                    </option>
-                  ))}
-                </select>
+          {/* Category + Account (left) and Date (right) on md+ */}
+          <div className="flex flex-col md:flex-row md:gap-4">
+            {/* Category and Account - stacked on left */}
+            <div className="flex flex-col gap-4 md:flex-1">
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">
+                  Categoria
+                </label>
+                <div className="input-gold p-4">
+                  <select
+                    value={categoryId}
+                    onChange={(e) => setCategoryId(e.target.value)}
+                    className="w-full bg-transparent border-none p-0 focus:ring-0 focus:outline-none text-foreground text-base font-medium appearance-none cursor-pointer"
+                  >
+                    <option value="">Selecione</option>
+                    {filteredCategories.map((cat) => (
+                      <option key={cat.id} value={cat.id}>
+                        {cat.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">
+                  Conta
+                </label>
+                <div className="input-gold p-4">
+                  <select
+                    value={accountId}
+                    onChange={(e) => setAccountId(e.target.value)}
+                    className="w-full bg-transparent border-none p-0 focus:ring-0 focus:outline-none text-foreground text-base font-medium appearance-none cursor-pointer"
+                  >
+                    <option value="">Selecione</option>
+                    {accounts.map((acc) => (
+                      <option key={acc.id} value={acc.id}>
+                        {acc.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
-            <div className="space-y-2">
+
+            {/* Date - right on md+, below on mobile */}
+            <div className="space-y-2 mt-4 md:mt-0 md:flex-1">
               <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">
-                Conta
+                Data
               </label>
-              <div className="input-gold p-4">
-                <select
-                  value={accountId}
-                  onChange={(e) => setAccountId(e.target.value)}
-                  className="w-full bg-transparent border-none p-0 focus:ring-0 focus:outline-none text-foreground text-base font-medium appearance-none cursor-pointer"
-                >
-                  <option value="">Selecione</option>
-                  {accounts.map((acc) => (
-                    <option key={acc.id} value={acc.id}>
-                      {acc.name}
-                    </option>
-                  ))}
-                </select>
+              <div className="flex justify-center">
+                <Calendar
+                  mode="single"
+                  selected={date}
+                  onSelect={setDate}
+                  locale={ptBR}
+                  className="rounded-xl border border-border/50 bg-card p-3"
+                />
               </div>
             </div>
           </div>
@@ -578,55 +581,58 @@ export default function NewTransaction() {
             </div>
           </div>
 
-          {/* Auto Pay Toggle */}
-          <div className="flex flex-col gap-3 bg-secondary p-4 rounded-2xl">
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() => setAutoPay(!autoPay)}
-                className={`p-2 rounded-full transition-colors ${autoPay ? 'bg-accent/20 text-accent' : 'bg-muted text-muted-foreground'}`}
-                title={autoPay ? 'Desativar Baixa Automática' : 'Ativar Baixa Automática'}
-              >
-                <CalendarCheck className="w-5 h-5" />
-              </button>
-              <span className="text-base font-semibold text-foreground">Baixa Automática</span>
-            </div>
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              Quando ativada, este lançamento será marcado como <span className="font-semibold">Pago/Recebido</span> automaticamente no dia seguinte à sua data prevista.
-            </p>
-          </div>
-
-          {/* Notes */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between ml-1">
-              <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                Observações
-              </label>
-              {notes && (
+          {/* Auto Pay + Notes side by side on md+ */}
+          <div className="flex flex-col md:flex-row md:gap-4 md:items-stretch">
+            {/* Auto Pay Toggle - left on md+ */}
+            <div className="flex flex-col gap-3 bg-secondary p-4 rounded-2xl md:flex-1">
+              <div className="flex items-center gap-3">
                 <button
                   type="button"
-                  onClick={() => {
-                    navigator.clipboard.writeText(notes);
-                    toast({
-                      title: 'Copiado!',
-                      description: 'Observações copiadas para a área de transferência.',
-                    });
-                  }}
-                  className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                  title="Copiar observações"
+                  onClick={() => setAutoPay(!autoPay)}
+                  className={`p-2 rounded-full transition-colors ${autoPay ? 'bg-accent/20 text-accent' : 'bg-muted text-muted-foreground'}`}
+                  title={autoPay ? 'Desativar Baixa Automática' : 'Ativar Baixa Automática'}
                 >
-                  <Copy className="w-4 h-4" />
+                  <CalendarCheck className="w-5 h-5" />
                 </button>
-              )}
+                <span className="text-base font-semibold text-foreground">Baixa Automática</span>
+              </div>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Quando ativada, este lançamento será marcado como <span className="font-semibold">Pago/Recebido</span> automaticamente no dia seguinte à sua data prevista.
+              </p>
             </div>
-            <div className="input-gold p-4">
-              <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Adicione observações sobre este lançamento..."
-                rows={3}
-                className="w-full bg-transparent border-none p-0 focus:ring-0 focus:outline-none text-foreground placeholder-muted-foreground text-sm font-medium resize-none"
-              />
+
+            {/* Notes - right on md+, below on mobile */}
+            <div className="space-y-2 mt-4 md:mt-0 md:flex-1">
+              <div className="flex items-center justify-between ml-1">
+                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                  Observações
+                </label>
+                {notes && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(notes);
+                      toast({
+                        title: 'Copiado!',
+                        description: 'Observações copiadas para a área de transferência.',
+                      });
+                    }}
+                    className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                    title="Copiar observações"
+                  >
+                    <Copy className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+              <div className="input-gold p-4 h-full">
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Adicione observações sobre este lançamento..."
+                  rows={3}
+                  className="w-full bg-transparent border-none p-0 focus:ring-0 focus:outline-none text-foreground placeholder-muted-foreground text-sm font-medium resize-none"
+                />
+              </div>
             </div>
           </div>
 
