@@ -18,21 +18,21 @@ export function MonthSelector({ currentDate, onChange }: MonthSelectorProps) {
   };
 
   return (
-    <div className="flex items-center gap-2 overflow-x-auto no-scrollbar max-w-[65%] justify-end">
+    <div className="flex items-center gap-2 w-full justify-center">
       <button
         onClick={() => onChange(prevMonth)}
-        className="month-pill"
+        className="month-pill capitalize"
       >
-        {formatMonth(prevMonth, true)}
+        {formatMonth(prevMonth)}
       </button>
       <button className="month-pill-active capitalize">
         {formatMonth(currentDate)}
       </button>
       <button
         onClick={() => onChange(nextMonth)}
-        className="month-pill"
+        className="month-pill capitalize"
       >
-        {formatMonth(nextMonth, true)}
+        {formatMonth(nextMonth)}
       </button>
     </div>
   );
