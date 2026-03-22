@@ -167,6 +167,28 @@ export default function Reports() {
 
   const maxCategoryValue = allCategoriesSortedByValue[0]?.total || 1;
 
+  // Dynamic chart scale based on actual data
+  const chartMaxValue = useMemo(() => {
+    let maxVal = 0;
+    if (activeTab === 'budget') {
+      maxVal = Math.max(monthSummary.totalIncome, monthSummary.totalExpense, 1);
+    } else {
+      const allTotals = [
+        ...(filterType !== 'income' ? expensesByCategory.slice(0, 6).map(e => e.total) : []),
+        ...(filterType !== 'expense' ? incomeByCategory.slice(0, 6).map(e => e.total) : []),
+      ];
+      maxVal = Math.max(...allTotals, 1);
+    }
+    // Round up to a nice number
+    const magnitude = Math.pow(10, Math.floor(Math.log10(maxVal)));
+    return Math.ceil(maxVal / magnitude) * magnitude;
+  }, [activeTab, monthSummary, expensesByCategory, incomeByCategory, filterType]);
+
+  const formatChartLabel = (value: number) => {
+    if (value >= 1000) return `${(value / 1000).toFixed(value % 1000 === 0 ? 0 : 1)}k`;
+    return value.toString();
+  };
+
   const toggleItem = (id: string) => {
     setOpenItems((prev) =>
       prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
@@ -375,10 +397,10 @@ export default function Reports() {
           {/* Chart Area */}
           <div className="flex items-stretch gap-3 mb-8 h-48 select-none w-full pr-1">
             <div className="flex flex-col justify-between pb-6 text-[10px] font-semibold text-muted-foreground/70 text-right w-8 flex-shrink-0 pt-[1px] -mr-1 z-10">
-              <span>10k</span>
-              <span>7.5k</span>
-              <span>5.0k</span>
-              <span>2.5k</span>
+              <span>{formatChartLabel(chartMaxValue)}</span>
+              <span>{formatChartLabel(chartMaxValue * 0.75)}</span>
+              <span>{formatChartLabel(chartMaxValue * 0.5)}</span>
+              <span>{formatChartLabel(chartMaxValue * 0.25)}</span>
               <span>0</span>
             </div>
             <div className="relative flex-1 h-full pl-2">
@@ -436,8 +458,7 @@ export default function Reports() {
                     {/* Category lines - expenses */}
                     {(filterType === 'all' || filterType === 'expense') && expensesByCategory.slice(0, 6).map(({ category, total }, index) => {
                       // Calculate Y position based on actual value (10k = 0, 0 = 50)
-                      const maxValue = 10000;
-                      const baseY = 50 - (total / maxValue) * 50;
+                      const baseY = 50 - (total / chartMaxValue) * 50;
                       const variation = (index % 3) * 2 - 2;
                       return (
                         <path
@@ -454,9 +475,7 @@ export default function Reports() {
                     })}
                     {/* Category lines - income */}
                     {(filterType === 'all' || filterType === 'income') && incomeByCategory.slice(0, 6).map(({ category, total }, index) => {
-                      // Calculate Y position based on actual value (10k = 0, 0 = 50)
-                      const maxValue = 10000;
-                      const baseY = 50 - (total / maxValue) * 50;
+                      const baseY = 50 - (total / chartMaxValue) * 50;
                       const variation = (index % 2) * 2 - 1;
                       const delayOffset = filterType !== 'income' ? expensesByCategory.slice(0, 6).length : 0;
                       return (
