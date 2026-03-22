@@ -20,7 +20,7 @@ export function formatDateLabel(dateString: string): string {
     return 'Ontem';
   }
   
-  return format(date, "dd 'de' MMMM", { locale: ptBR });
+  return format(date, "dd 'de' MMMM, EEEE", { locale: ptBR });
 }
 
 export function groupTransactionsByDate(
