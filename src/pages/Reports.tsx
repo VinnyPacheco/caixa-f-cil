@@ -475,9 +475,7 @@ export default function Reports() {
                     })}
                     {/* Category lines - income */}
                     {(filterType === 'all' || filterType === 'income') && incomeByCategory.slice(0, 6).map(({ category, total }, index) => {
-                      // Calculate Y position based on actual value (10k = 0, 0 = 50)
-                      const maxValue = 10000;
-                      const baseY = 50 - (total / maxValue) * 50;
+                      const baseY = 50 - (total / chartMaxValue) * 50;
                       const variation = (index % 2) * 2 - 1;
                       const delayOffset = filterType !== 'income' ? expensesByCategory.slice(0, 6).length : 0;
                       return (
