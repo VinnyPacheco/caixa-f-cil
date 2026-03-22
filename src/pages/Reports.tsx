@@ -167,6 +167,28 @@ export default function Reports() {
 
   const maxCategoryValue = allCategoriesSortedByValue[0]?.total || 1;
 
+  // Dynamic chart scale based on actual data
+  const chartMaxValue = useMemo(() => {
+    let maxVal = 0;
+    if (activeTab === 'budget') {
+      maxVal = Math.max(monthSummary.totalIncome, monthSummary.totalExpense, 1);
+    } else {
+      const allTotals = [
+        ...(filterType !== 'income' ? expensesByCategory.slice(0, 6).map(e => e.total) : []),
+        ...(filterType !== 'expense' ? incomeByCategory.slice(0, 6).map(e => e.total) : []),
+      ];
+      maxVal = Math.max(...allTotals, 1);
+    }
+    // Round up to a nice number
+    const magnitude = Math.pow(10, Math.floor(Math.log10(maxVal)));
+    return Math.ceil(maxVal / magnitude) * magnitude;
+  }, [activeTab, monthSummary, expensesByCategory, incomeByCategory, filterType]);
+
+  const formatChartLabel = (value: number) => {
+    if (value >= 1000) return `${(value / 1000).toFixed(value % 1000 === 0 ? 0 : 1)}k`;
+    return value.toString();
+  };
+
   const toggleItem = (id: string) => {
     setOpenItems((prev) =>
       prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
