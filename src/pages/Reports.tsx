@@ -397,10 +397,10 @@ export default function Reports() {
           {/* Chart Area */}
           <div className="flex items-stretch gap-3 mb-8 h-48 select-none w-full pr-1">
             <div className="flex flex-col justify-between pb-6 text-[10px] font-semibold text-muted-foreground/70 text-right w-8 flex-shrink-0 pt-[1px] -mr-1 z-10">
-              <span>10k</span>
-              <span>7.5k</span>
-              <span>5.0k</span>
-              <span>2.5k</span>
+              <span>{formatChartLabel(chartMaxValue)}</span>
+              <span>{formatChartLabel(chartMaxValue * 0.75)}</span>
+              <span>{formatChartLabel(chartMaxValue * 0.5)}</span>
+              <span>{formatChartLabel(chartMaxValue * 0.25)}</span>
               <span>0</span>
             </div>
             <div className="relative flex-1 h-full pl-2">
