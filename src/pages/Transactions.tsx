@@ -82,10 +82,18 @@ export default function Transactions() {
   );
 
   const normalizedQuery = searchQuery.trim().toLowerCase();
-  const filterBySearch = (txs: TransactionWithBalance[]) =>
-    normalizedQuery
-      ? txs.filter((t) => t.description?.toLowerCase().includes(normalizedQuery))
-      : txs;
+  const numericQuery = normalizedQuery.replace(/\./g, '').replace(',', '.');
+  const filterBySearch = (txs: TransactionWithBalance[]) => {
+    if (!normalizedQuery) return txs;
+    return txs.filter((t) => {
+      if (t.description?.toLowerCase().includes(normalizedQuery)) return true;
+      const absAmount = Math.abs(t.amount);
+      const amountDot = absAmount.toFixed(2);
+      const amountComma = amountDot.replace('.', ',');
+      if (amountDot.includes(numericQuery) || amountComma.includes(normalizedQuery)) return true;
+      return false;
+    });
+  };
 
   // Handle navigation state (selected month or new transaction)
   useEffect(() => {
