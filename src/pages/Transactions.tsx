@@ -8,6 +8,7 @@ import { TransactionList } from '@/components/finance/TransactionList';
 import { TransactionForm } from '@/components/finance/TransactionForm';
 import { TransactionListContent } from '@/components/finance/TransactionListContent';
 import { TransactionItem } from '@/components/finance/TransactionItem';
+import { LeftSidePanel, RightSidePanel } from '@/components/finance/TransactionsSidePanels';
 import { useMultiMonthTransactions } from '@/hooks/useMultiMonthTransactions';
 import { useDeviceType } from '@/hooks/use-responsive';
 import { useProfile } from '@/hooks/useProfile';
@@ -51,6 +52,8 @@ export default function Transactions() {
   const [editingTransaction, setEditingTransaction] = useState<TransactionWithBalance | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [activeTransaction, setActiveTransaction] = useState<TransactionWithBalance | null>(null);
+  const [leftExpanded, setLeftExpanded] = useState(true);
+  const [rightExpanded, setRightExpanded] = useState(true);
 
   const deviceType = useDeviceType();
   const additionalMonths = deviceType === 'desktop' ? 2 : deviceType === 'tablet' ? 1 : 0;
@@ -107,6 +110,10 @@ export default function Transactions() {
   };
 
   const isMobile = deviceType === 'mobile';
+
+  const sideColumns = `${leftExpanded ? '20fr' : '40px'} ${
+    leftExpanded && rightExpanded ? '60fr' : leftExpanded || rightExpanded ? '80fr' : '100fr'
+  } ${rightExpanded ? '20fr' : '40px'}`;
 
   // Cross-month DnD sensors and handlers
   const sensors = useSensors(
@@ -229,13 +236,23 @@ export default function Transactions() {
 
         {/* Tablet/Desktop Layout - Multi Column with cross-month DnD */}
         {!isMobile && (
-          <DndContext
+          <div
+            className="grid gap-4 items-start"
+            style={{ gridTemplateColumns: sideColumns }}
+          >
+            <LeftSidePanel
+              selectedDate={selectedDate}
+              expanded={leftExpanded}
+              onToggle={() => setLeftExpanded((v) => !v)}
+            />
+
+            <DndContext
             sensors={sensors}
             collisionDetection={closestCenter}
             onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
           >
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-4 min-w-0">
               {/* Navigation Header */}
               <div className="flex items-center justify-between">
                 <Button
@@ -317,7 +334,14 @@ export default function Transactions() {
                 />
               )}
             </DragOverlay>
-          </DndContext>
+            </DndContext>
+
+            <RightSidePanel
+              selectedDate={selectedDate}
+              expanded={rightExpanded}
+              onToggle={() => setRightExpanded((v) => !v)}
+            />
+          </div>
         )}
       </main>
 
