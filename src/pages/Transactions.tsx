@@ -15,6 +15,8 @@ import { useProfile } from '@/hooks/useProfile';
 import { formatCurrency } from '@/lib/format';
 import { ArrowUpDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Search, X } from 'lucide-react';
 import { TransactionWithBalance } from '@/types/finance';
 import { format, addMonths, subMonths, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -54,6 +56,7 @@ export default function Transactions() {
   const [activeTransaction, setActiveTransaction] = useState<TransactionWithBalance | null>(null);
   const [leftExpanded, setLeftExpanded] = useState(true);
   const [rightExpanded, setRightExpanded] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const deviceType = useDeviceType();
   const additionalMonths = deviceType === 'desktop' ? 2 : deviceType === 'tablet' ? 1 : 0;
@@ -77,6 +80,12 @@ export default function Transactions() {
     () => monthsData.flatMap((m) => m.transactions),
     [monthsData]
   );
+
+  const normalizedQuery = searchQuery.trim().toLowerCase();
+  const filterBySearch = (txs: TransactionWithBalance[]) =>
+    normalizedQuery
+      ? txs.filter((t) => t.description?.toLowerCase().includes(normalizedQuery))
+      : txs;
 
   // Handle navigation state (selected month or new transaction)
   useEffect(() => {
@@ -214,7 +223,29 @@ export default function Transactions() {
           >
             <ArrowUpDown className="h-4 w-4" />
           </Button>
-          <FilterPills activeFilter={filter} onChange={setFilter} />
+          <div className="flex-1 min-w-0">
+            <FilterPills activeFilter={filter} onChange={setFilter} />
+          </div>
+          <div className="relative shrink-0 ml-auto w-56 max-w-[40vw]">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+            <Input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Procurar transação"
+              className="h-9 pl-8 pr-8"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                aria-label="Limpar busca"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
         </div>
 
         {isMobile && (
@@ -226,7 +257,7 @@ export default function Transactions() {
         {/* Mobile Layout - Single Column */}
         {isMobile && (
           <TransactionList
-            transactions={currentMonth.transactions}
+            transactions={filterBySearch(currentMonth.transactions)}
             onReorder={reorderTransactions}
             onTogglePaid={togglePaid}
             onTransactionClick={handleTransactionClick}
@@ -315,7 +346,7 @@ export default function Transactions() {
                     {/* Transactions */}
                     <div className="flex-1 overflow-y-auto max-h-[calc(100vh-350px)]">
                       <TransactionListContent
-                        transactions={monthData.transactions}
+                        transactions={filterBySearch(monthData.transactions)}
                         onTogglePaid={togglePaid}
                         onTransactionClick={handleTransactionClick}
                         sortOrder={sortOrder}
