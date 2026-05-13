@@ -125,6 +125,47 @@ export default function ImportTransactions() {
     setImportActions((prev) => ({ ...prev, ...actions }));
   };
 
+  // For each parsed transaction, look up the most recent existing transaction
+  // with the same description and pre-fill the category accordingly.
+  const autoFillCategoriesFromHistory = async (
+    transactions: ParsedTransaction[],
+    baseCategories: Record<number, string>
+  ) => {
+    if (!user || transactions.length === 0) return;
+
+    const uniqueDescriptions = [
+      ...new Set(transactions.map((t) => t.description.trim()).filter(Boolean)),
+    ];
+    if (uniqueDescriptions.length === 0) return;
+
+    const { data, error } = await supabase
+      .from('transactions')
+      .select('description, category_id, date, created_at')
+      .eq('user_id', user.id)
+      .in('description', uniqueDescriptions)
+      .order('date', { ascending: false })
+      .order('created_at', { ascending: false });
+
+    if (error || !data) return;
+
+    const latestByDescription = new Map<string, string>();
+    for (const row of data) {
+      if (!latestByDescription.has(row.description) && row.category_id) {
+        latestByDescription.set(row.description, row.category_id);
+      }
+    }
+
+    if (latestByDescription.size === 0) return;
+
+    const updates: Record<number, string> = { ...baseCategories };
+    transactions.forEach((t, index) => {
+      const found = latestByDescription.get(t.description.trim());
+      if (found) updates[index] = found;
+    });
+
+    setTransactionCategories(updates);
+  };
+
   const handleFileSelect = () => {
     if (!selectedParser) {
       toast({
