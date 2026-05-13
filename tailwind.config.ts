@@ -67,8 +67,10 @@ export default {
         },
       },
       fontFamily: {
-        display: ["Plus Jakarta Sans", "sans-serif"],
-        body: ["Noto Sans", "sans-serif"],
+        display: ["Lora", "Georgia", "serif"],
+        body: ["Nunito Sans", "system-ui", "sans-serif"],
+        serif: ["Lora", "Georgia", "serif"],
+        sans: ["Nunito Sans", "system-ui", "sans-serif"],
       },
       borderRadius: {
         lg: "var(--radius)",
