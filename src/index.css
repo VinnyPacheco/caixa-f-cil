@@ -2,99 +2,103 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Noto+Sans:wght@400;500;700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Nunito+Sans:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..400,0..1&display=swap');
 
 @layer base {
   :root {
-    /* Core Brand Colors */
-    --primary: 0 0% 8%;
-    --primary-foreground: 40 30% 96%;
-    
+    /* === Planner Financeiro — Warm Sand palette === */
+    /* Base paper #faf8f5 / kraft #f0ebe3 / sand #c9b99a / coffee #8b7355 */
+
     /* Backgrounds */
-    --background: 35 33% 96%;
-    --background-dark: 24 12% 10%;
-    
-    /* Surfaces */
-    --surface: 0 0% 100%;
-    --surface-dark: 24 8% 15%;
-    
-    /* Accent Gold */
-    --accent-gold: 39 51% 56%;
-    --accent-gold-light: 36 50% 85%;
-    --gold-card: 38 50% 93%;
-    
-    /* Text Colors */
-    --text-main: 30 8% 16%;
-    --text-secondary: 20 6% 51%;
-    
-    /* Semantic Colors */
-    --foreground: 30 8% 16%;
-    --card: 0 0% 100%;
-    --card-foreground: 30 8% 16%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 30 8% 16%;
-    --secondary: 35 33% 96%;
-    --secondary-foreground: 30 8% 16%;
-    --muted: 35 20% 92%;
-    --muted-foreground: 20 6% 51%;
-    --accent: 39 51% 56%;
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 100%;
-    --success: 142 71% 45%;
-    --success-foreground: 0 0% 100%;
-    --border: 30 20% 88%;
-    --input: 30 20% 88%;
-    --ring: 39 51% 56%;
-    --radius: 0.75rem;
-    
-    /* Shadows */
-    --shadow-gold: 0 4px 20px -4px hsl(39 51% 56% / 0.3);
-    --shadow-soft: 0 2px 8px -2px hsl(30 8% 16% / 0.08);
-    
+    --background: 36 33% 97%;        /* #faf8f5 paper */
+    --background-dark: 29 18% 14%;
+    --surface: 36 40% 99%;
+    --surface-dark: 29 14% 18%;
+
+    /* Brand */
+    --primary: 29 24% 30%;            /* deep coffee for ink */
+    --primary-foreground: 36 40% 98%;
+
+    /* Accents — sand & coffee */
+    --accent-gold: 29 24% 44%;        /* coffee #8b7355 */
+    --accent-gold-light: 35 32% 78%;  /* light sand */
+    --gold-card: 35 38% 90%;          /* kraft tint */
+
+    /* Text */
+    --text-main: 29 22% 18%;
+    --text-secondary: 29 12% 42%;
+
+    /* Semantic */
+    --foreground: 29 22% 18%;
+    --card: 36 40% 99%;
+    --card-foreground: 29 22% 18%;
+    --popover: 36 40% 99%;
+    --popover-foreground: 29 22% 18%;
+    --secondary: 35 28% 91%;          /* kraft */
+    --secondary-foreground: 29 22% 18%;
+    --muted: 35 24% 88%;
+    --muted-foreground: 29 12% 42%;
+    --accent: 29 24% 44%;             /* coffee */
+    --accent-foreground: 36 40% 98%;
+    --destructive: 4 60% 48%;         /* red ink */
+    --destructive-foreground: 36 40% 98%;
+    --success: 130 28% 38%;           /* green ink */
+    --success-foreground: 36 40% 98%;
+    --border: 32 20% 82%;
+    --input: 32 20% 82%;
+    --ring: 29 24% 44%;
+    --radius: 0.5rem;
+
+    /* Shadows — soft as pencil shading */
+    --shadow-gold: 0 4px 18px -6px hsl(29 24% 44% / 0.28);
+    --shadow-soft: 0 1px 3px -1px hsl(29 22% 18% / 0.10);
+
     /* Sidebar */
-    --sidebar-background: 35 33% 96%;
-    --sidebar-foreground: 30 8% 16%;
-    --sidebar-primary: 39 51% 56%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 36 50% 85%;
-    --sidebar-accent-foreground: 30 8% 16%;
-    --sidebar-border: 30 20% 88%;
-    --sidebar-ring: 39 51% 56%;
+    --sidebar-background: 35 28% 91%;
+    --sidebar-foreground: 29 22% 18%;
+    --sidebar-primary: 29 24% 44%;
+    --sidebar-primary-foreground: 36 40% 98%;
+    --sidebar-accent: 35 32% 78%;
+    --sidebar-accent-foreground: 29 22% 18%;
+    --sidebar-border: 32 20% 82%;
+    --sidebar-ring: 29 24% 44%;
   }
 
   .dark {
-    --primary: 40 30% 96%;
-    --primary-foreground: 0 0% 8%;
-    --background: 24 12% 10%;
-    --surface: 24 8% 15%;
-    --foreground: 40 30% 96%;
-    --card: 24 8% 15%;
-    --card-foreground: 40 30% 96%;
-    --popover: 24 8% 15%;
-    --popover-foreground: 40 30% 96%;
-    --secondary: 24 8% 20%;
-    --secondary-foreground: 40 30% 96%;
-    --muted: 24 8% 20%;
-    --muted-foreground: 20 6% 65%;
-    --accent: 39 51% 56%;
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 62% 30%;
-    --destructive-foreground: 40 30% 96%;
-    --success: 142 71% 35%;
-    --success-foreground: 40 30% 96%;
-    --border: 24 8% 20%;
-    --input: 24 8% 20%;
-    --ring: 39 51% 56%;
-    --sidebar-background: 24 12% 10%;
-    --sidebar-foreground: 40 30% 96%;
-    --sidebar-primary: 39 51% 56%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 24 8% 20%;
-    --sidebar-accent-foreground: 40 30% 96%;
-    --sidebar-border: 24 8% 20%;
-    --sidebar-ring: 39 51% 56%;
+    --background: 29 18% 12%;
+    --surface: 29 14% 16%;
+    --foreground: 36 30% 92%;
+    --primary: 36 30% 92%;
+    --primary-foreground: 29 18% 12%;
+    --card: 29 14% 16%;
+    --card-foreground: 36 30% 92%;
+    --popover: 29 14% 16%;
+    --popover-foreground: 36 30% 92%;
+    --secondary: 29 14% 22%;
+    --secondary-foreground: 36 30% 92%;
+    --muted: 29 12% 22%;
+    --muted-foreground: 32 14% 65%;
+    --accent: 35 32% 62%;
+    --accent-foreground: 29 18% 12%;
+    --accent-gold: 35 32% 62%;
+    --accent-gold-light: 35 28% 40%;
+    --gold-card: 29 14% 22%;
+    --destructive: 4 50% 42%;
+    --destructive-foreground: 36 30% 92%;
+    --success: 130 26% 42%;
+    --success-foreground: 36 30% 92%;
+    --border: 29 14% 26%;
+    --input: 29 14% 26%;
+    --ring: 35 32% 62%;
+    --sidebar-background: 29 18% 12%;
+    --sidebar-foreground: 36 30% 92%;
+    --sidebar-primary: 35 32% 62%;
+    --sidebar-primary-foreground: 29 18% 12%;
+    --sidebar-accent: 29 14% 22%;
+    --sidebar-accent-foreground: 36 30% 92%;
+    --sidebar-border: 29 14% 26%;
+    --sidebar-ring: 35 32% 62%;
   }
 }
 
@@ -102,12 +106,24 @@
   * {
     @apply border-border;
   }
-  
+
   body {
-    @apply bg-background text-foreground font-display antialiased;
+    @apply bg-background text-foreground font-body antialiased;
     min-height: 100dvh;
+    /* Subtle dotted paper texture */
+    background-image:
+      radial-gradient(hsl(29 22% 18% / 0.06) 1px, transparent 1px),
+      radial-gradient(hsl(29 22% 18% / 0.04) 1px, transparent 1px);
+    background-size: 22px 22px, 22px 22px;
+    background-position: 0 0, 11px 11px;
+    background-attachment: fixed;
   }
-  
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display tracking-tight;
+    font-feature-settings: "ss01", "liga";
+  }
+
   html {
     scroll-behavior: smooth;
   }

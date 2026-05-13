@@ -167,7 +167,7 @@ export function useNotifications({ transactions, categories }: UseNotificationsP
         body = `Você tem ${dueTodayCount} lançamento(s) que vence(m) hoje`;
       }
       
-      sendPushNotification('VP Finance - Atenção!', {
+      sendPushNotification('Planner Financeiro', {
         body,
         tag: 'due-notifications',
         requireInteraction: true,
