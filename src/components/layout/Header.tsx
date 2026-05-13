@@ -3,6 +3,29 @@ import { NotificationList } from '@/components/notifications/NotificationList';
 import { useNotificationContext } from '@/contexts/NotificationContext';
 import { useSimulation } from '@/contexts/SimulationContext';
 
+function HeaderNotifications() {
+  const navigate = useNavigate();
+  const {
+    notifications,
+    unreadCount,
+    markAsRead,
+    markAllAsRead,
+    pushPermission,
+    requestPushPermission,
+  } = useNotificationContext();
+  return (
+    <NotificationList
+      notifications={notifications}
+      unreadCount={unreadCount}
+      onMarkAsRead={markAsRead}
+      onMarkAllAsRead={markAllAsRead}
+      onNotificationClick={() => navigate('/transactions')}
+      pushPermission={pushPermission}
+      onRequestPushPermission={requestPushPermission}
+    />
+  );
+}
+
 interface HeaderProps {
   title?: string;
   subtitle?: string;
@@ -24,18 +47,6 @@ export function Header({
 }: HeaderProps) {
   const navigate = useNavigate();
   const { isSimulation, disableSimulation } = useSimulation();
-  const { 
-    notifications, 
-    unreadCount, 
-    markAsRead, 
-    markAllAsRead, 
-    pushPermission, 
-    requestPushPermission 
-  } = useNotificationContext();
-
-  const handleNotificationClick = (transactionId: string) => {
-    navigate('/transactions');
-  };
 
   return (
     <>
@@ -101,15 +112,7 @@ export function Header({
       )}
 
         {showNotification ? (
-          <NotificationList
-            notifications={notifications}
-            unreadCount={unreadCount}
-            onMarkAsRead={markAsRead}
-            onMarkAllAsRead={markAllAsRead}
-            onNotificationClick={handleNotificationClick}
-            pushPermission={pushPermission}
-            onRequestPushPermission={requestPushPermission}
-          />
+          <HeaderNotifications />
         ) : showBack ? (
           <div className="w-10" />
         ) : null}
