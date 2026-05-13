@@ -178,6 +178,9 @@ export default function Auth() {
               account_balance_wallet
             </span>
           </div>
+          <p className="text-sm font-semibold text-accent tracking-wide uppercase">
+            Planner Financeiro
+          </p>
           <h1 className="text-2xl font-bold text-foreground">
             {isLogin ? 'Bem-vindo de volta' : 'Criar conta'}
           </h1>
