@@ -124,7 +124,7 @@ export default function Auth() {
             });
           }
         } else {
-          navigate('/');
+          navigate('/transactions');
         }
       } else {
         const validation = signUpSchema.safeParse({ email, password, confirmPassword, fullName });
