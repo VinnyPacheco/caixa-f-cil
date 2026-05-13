@@ -177,6 +177,9 @@ export default function ImportTransactions() {
       });
       setTransactionCategories(defaultCategories);
 
+      // Auto-fill categories from previous transactions with same description
+      await autoFillCategoriesFromHistory(transactions, defaultCategories);
+
       // Find duplicate matches
       await findMatches(transactions);
 
