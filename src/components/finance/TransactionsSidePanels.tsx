@@ -385,12 +385,12 @@ export function LeftSidePanel({
       side="left"
       expanded={expanded}
       onToggle={onToggle}
-      topTitle="Pendentes"
-      topIcon={<AlertTriangle className="h-4 w-4 text-amber-500" />}
-      topContent={<PendingPanelContent />}
-      bottomTitle="Categorias"
-      bottomIcon={<Tags className="h-4 w-4 text-accent" />}
-      bottomContent={<CategoriesSummaryContent selectedDate={selectedDate} filter={categoryFilter} />}
+      topTitle="Categorias"
+      topIcon={<Tags className="h-4 w-4 text-accent" />}
+      topContent={<CategoriesSummaryContent selectedDate={selectedDate} filter={categoryFilter} />}
+      bottomTitle="Pendentes"
+      bottomIcon={<AlertTriangle className="h-4 w-4 text-amber-500" />}
+      bottomContent={<PendingPanelContent />}
     />
   );
 }
