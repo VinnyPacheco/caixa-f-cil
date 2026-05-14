@@ -111,6 +111,8 @@ interface PanelsProps {
   rightExpanded: boolean;
   onToggleLeft: () => void;
   onToggleRight: () => void;
+  categoryFilter?: FilterState;
+  accountFilter?: FilterState;
 }
 
 function PendingPanelContent() {
