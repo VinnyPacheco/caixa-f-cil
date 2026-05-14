@@ -412,6 +412,12 @@ export default function Transactions() {
               selectedDate={selectedDate}
               expanded={rightExpanded}
               onToggle={() => setRightExpanded((v) => !v)}
+              accountFilter={{
+                selectedIds: selectedAccountIds,
+                onToggle: toggleAccount,
+                onClear: clearAccounts,
+                hasSelection: selectedAccountIds.length > 0,
+              }}
             />
           </div>
         )}
