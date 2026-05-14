@@ -97,6 +97,31 @@ export default function Transactions() {
     });
   };
 
+  const applyFilters = (txs: TransactionWithBalance[]) => {
+    let filtered = filterBySearch(txs);
+    if (selectedCategoryIds.length > 0) {
+      filtered = filtered.filter((t) => selectedCategoryIds.includes(t.categoryId));
+    }
+    if (selectedAccountIds.length > 0) {
+      filtered = filtered.filter((t) => selectedAccountIds.includes(t.accountId));
+    }
+    return filtered;
+  };
+
+  const toggleCategory = (id: string) => {
+    setSelectedCategoryIds((prev) =>
+      prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]
+    );
+  };
+  const clearCategories = () => setSelectedCategoryIds([]);
+
+  const toggleAccount = (id: string) => {
+    setSelectedAccountIds((prev) =>
+      prev.includes(id) ? prev.filter((a) => a !== id) : [...prev, id]
+    );
+  };
+  const clearAccounts = () => setSelectedAccountIds([]);
+
   // Handle navigation state (selected month or new transaction)
   useEffect(() => {
     const state = location.state as LocationState | null;
