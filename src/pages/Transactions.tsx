@@ -292,7 +292,7 @@ export default function Transactions() {
         {/* Mobile Layout - Single Column */}
         {isMobile && (
           <TransactionList
-            transactions={filterBySearch(currentMonth.transactions)}
+            transactions={applyFilters(currentMonth.transactions)}
             onReorder={reorderTransactions}
             onTogglePaid={togglePaid}
             onTransactionClick={handleTransactionClick}
