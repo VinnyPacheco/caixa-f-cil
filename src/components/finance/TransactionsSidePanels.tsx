@@ -378,7 +378,8 @@ export function LeftSidePanel({
   selectedDate,
   expanded,
   onToggle,
-}: { selectedDate: Date; expanded: boolean; onToggle: () => void }) {
+  categoryFilter,
+}: { selectedDate: Date; expanded: boolean; onToggle: () => void; categoryFilter?: FilterState }) {
   return (
     <SidePanelShell
       side="left"
@@ -389,7 +390,7 @@ export function LeftSidePanel({
       topContent={<PendingPanelContent />}
       bottomTitle="Categorias"
       bottomIcon={<Tags className="h-4 w-4 text-accent" />}
-      bottomContent={<CategoriesSummaryContent selectedDate={selectedDate} />}
+      bottomContent={<CategoriesSummaryContent selectedDate={selectedDate} filter={categoryFilter} />}
     />
   );
 }
@@ -398,7 +399,8 @@ export function RightSidePanel({
   selectedDate,
   expanded,
   onToggle,
-}: { selectedDate: Date; expanded: boolean; onToggle: () => void }) {
+  accountFilter,
+}: { selectedDate: Date; expanded: boolean; onToggle: () => void; accountFilter?: FilterState }) {
   return (
     <SidePanelShell
       side="right"
@@ -406,7 +408,7 @@ export function RightSidePanel({
       onToggle={onToggle}
       topTitle="Contas"
       topIcon={<Wallet className="h-4 w-4 text-accent" />}
-      topContent={<AccountsBalanceContent selectedDate={selectedDate} />}
+      topContent={<AccountsBalanceContent selectedDate={selectedDate} filter={accountFilter} />}
       bottomTitle="Metas"
       bottomIcon={<Target className="h-4 w-4 text-accent" />}
       bottomContent={<GoalsContent />}
