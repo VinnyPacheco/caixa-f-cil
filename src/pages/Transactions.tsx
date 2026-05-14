@@ -310,6 +310,12 @@ export default function Transactions() {
               selectedDate={selectedDate}
               expanded={leftExpanded}
               onToggle={() => setLeftExpanded((v) => !v)}
+              categoryFilter={{
+                selectedIds: selectedCategoryIds,
+                onToggle: toggleCategory,
+                onClear: clearCategories,
+                hasSelection: selectedCategoryIds.length > 0,
+              }}
             />
 
             <DndContext
