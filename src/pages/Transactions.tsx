@@ -387,7 +387,7 @@ export default function Transactions() {
                     {/* Transactions */}
                     <div className="flex-1 overflow-y-auto max-h-[calc(100vh-350px)]">
                       <TransactionListContent
-                        transactions={filterBySearch(monthData.transactions)}
+                        transactions={applyFilters(monthData.transactions)}
                         onTogglePaid={togglePaid}
                         onTransactionClick={handleTransactionClick}
                         sortOrder={sortOrder}
