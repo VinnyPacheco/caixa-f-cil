@@ -276,7 +276,7 @@ function CategoriesSummaryContent({ selectedDate, filter }: { selectedDate: Date
   );
 }
 
-function AccountsBalanceContent({ selectedDate }: { selectedDate: Date }) {
+function AccountsBalanceContent({ selectedDate, filter }: { selectedDate: Date; filter?: FilterState }) {
   const { user } = useAuth();
   const { isSimulation } = useSimulation();
 
@@ -315,31 +315,52 @@ function AccountsBalanceContent({ selectedDate }: { selectedDate: Date }) {
   }
 
   return (
-    <div className="flex flex-col divide-y divide-border/50">
-      {balances.map(({ account, balance }) => (
-        <div key={account.id} className="flex items-center gap-3 py-2">
-          <div
-            className="size-8 rounded-lg flex items-center justify-center shrink-0"
-            style={{ backgroundColor: `${account.color}20` }}
-          >
-            <span className="material-symbols-outlined text-sm" style={{ color: account.color }}>
-              {account.icon}
-            </span>
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-foreground truncate">{account.name}</p>
-            <p className="text-[10px] text-muted-foreground">Saldo atual</p>
-          </div>
-          <p
-            className={cn(
-              'text-sm font-bold',
-              balance >= 0 ? 'text-foreground' : 'text-destructive'
-            )}
-          >
-            {formatCurrency(balance)}
-          </p>
-        </div>
-      ))}
+    <div className="flex flex-col">
+      {filter?.hasSelection && (
+        <button
+          onClick={filter.onClear}
+          className="flex items-center gap-1.5 text-[10px] text-accent mb-2 hover:underline self-start"
+        >
+          <X className="h-3 w-3" />
+          Limpar filtro
+        </button>
+      )}
+      <div className="flex flex-col divide-y divide-border/50">
+        {balances.map(({ account, balance }) => {
+          const isSelected = filter?.selectedIds.includes(account.id);
+          return (
+            <div
+              key={account.id}
+              onClick={() => filter?.onToggle(account.id)}
+              className={cn(
+                'flex items-center gap-3 py-2 px-1 -mx-1 rounded-lg cursor-pointer transition-colors',
+                isSelected ? 'bg-accent/15 ring-1 ring-accent/40' : 'hover:bg-muted/50'
+              )}
+            >
+              <div
+                className="size-8 rounded-lg flex items-center justify-center shrink-0"
+                style={{ backgroundColor: `${account.color}20` }}
+              >
+                <span className="material-symbols-outlined text-sm" style={{ color: account.color }}>
+                  {account.icon}
+                </span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-foreground truncate">{account.name}</p>
+                <p className="text-[10px] text-muted-foreground">Saldo atual</p>
+              </div>
+              <p
+                className={cn(
+                  'text-sm font-bold',
+                  balance >= 0 ? 'text-foreground' : 'text-destructive'
+                )}
+              >
+                {formatCurrency(balance)}
+              </p>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
