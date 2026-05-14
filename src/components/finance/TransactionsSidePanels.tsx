@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { addDays, parseISO, isBefore, isEqual, startOfDay, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
-import { AlertTriangle, ChevronLeft, ChevronRight, Target, Wallet, Tags } from 'lucide-react';
+import { AlertTriangle, ChevronLeft, ChevronRight, Target, Wallet, Tags, X } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSimulation } from '@/contexts/SimulationContext';
 import { fetchTransactions } from '@/services/transactionsService';
@@ -13,6 +13,13 @@ import { TransactionWithBalance } from '@/types/finance';
 import { formatCurrency } from '@/lib/format';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+
+interface FilterState {
+  selectedIds: string[];
+  onToggle: (id: string) => void;
+  onClear: () => void;
+  hasSelection: boolean;
+}
 
 interface SidePanelShellProps {
   side: 'left' | 'right';
@@ -104,6 +111,8 @@ interface PanelsProps {
   rightExpanded: boolean;
   onToggleLeft: () => void;
   onToggleRight: () => void;
+  categoryFilter?: FilterState;
+  accountFilter?: FilterState;
 }
 
 function PendingPanelContent() {
@@ -174,7 +183,7 @@ function PendingPanelContent() {
   );
 }
 
-function CategoriesSummaryContent({ selectedDate }: { selectedDate: Date }) {
+function CategoriesSummaryContent({ selectedDate, filter }: { selectedDate: Date; filter?: FilterState }) {
   const { user } = useAuth();
   const { isSimulation } = useSimulation();
 
@@ -215,38 +224,59 @@ function CategoriesSummaryContent({ selectedDate }: { selectedDate: Date }) {
   }
 
   return (
-    <div className="flex flex-col divide-y divide-border/50">
-      {totals.map(({ category, total }) => (
-        <div key={category.id} className="flex items-center gap-3 py-2">
-          <div
-            className="size-8 rounded-lg flex items-center justify-center shrink-0"
-            style={{ backgroundColor: `${category.color}20` }}
-          >
-            <span className="material-symbols-outlined text-sm" style={{ color: category.color }}>
-              {category.icon}
-            </span>
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-foreground truncate">{category.name}</p>
-            <p className="text-[10px] text-muted-foreground capitalize">
-              {category.type === 'expense' ? 'Despesa' : 'Receita'}
-            </p>
-          </div>
-          <p
-            className={cn(
-              'text-sm font-bold',
-              category.type === 'expense' ? 'text-destructive' : 'text-success'
-            )}
-          >
-            {formatCurrency(total)}
-          </p>
-        </div>
-      ))}
+    <div className="flex flex-col">
+      {filter?.hasSelection && (
+        <button
+          onClick={filter.onClear}
+          className="flex items-center gap-1.5 text-[10px] text-accent mb-2 hover:underline self-start"
+        >
+          <X className="h-3 w-3" />
+          Limpar filtro
+        </button>
+      )}
+      <div className="flex flex-col divide-y divide-border/50">
+        {totals.map(({ category, total }) => {
+          const isSelected = filter?.selectedIds.includes(category.id);
+          return (
+            <div
+              key={category.id}
+              onClick={() => filter?.onToggle(category.id)}
+              className={cn(
+                'flex items-center gap-3 py-2 px-1 -mx-1 rounded-lg cursor-pointer transition-colors',
+                isSelected ? 'bg-accent/15 ring-1 ring-accent/40' : 'hover:bg-muted/50'
+              )}
+            >
+              <div
+                className="size-8 rounded-lg flex items-center justify-center shrink-0"
+                style={{ backgroundColor: `${category.color}20` }}
+              >
+                <span className="material-symbols-outlined text-sm" style={{ color: category.color }}>
+                  {category.icon}
+                </span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-foreground truncate">{category.name}</p>
+                <p className="text-[10px] text-muted-foreground capitalize">
+                  {category.type === 'expense' ? 'Despesa' : 'Receita'}
+                </p>
+              </div>
+              <p
+                className={cn(
+                  'text-sm font-bold',
+                  category.type === 'expense' ? 'text-destructive' : 'text-success'
+                )}
+              >
+                {formatCurrency(total)}
+              </p>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
 
-function AccountsBalanceContent({ selectedDate }: { selectedDate: Date }) {
+function AccountsBalanceContent({ selectedDate, filter }: { selectedDate: Date; filter?: FilterState }) {
   const { user } = useAuth();
   const { isSimulation } = useSimulation();
 
@@ -285,31 +315,52 @@ function AccountsBalanceContent({ selectedDate }: { selectedDate: Date }) {
   }
 
   return (
-    <div className="flex flex-col divide-y divide-border/50">
-      {balances.map(({ account, balance }) => (
-        <div key={account.id} className="flex items-center gap-3 py-2">
-          <div
-            className="size-8 rounded-lg flex items-center justify-center shrink-0"
-            style={{ backgroundColor: `${account.color}20` }}
-          >
-            <span className="material-symbols-outlined text-sm" style={{ color: account.color }}>
-              {account.icon}
-            </span>
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-foreground truncate">{account.name}</p>
-            <p className="text-[10px] text-muted-foreground">Saldo atual</p>
-          </div>
-          <p
-            className={cn(
-              'text-sm font-bold',
-              balance >= 0 ? 'text-foreground' : 'text-destructive'
-            )}
-          >
-            {formatCurrency(balance)}
-          </p>
-        </div>
-      ))}
+    <div className="flex flex-col">
+      {filter?.hasSelection && (
+        <button
+          onClick={filter.onClear}
+          className="flex items-center gap-1.5 text-[10px] text-accent mb-2 hover:underline self-start"
+        >
+          <X className="h-3 w-3" />
+          Limpar filtro
+        </button>
+      )}
+      <div className="flex flex-col divide-y divide-border/50">
+        {balances.map(({ account, balance }) => {
+          const isSelected = filter?.selectedIds.includes(account.id);
+          return (
+            <div
+              key={account.id}
+              onClick={() => filter?.onToggle(account.id)}
+              className={cn(
+                'flex items-center gap-3 py-2 px-1 -mx-1 rounded-lg cursor-pointer transition-colors',
+                isSelected ? 'bg-accent/15 ring-1 ring-accent/40' : 'hover:bg-muted/50'
+              )}
+            >
+              <div
+                className="size-8 rounded-lg flex items-center justify-center shrink-0"
+                style={{ backgroundColor: `${account.color}20` }}
+              >
+                <span className="material-symbols-outlined text-sm" style={{ color: account.color }}>
+                  {account.icon}
+                </span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-foreground truncate">{account.name}</p>
+                <p className="text-[10px] text-muted-foreground">Saldo atual</p>
+              </div>
+              <p
+                className={cn(
+                  'text-sm font-bold',
+                  balance >= 0 ? 'text-foreground' : 'text-destructive'
+                )}
+              >
+                {formatCurrency(balance)}
+              </p>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -327,7 +378,8 @@ export function LeftSidePanel({
   selectedDate,
   expanded,
   onToggle,
-}: { selectedDate: Date; expanded: boolean; onToggle: () => void }) {
+  categoryFilter,
+}: { selectedDate: Date; expanded: boolean; onToggle: () => void; categoryFilter?: FilterState }) {
   return (
     <SidePanelShell
       side="left"
@@ -338,7 +390,7 @@ export function LeftSidePanel({
       topContent={<PendingPanelContent />}
       bottomTitle="Categorias"
       bottomIcon={<Tags className="h-4 w-4 text-accent" />}
-      bottomContent={<CategoriesSummaryContent selectedDate={selectedDate} />}
+      bottomContent={<CategoriesSummaryContent selectedDate={selectedDate} filter={categoryFilter} />}
     />
   );
 }
@@ -347,7 +399,8 @@ export function RightSidePanel({
   selectedDate,
   expanded,
   onToggle,
-}: { selectedDate: Date; expanded: boolean; onToggle: () => void }) {
+  accountFilter,
+}: { selectedDate: Date; expanded: boolean; onToggle: () => void; accountFilter?: FilterState }) {
   return (
     <SidePanelShell
       side="right"
@@ -355,7 +408,7 @@ export function RightSidePanel({
       onToggle={onToggle}
       topTitle="Contas"
       topIcon={<Wallet className="h-4 w-4 text-accent" />}
-      topContent={<AccountsBalanceContent selectedDate={selectedDate} />}
+      topContent={<AccountsBalanceContent selectedDate={selectedDate} filter={accountFilter} />}
       bottomTitle="Metas"
       bottomIcon={<Target className="h-4 w-4 text-accent" />}
       bottomContent={<GoalsContent />}

@@ -57,6 +57,8 @@ export default function Transactions() {
   const [leftExpanded, setLeftExpanded] = useState(true);
   const [rightExpanded, setRightExpanded] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
+  const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([]);
 
   const deviceType = useDeviceType();
   const additionalMonths = deviceType === 'desktop' ? 2 : deviceType === 'tablet' ? 1 : 0;
@@ -94,6 +96,31 @@ export default function Transactions() {
       return false;
     });
   };
+
+  const applyFilters = (txs: TransactionWithBalance[]) => {
+    let filtered = filterBySearch(txs);
+    if (selectedCategoryIds.length > 0) {
+      filtered = filtered.filter((t) => selectedCategoryIds.includes(t.categoryId));
+    }
+    if (selectedAccountIds.length > 0) {
+      filtered = filtered.filter((t) => selectedAccountIds.includes(t.accountId));
+    }
+    return filtered;
+  };
+
+  const toggleCategory = (id: string) => {
+    setSelectedCategoryIds((prev) =>
+      prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]
+    );
+  };
+  const clearCategories = () => setSelectedCategoryIds([]);
+
+  const toggleAccount = (id: string) => {
+    setSelectedAccountIds((prev) =>
+      prev.includes(id) ? prev.filter((a) => a !== id) : [...prev, id]
+    );
+  };
+  const clearAccounts = () => setSelectedAccountIds([]);
 
   // Handle navigation state (selected month or new transaction)
   useEffect(() => {
@@ -265,7 +292,7 @@ export default function Transactions() {
         {/* Mobile Layout - Single Column */}
         {isMobile && (
           <TransactionList
-            transactions={filterBySearch(currentMonth.transactions)}
+            transactions={applyFilters(currentMonth.transactions)}
             onReorder={reorderTransactions}
             onTogglePaid={togglePaid}
             onTransactionClick={handleTransactionClick}
@@ -283,6 +310,12 @@ export default function Transactions() {
               selectedDate={selectedDate}
               expanded={leftExpanded}
               onToggle={() => setLeftExpanded((v) => !v)}
+              categoryFilter={{
+                selectedIds: selectedCategoryIds,
+                onToggle: toggleCategory,
+                onClear: clearCategories,
+                hasSelection: selectedCategoryIds.length > 0,
+              }}
             />
 
             <DndContext
@@ -354,7 +387,7 @@ export default function Transactions() {
                     {/* Transactions */}
                     <div className="flex-1 overflow-y-auto max-h-[calc(100vh-350px)]">
                       <TransactionListContent
-                        transactions={filterBySearch(monthData.transactions)}
+                        transactions={applyFilters(monthData.transactions)}
                         onTogglePaid={togglePaid}
                         onTransactionClick={handleTransactionClick}
                         sortOrder={sortOrder}
@@ -379,6 +412,12 @@ export default function Transactions() {
               selectedDate={selectedDate}
               expanded={rightExpanded}
               onToggle={() => setRightExpanded((v) => !v)}
+              accountFilter={{
+                selectedIds: selectedAccountIds,
+                onToggle: toggleAccount,
+                onClear: clearAccounts,
+                hasSelection: selectedAccountIds.length > 0,
+              }}
             />
           </div>
         )}
