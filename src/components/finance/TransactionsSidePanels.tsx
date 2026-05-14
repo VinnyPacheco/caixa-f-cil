@@ -1,8 +1,8 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { addDays, parseISO, isBefore, isEqual, startOfDay, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
-import { AlertTriangle, ChevronLeft, ChevronRight, Target, Wallet, Tags } from 'lucide-react';
+import { AlertTriangle, ChevronLeft, ChevronRight, Target, Wallet, Tags, X } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSimulation } from '@/contexts/SimulationContext';
 import { fetchTransactions } from '@/services/transactionsService';
@@ -13,6 +13,13 @@ import { TransactionWithBalance } from '@/types/finance';
 import { formatCurrency } from '@/lib/format';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+
+interface FilterState {
+  selectedIds: string[];
+  onToggle: (id: string) => void;
+  onClear: () => void;
+  hasSelection: boolean;
+}
 
 interface SidePanelShellProps {
   side: 'left' | 'right';
