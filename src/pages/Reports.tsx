@@ -5,8 +5,12 @@ import { useProfile } from '@/hooks/useProfile';
 import { useTransactionTagsBulk } from '@/hooks/useTags';
 import { formatCurrency } from '@/lib/format';
 import { useState, useMemo } from 'react';
-import { format, addMonths, subMonths } from 'date-fns';
+import { format, addMonths, subMonths, startOfMonth, endOfMonth, parseISO, isWithinInterval } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useQuery } from '@tanstack/react-query';
+import { useAuth } from '@/contexts/AuthContext';
+import { useSimulation } from '@/contexts/SimulationContext';
+import { fetchTransactions } from '@/services/transactionsService';
 import {
   Select,
   SelectContent,
@@ -36,6 +40,17 @@ export default function Reports() {
 
   const { monthSummary, categories, transactions } = useTransactions(selectedDate);
   const { displayName } = useProfile();
+  const { user } = useAuth();
+  const { isSimulation } = useSimulation();
+
+  // Fetch ALL transactions to compute the multi-month chart at the top
+  const allTransactionsQuery = useQuery({
+    queryKey: ['transactions'],
+    queryFn: fetchTransactions,
+    enabled: !!user,
+    staleTime: isSimulation ? Infinity : 0,
+  });
+  const allTransactions = allTransactionsQuery.data || [];
 
   // Get all transaction IDs to fetch their tags
   const transactionIds = useMemo(() => transactions.map((t) => t.id), [transactions]);
