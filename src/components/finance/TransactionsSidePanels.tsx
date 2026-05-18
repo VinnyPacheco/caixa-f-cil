@@ -1,11 +1,11 @@
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { addDays, parseISO, isBefore, isEqual, startOfDay, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
 import { AlertTriangle, ChevronLeft, ChevronRight, Target, Wallet, Tags, X } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSimulation } from '@/contexts/SimulationContext';
-import { fetchTransactions } from '@/services/transactionsService';
+import { fetchTransactions, toggleTransactionPaid } from '@/services/transactionsService';
 import { fetchAccounts } from '@/services/accountsService';
 import { fetchCategories } from '@/services/categoriesService';
 import { TransactionItem } from './TransactionItem';
@@ -119,6 +119,7 @@ function PendingPanelContent() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { isSimulation } = useSimulation();
+  const queryClient = useQueryClient();
 
   const transactionsQuery = useQuery({
     queryKey: ['transactions'],
@@ -142,6 +143,32 @@ function PendingPanelContent() {
   const allTransactions = transactionsQuery.data || [];
   const categories = categoriesQuery.data || [];
   const accounts = accountsQuery.data || [];
+
+  const togglePaidMutation = useMutation({
+    mutationFn: ({ id, isPaid }: { id: string; isPaid: boolean }) =>
+      toggleTransactionPaid(id, isPaid),
+    onMutate: async ({ id, isPaid }) => {
+      await queryClient.cancelQueries({ queryKey: ['transactions'] });
+      const previous = queryClient.getQueryData<typeof allTransactions>(['transactions']);
+      queryClient.setQueryData<typeof allTransactions>(['transactions'], (old) =>
+        (old || []).map((t) => (t.id === id ? { ...t, isPaid } : t))
+      );
+      return { previous };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.previous) queryClient.setQueryData(['transactions'], ctx.previous);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['multi-month-transactions'] });
+    },
+  });
+
+  const handleTogglePaid = (id: string) => {
+    const tx = allTransactions.find((t) => t.id === id);
+    if (!tx) return;
+    togglePaidMutation.mutate({ id, isPaid: !tx.isPaid });
+  };
 
   const pendingUrgent: TransactionWithBalance[] = useMemo(() => {
     const today = startOfDay(new Date());
@@ -174,6 +201,7 @@ function PendingPanelContent() {
           showDragHandle={false}
           showBalance={false}
           showDate={true}
+          onTogglePaid={handleTogglePaid}
           onClick={() =>
             navigate('/transactions', { state: { selectedMonth: transaction.date } })
           }
