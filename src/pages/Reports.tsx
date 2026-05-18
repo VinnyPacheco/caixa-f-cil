@@ -514,25 +514,48 @@ export default function Reports() {
                 {activeTab === 'budget' ? (
                   <>
                     {/* Income line */}
-                    <path className="chart-line" style={{ animationDelay: '0.1s' }} d="M0,15 C20,15 30,8 50,12 S80,15 100,10" fill="none" stroke="hsl(var(--success))" strokeLinecap="round" strokeWidth="1.2" />
+                    <path
+                      className="chart-line"
+                      style={{ animationDelay: '0.1s' }}
+                      d={buildPath(monthlyAggregates.map((m) => m.income))}
+                      fill="none"
+                      stroke="hsl(var(--success))"
+                      strokeLinecap="round"
+                      strokeWidth="1.2"
+                    />
                     {/* Expense line */}
-                    <path className="chart-line" style={{ animationDelay: '0.2s' }} d="M0,40 C20,38 30,35 50,38 S80,42 100,35" fill="none" stroke="hsl(var(--destructive))" strokeLinecap="round" strokeWidth="1.2" />
-                    {/* Budget line */}
-                    <path className="chart-line" style={{ animationDelay: '0.3s' }} d="M0,25 C20,25 35,15 50,20 S80,10 100,18" fill="url(#gradGold)" stroke="hsl(var(--accent))" strokeLinecap="round" strokeWidth="1.2" />
+                    <path
+                      className="chart-line"
+                      style={{ animationDelay: '0.2s' }}
+                      d={buildPath(monthlyAggregates.map((m) => m.expense))}
+                      fill="none"
+                      stroke="hsl(var(--destructive))"
+                      strokeLinecap="round"
+                      strokeWidth="1.2"
+                    />
+                    {/* Budget line (income - expense, clamped at 0) */}
+                    <path
+                      className="chart-line"
+                      style={{ animationDelay: '0.3s' }}
+                      d={buildPath(monthlyAggregates.map((m) => Math.max(0, m.income - m.expense)))}
+                      fill="url(#gradGold)"
+                      stroke="hsl(var(--accent))"
+                      strokeLinecap="round"
+                      strokeWidth="1.2"
+                    />
                   </>
                 ) : (
                   <>
                     {/* Category lines - expenses */}
                     {(filterType === 'all' || filterType === 'expense') && expensesByCategory.slice(0, 6).map(({ category, total }, index) => {
-                      // Calculate Y position based on actual value (10k = 0, 0 = 50)
-                      const baseY = 50 - (total / chartMaxValue) * 50;
-                      const variation = (index % 3) * 2 - 2;
+                      const catId = category?.id;
+                      const series = monthlyAggregates.map((m) => (catId ? (m.expenseByCat[catId] || 0) : 0));
                       return (
                         <path
                           key={`expense-${category?.id || index}`}
                           className="chart-line"
                           style={{ animationDelay: `${0.1 + index * 0.08}s`, opacity: 0.9 - (index * 0.08) }}
-                          d={`M0,${baseY + variation} C20,${baseY + variation * 0.5} 30,${baseY - variation * 0.3} 50,${baseY} S80,${baseY + variation * 0.3} 100,${baseY - variation * 0.5}`}
+                          d={buildPath(series)}
                           fill="none"
                           stroke={category?.color || '#F43F5E'}
                           strokeLinecap="round"
@@ -542,15 +565,15 @@ export default function Reports() {
                     })}
                     {/* Category lines - income */}
                     {(filterType === 'all' || filterType === 'income') && incomeByCategory.slice(0, 6).map(({ category, total }, index) => {
-                      const baseY = 50 - (total / chartMaxValue) * 50;
-                      const variation = (index % 2) * 2 - 1;
                       const delayOffset = filterType !== 'income' ? expensesByCategory.slice(0, 6).length : 0;
+                      const catId = category?.id;
+                      const series = monthlyAggregates.map((m) => (catId ? (m.incomeByCat[catId] || 0) : 0));
                       return (
                         <path
                           key={`income-${category?.id || index}`}
                           className="chart-line"
                           style={{ animationDelay: `${0.1 + (delayOffset + index) * 0.08}s`, opacity: 0.9 - (index * 0.08) }}
-                          d={`M0,${baseY + variation} C20,${baseY + variation * 0.5} 30,${baseY - variation * 0.3} 50,${baseY} S80,${baseY + variation * 0.3} 100,${baseY - variation * 0.5}`}
+                          d={buildPath(series)}
                           fill="none"
                           stroke={category?.color || '#10B981'}
                           strokeLinecap="round"
