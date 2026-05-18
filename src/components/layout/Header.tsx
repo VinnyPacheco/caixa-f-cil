@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { NotificationList } from '@/components/notifications/NotificationList';
 import { useNotificationContext } from '@/contexts/NotificationContext';
 import { useSimulation } from '@/contexts/SimulationContext';
+import { HeaderNav } from './HeaderNav';
 
 function HeaderNotifications() {
   const navigate = useNavigate();
@@ -110,6 +111,13 @@ export function Header({
           {title}
         </h1>
       )}
+
+        {/* Centered navigation for tablet/desktop */}
+        <div className="absolute left-1/2 -translate-x-1/2 pointer-events-none">
+          <div className="pointer-events-auto">
+            <HeaderNav />
+          </div>
+        </div>
 
         {showNotification ? (
           <HeaderNotifications />
