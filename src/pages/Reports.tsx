@@ -182,22 +182,74 @@ export default function Reports() {
 
   const maxCategoryValue = allCategoriesSortedByValue[0]?.total || 1;
 
-  // Dynamic chart scale based on actual data
+  // Compute monthly aggregates for the 7 months window shown in the chart (-3..+3)
+  const monthlyAggregates = useMemo(() => {
+    const result: Array<{
+      income: number;
+      expense: number;
+      expenseByCat: Record<string, number>;
+      incomeByCat: Record<string, number>;
+    }> = [];
+    for (let i = -3; i <= 3; i++) {
+      const monthDate = addMonths(selectedDate, i);
+      const start = startOfMonth(monthDate);
+      const end = endOfMonth(monthDate);
+      const monthTx = allTransactions.filter((t) =>
+        isWithinInterval(parseISO(t.date), { start, end })
+      );
+      const agg = { income: 0, expense: 0, expenseByCat: {} as Record<string, number>, incomeByCat: {} as Record<string, number> };
+      monthTx.forEach((t) => {
+        if (t.type === 'income') {
+          agg.income += t.amount;
+          agg.incomeByCat[t.categoryId] = (agg.incomeByCat[t.categoryId] || 0) + t.amount;
+        } else {
+          agg.expense += t.amount;
+          agg.expenseByCat[t.categoryId] = (agg.expenseByCat[t.categoryId] || 0) + t.amount;
+        }
+      });
+      result.push(agg);
+    }
+    return result;
+  }, [allTransactions, selectedDate]);
+
+  // Dynamic chart scale based on actual data across the 7-month window
   const chartMaxValue = useMemo(() => {
     let maxVal = 0;
     if (activeTab === 'budget') {
-      maxVal = Math.max(monthSummary.totalIncome, monthSummary.totalExpense, 1);
+      monthlyAggregates.forEach((m) => {
+        maxVal = Math.max(maxVal, m.income, m.expense);
+      });
     } else {
-      const allTotals = [
-        ...(filterType !== 'income' ? expensesByCategory.slice(0, 6).map(e => e.total) : []),
-        ...(filterType !== 'expense' ? incomeByCategory.slice(0, 6).map(e => e.total) : []),
-      ];
-      maxVal = Math.max(...allTotals, 1);
+      const topExpenseIds = expensesByCategory.slice(0, 6).map((e) => e.category?.id).filter(Boolean) as string[];
+      const topIncomeIds = incomeByCategory.slice(0, 6).map((e) => e.category?.id).filter(Boolean) as string[];
+      monthlyAggregates.forEach((m) => {
+        if (filterType !== 'income') topExpenseIds.forEach((id) => { maxVal = Math.max(maxVal, m.expenseByCat[id] || 0); });
+        if (filterType !== 'expense') topIncomeIds.forEach((id) => { maxVal = Math.max(maxVal, m.incomeByCat[id] || 0); });
+      });
     }
+    maxVal = Math.max(maxVal, 1);
     // Round up to a nice number
     const magnitude = Math.pow(10, Math.floor(Math.log10(maxVal)));
     return Math.ceil(maxVal / magnitude) * magnitude;
-  }, [activeTab, monthSummary, expensesByCategory, incomeByCategory, filterType]);
+  }, [activeTab, monthlyAggregates, expensesByCategory, incomeByCategory, filterType]);
+
+  // Build a smooth SVG path from a series of 7 values (one per month) within viewBox 0 0 100 50
+  const buildPath = (values: number[]) => {
+    const points = values.map((v, i) => {
+      const x = (i / (values.length - 1)) * 100;
+      const y = 50 - Math.max(0, Math.min(1, v / chartMaxValue)) * 50;
+      return { x, y };
+    });
+    if (points.length === 0) return '';
+    let d = `M${points[0].x.toFixed(2)},${points[0].y.toFixed(2)}`;
+    for (let i = 1; i < points.length; i++) {
+      const prev = points[i - 1];
+      const curr = points[i];
+      const cx = (prev.x + curr.x) / 2;
+      d += ` C${cx.toFixed(2)},${prev.y.toFixed(2)} ${cx.toFixed(2)},${curr.y.toFixed(2)} ${curr.x.toFixed(2)},${curr.y.toFixed(2)}`;
+    }
+    return d;
+  };
 
   const formatChartLabel = (value: number) => {
     if (value >= 1000) return `${(value / 1000).toFixed(value % 1000 === 0 ? 0 : 1)}k`;
