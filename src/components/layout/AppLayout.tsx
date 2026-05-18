@@ -9,7 +9,7 @@ interface AppLayoutProps {
 export function AppLayout({ children, showNav = true }: AppLayoutProps) {
   return (
     <div className="relative flex min-h-screen w-full flex-col overflow-x-hidden">
-      <div className={showNav ? 'pb-32' : ''}>{children}</div>
+      <div className={showNav ? 'pb-32 md:pb-8' : ''}>{children}</div>
       {showNav && <BottomNav />}
     </div>
   );
