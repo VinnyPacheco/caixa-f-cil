@@ -23,6 +23,7 @@ import { useCategories } from '@/hooks/useCategoriesData';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { importParsers, getParserById, ParsedTransaction } from '@/services/importParsers';
+import { extractTextFromPdf } from '@/services/importParsers/pdfText';
 import { createTransaction, toggleTransactionPaid } from '@/services/transactionsService';
 import { supabase } from '@/integrations/supabase/client';
 import { formatCurrency } from '@/lib/format';
@@ -69,6 +70,9 @@ export default function ImportTransactions() {
   const [importActions, setImportActions] = useState<Record<number, ImportAction>>({});
 
   const selectedParser = selectedParserId ? getParserById(selectedParserId) : undefined;
+  const acceptedExtensions = selectedParser
+    ? selectedParser.fileExtensions ?? [selectedParser.fileExtension]
+    : [];
 
   const defaultExpenseCategory = categories.find(
     (c) => c.name.toLowerCase() === 'outros' && c.type === 'expense'
@@ -182,10 +186,14 @@ export default function ImportTransactions() {
     const file = e.target.files?.[0];
     if (!file || !selectedParser) return;
 
-    if (!file.name.toLowerCase().endsWith(selectedParser.fileExtension)) {
+    const lowerName = file.name.toLowerCase();
+    const matchesExtension = acceptedExtensions.some((ext) =>
+      lowerName.endsWith(ext.toLowerCase())
+    );
+    if (!matchesExtension) {
       toast({
         title: 'Arquivo inválido',
-        description: `Por favor, selecione um arquivo ${selectedParser.fileExtension}`,
+        description: `Por favor, selecione um arquivo ${acceptedExtensions.join(' ou ')}`,
         variant: 'destructive',
       });
       return;
@@ -194,8 +202,15 @@ export default function ImportTransactions() {
     setFileName(file.name);
 
     try {
-      const content = await file.text();
-      const transactions = selectedParser.parse(content);
+      let transactions: ParsedTransaction[];
+      if (lowerName.endsWith('.pdf')) {
+        const text = await extractTextFromPdf(file);
+        const pdfParser = selectedParser.parsePdf ?? selectedParser.parse;
+        transactions = pdfParser(text);
+      } else {
+        const content = await file.text();
+        transactions = selectedParser.parse(content);
+      }
 
       if (transactions.length === 0) {
         toast({
