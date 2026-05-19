@@ -52,6 +52,19 @@ export default function SignUp() {
     navigate('/');
   };
 
+  const handleGoogleSignIn = async () => {
+    setIsGoogleLoading(true);
+    const { error } = await signInWithGoogle();
+    if (error) {
+      toast({
+        title: 'Erro ao entrar com Google',
+        description: error.message,
+        variant: 'destructive',
+      });
+    }
+    setIsGoogleLoading(false);
+  };
+
   return (
     <div className="relative flex min-h-screen w-full flex-col overflow-hidden bg-background">
       <div className="flex flex-col items-center justify-center pt-8 pb-4 px-6">
