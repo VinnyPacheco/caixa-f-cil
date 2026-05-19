@@ -438,7 +438,7 @@ export default function ImportTransactions() {
                 <SelectContent>
                   {importParsers.map((parser) => (
                     <SelectItem key={parser.id} value={parser.id}>
-                      {parser.name} ({parser.fileExtension})
+                      {parser.name} ({(parser.fileExtensions ?? [parser.fileExtension]).join(', ')})
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -451,7 +451,7 @@ export default function ImportTransactions() {
               <input
                 ref={fileInputRef}
                 type="file"
-                accept={selectedParser?.fileExtension || '.txt'}
+                accept={acceptedExtensions.join(',') || '.txt'}
                 onChange={handleFileChange}
                 className="hidden"
               />
@@ -466,7 +466,7 @@ export default function ImportTransactions() {
               </Button>
               {selectedParser && (
                 <p className="text-xs text-muted-foreground">
-                  Formato aceito: {selectedParser.fileExtension}
+                  Formato aceito: {acceptedExtensions.join(', ')}
                 </p>
               )}
             </div>
