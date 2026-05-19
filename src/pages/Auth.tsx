@@ -169,6 +169,19 @@ export default function Auth() {
     }
   };
 
+  const handleGoogleSignIn = async () => {
+    setIsGoogleLoading(true);
+    const { error } = await signInWithGoogle();
+    if (error) {
+      toast({
+        title: 'Erro ao entrar com Google',
+        description: error.message,
+        variant: 'destructive',
+      });
+    }
+    setIsGoogleLoading(false);
+  };
+
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
       <div className="w-full max-w-sm space-y-8">
