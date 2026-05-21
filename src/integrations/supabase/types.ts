@@ -145,26 +145,44 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          coupon_used: boolean
           created_at: string
           email: string | null
           full_name: string | null
           id: string
+          plan_type: string
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          subscription_status: string | null
+          trial_expires_at: string | null
           updated_at: string
         }
         Insert: {
           avatar_url?: string | null
+          coupon_used?: boolean
           created_at?: string
           email?: string | null
           full_name?: string | null
           id: string
+          plan_type?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          subscription_status?: string | null
+          trial_expires_at?: string | null
           updated_at?: string
         }
         Update: {
           avatar_url?: string | null
+          coupon_used?: boolean
           created_at?: string
           email?: string | null
           full_name?: string | null
           id?: string
+          plan_type?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          subscription_status?: string | null
+          trial_expires_at?: string | null
           updated_at?: string
         }
         Relationships: []
