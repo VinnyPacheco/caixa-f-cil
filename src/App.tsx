@@ -18,6 +18,8 @@ import Settings from "./pages/Settings";
 import Accounts from "./pages/Accounts";
 import Categories from "./pages/Categories";
 import ImportTransactions from "./pages/ImportTransactions";
+import Plans from "./pages/Plans";
+import Subscribe from "./pages/Subscribe";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -77,6 +79,8 @@ const AppRoutes = () => (
       <Route path="/accounts" element={<ProtectedRoute><Accounts /></ProtectedRoute>} />
       <Route path="/categories" element={<ProtectedRoute><Categories /></ProtectedRoute>} />
       <Route path="/import-transactions" element={<ProtectedRoute><ImportTransactions /></ProtectedRoute>} />
+      <Route path="/planos" element={<ProtectedRoute><Plans /></ProtectedRoute>} />
+      <Route path="/assinar" element={<Subscribe />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   </>
