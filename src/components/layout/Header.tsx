@@ -88,7 +88,7 @@ export function Header({
           </button>
           <div className="flex flex-col">
             <p className="text-muted-foreground text-sm font-medium leading-none">
-              {subtitle || 'Planner Financeiro'}
+              {subtitle || 'FinLar'}
             </p>
             <h2 className="text-foreground text-xl font-bold leading-tight mt-0.5">
               {userName}
