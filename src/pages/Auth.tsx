@@ -193,7 +193,7 @@ export default function Auth() {
             </span>
           </div>
           <p className="text-sm font-semibold text-accent tracking-wide uppercase">
-            Planner Financeiro
+            FinLar
           </p>
           <h1 className="text-2xl font-bold text-foreground">
             {isLogin ? 'Bem-vindo de volta' : 'Criar conta'}
