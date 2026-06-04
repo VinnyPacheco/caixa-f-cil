@@ -55,7 +55,6 @@ export default function Plans() {
   const [loadingPlan, setLoadingPlan] = useState<Plan | null>(null);
   const [portalLoading, setPortalLoading] = useState(false);
   const [couponEligible, setCouponEligible] = useState(false);
-  const [renewalDate, setRenewalDate] = useState<string | null>(null);
 
   const couponParam = params.get('coupon')?.toUpperCase();
   const requestingCoupon = couponParam === 'PRIMEIROMES';
@@ -68,14 +67,13 @@ export default function Plans() {
     (async () => {
       const { data } = await supabase
         .from('profiles')
-        .select('coupon_used, stripe_subscription_id, current_period_end')
+        .select('coupon_used, stripe_subscription_id')
         .eq('id', user.id)
         .maybeSingle();
       if (data) {
         setCouponEligible(
           requestingCoupon && !data.coupon_used && !data.stripe_subscription_id,
         );
-        setRenewalDate((data as { current_period_end?: string | null }).current_period_end ?? null);
       }
     })();
   }, [user?.id, requestingCoupon]);
@@ -169,7 +167,6 @@ export default function Plans() {
             <h2 className="text-xl font-bold text-foreground mb-1">Seu plano atual</h2>
             <p className="text-muted-foreground text-sm mb-6">
               {planType === 'annual' ? 'Pro Anual' : 'Pro Mensal'}
-              {renewalDate ? ` — renova em ${formatDate(renewalDate)}` : ''}
             </p>
             <div className="flex flex-col sm:flex-row gap-3">
               <button
