@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useSubscription } from '@/hooks/useSubscription';
 import { useNavigate } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Header } from '@/components/layout/Header';
@@ -21,6 +22,7 @@ export default function Settings() {
   const { displayName } = useProfile();
   const { isSimulation, enableSimulation, disableSimulation } = useSimulation();
   const { isInstallable, isInstalled, promptInstall, showIOSInstructions } = usePWAInstall();
+  const { planType, daysLeftInTrial, isTrialExpired, hasFullAccess } = useSubscription();
   
   const [fullName, setFullName] = useState('');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -171,6 +173,44 @@ export default function Settings() {
               </>
             )}
           </div>
+        </div>
+
+        {/* Subscription Plan */}
+        <div className="bg-card rounded-2xl border border-accent/30 overflow-hidden p-4">
+          <div className="flex items-center gap-3">
+            <div className="size-10 rounded-xl bg-accent/10 flex items-center justify-center shrink-0">
+              <span className="material-symbols-outlined text-accent">card_membership</span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Seu plano</p>
+              <div className="mt-0.5">
+                {planType === 'lifetime' ? (
+                  <p className="text-sm font-semibold text-foreground">Vitalício</p>
+                ) : planType === 'pro' || planType === 'annual' ? (
+                  <p className="text-sm font-semibold text-foreground">
+                    {planType === 'annual' ? 'Pro Anual' : 'Pro Mensal'}
+                  </p>
+                ) : planType === 'trial' ? (
+                  <p className="text-sm font-semibold text-foreground">
+                    {isTrialExpired ? 'Trial expirado' : `Trial — ${daysLeftInTrial} ${daysLeftInTrial === 1 ? 'dia restante' : 'dias restantes'}`}
+                  </p>
+                ) : (
+                  <p className="text-sm font-semibold text-foreground">Free</p>
+                )}
+              </div>
+            </div>
+            <button
+              onClick={() => navigate('/planos')}
+              className="shrink-0 rounded-xl bg-accent text-accent-foreground text-sm font-bold px-4 py-2 hover:brightness-95 transition"
+            >
+              {planType === 'pro' || planType === 'annual' || planType === 'lifetime' ? 'Gerenciar' : 'Ver planos'}
+            </button>
+          </div>
+          {!hasFullAccess && (
+            <p className="mt-3 text-xs text-muted-foreground">
+              Assine o Finlar para desbloquear lançamentos ilimitados e relatórios completos.
+            </p>
+          )}
         </div>
 
         {/* Settings Items */}
