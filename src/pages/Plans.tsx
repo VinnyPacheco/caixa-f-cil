@@ -33,19 +33,6 @@ const TESTIMONIALS = [
   },
 ];
 
-function formatDate(iso: string | null) {
-  if (!iso) return null;
-  try {
-    return new Date(iso).toLocaleDateString('pt-BR', {
-      day: '2-digit',
-      month: 'long',
-      year: 'numeric',
-    });
-  } catch {
-    return null;
-  }
-}
-
 export default function Plans() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
