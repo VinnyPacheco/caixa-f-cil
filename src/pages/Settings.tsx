@@ -22,6 +22,7 @@ export default function Settings() {
   const { displayName } = useProfile();
   const { isSimulation, enableSimulation, disableSimulation } = useSimulation();
   const { isInstallable, isInstalled, promptInstall, showIOSInstructions } = usePWAInstall();
+  const { planType, daysLeftInTrial, isTrialExpired, hasFullAccess } = useSubscription();
   
   const [fullName, setFullName] = useState('');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
