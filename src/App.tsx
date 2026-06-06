@@ -20,6 +20,7 @@ import Categories from "./pages/Categories";
 import ImportTransactions from "./pages/ImportTransactions";
 import Plans from "./pages/Plans";
 import Subscribe from "./pages/Subscribe";
+import Landing from "./pages/Landing";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -60,6 +61,18 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function RootRoute() {
+  const { user, isLoading } = useAuth();
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="size-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+  return user ? <Home /> : <Landing />;
+}
+
 // Component that runs auto-settle when user is authenticated
 function AutoSettleHandler() {
   useAutoSettle();
@@ -71,7 +84,9 @@ const AppRoutes = () => (
     <AutoSettleHandler />
     <Routes>
       <Route path="/auth" element={<PublicRoute><Auth /></PublicRoute>} />
-      <Route path="/" element={<ProtectedRoute><Home /></ProtectedRoute>} />
+      <Route path="/cadastro" element={<Navigate to="/auth?signup=1" replace />} />
+      <Route path="/" element={<RootRoute />} />
+      <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
       <Route path="/transactions" element={<ProtectedRoute><Transactions /></ProtectedRoute>} />
       <Route path="/new-transaction" element={<ProtectedRoute><NewTransaction /></ProtectedRoute>} />
       <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
