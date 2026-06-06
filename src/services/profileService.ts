@@ -38,8 +38,9 @@ export async function updateProfile(userId: string, updates: Partial<Pick<Profil
 
 export async function uploadAvatar(userId: string, file: File): Promise<string> {
   const fileExt = file.name.split('.').pop();
-  const fileName = `${userId}-${Date.now()}.${fileExt}`;
-  const filePath = `avatars/${fileName}`;
+  // Store inside a folder named after the user id so storage RLS can
+  // verify ownership via the folder prefix (auth.uid()/...).
+  const filePath = `${userId}/${Date.now()}.${fileExt}`;
 
   const { error: uploadError } = await supabase.storage
     .from('avatars')
