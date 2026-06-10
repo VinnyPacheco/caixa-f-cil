@@ -26,6 +26,7 @@ const navItems: NavItem[] = [
 const cadastrosSubmenu: SubMenuItem[] = [
   { path: '/accounts', icon: 'account_balance_wallet', label: 'Contas' },
   { path: '/categories', icon: 'category', label: 'Categorias' },
+  { path: '/metas', icon: 'flag', label: 'Metas' },
   { path: '/import-transactions', icon: 'upload_file', label: 'Importar' },
 ];
 
@@ -91,6 +92,7 @@ export function HeaderNav() {
       return (
         location.pathname === '/accounts' ||
         location.pathname === '/categories' ||
+        location.pathname === '/metas' ||
         location.pathname === '/import-transactions'
       );
     }
