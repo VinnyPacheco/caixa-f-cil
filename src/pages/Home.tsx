@@ -5,6 +5,7 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { Header } from '@/components/layout/Header';
 import { BalanceCard } from '@/components/finance/BalanceCard';
 import { TransactionItem } from '@/components/finance/TransactionItem';
+import { GoalsWidget } from '@/components/finance/GoalsWidget';
 import { useTransactions } from '@/hooks/useTransactions';
 import { useProfile } from '@/hooks/useProfile';
 import { useAuth } from '@/contexts/AuthContext';
@@ -95,6 +96,8 @@ export default function Home() {
           percentChange={percentChange}
           onViewStatement={() => navigate('/transactions')}
         />
+
+        <GoalsWidget referenceDate={selectedDate} limit={4} />
 
         <div className="flex items-center justify-between pt-2">
           <div className="flex items-center gap-2">

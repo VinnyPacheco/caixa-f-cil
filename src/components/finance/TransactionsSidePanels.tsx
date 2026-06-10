@@ -9,6 +9,7 @@ import { fetchTransactions, toggleTransactionPaid } from '@/services/transaction
 import { fetchAccounts } from '@/services/accountsService';
 import { fetchCategories } from '@/services/categoriesService';
 import { TransactionItem } from './TransactionItem';
+import { GoalsWidget } from './GoalsWidget';
 import { TransactionWithBalance } from '@/types/finance';
 import { formatCurrency } from '@/lib/format';
 import { Button } from '@/components/ui/button';
@@ -393,13 +394,8 @@ function AccountsBalanceContent({ selectedDate, filter }: { selectedDate: Date; 
   );
 }
 
-function GoalsContent() {
-  return (
-    <div className="flex flex-col items-center justify-center gap-2 py-8 text-center">
-      <Target className="h-8 w-8 text-muted-foreground/50" />
-      <p className="text-xs text-muted-foreground">Metas em breve</p>
-    </div>
-  );
+function GoalsContent({ selectedDate }: { selectedDate: Date }) {
+  return <GoalsWidget referenceDate={selectedDate} variant="panel" limit={5} />;
 }
 
 export function LeftSidePanel({
@@ -439,7 +435,7 @@ export function RightSidePanel({
       topContent={<AccountsBalanceContent selectedDate={selectedDate} filter={accountFilter} />}
       bottomTitle="Metas"
       bottomIcon={<Target className="h-4 w-4 text-accent" />}
-      bottomContent={<GoalsContent />}
+      bottomContent={<GoalsContent selectedDate={selectedDate} />}
     />
   );
 }
