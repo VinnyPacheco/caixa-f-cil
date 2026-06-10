@@ -98,6 +98,63 @@ export type Database = {
         }
         Relationships: []
       }
+      goals: {
+        Row: {
+          account_id: string | null
+          category_id: string | null
+          created_at: string
+          goal_type: string
+          id: string
+          name: string
+          notes: string | null
+          start_month: string | null
+          target_amount: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          account_id?: string | null
+          category_id?: string | null
+          created_at?: string
+          goal_type: string
+          id?: string
+          name: string
+          notes?: string | null
+          start_month?: string | null
+          target_amount: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          account_id?: string | null
+          category_id?: string | null
+          created_at?: string
+          goal_type?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          start_month?: string | null
+          target_amount?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "goals_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "goals_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       monthly_balances: {
         Row: {
           account_id: string
