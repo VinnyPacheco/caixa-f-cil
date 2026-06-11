@@ -22,6 +22,8 @@ import Plans from "./pages/Plans";
 import Subscribe from "./pages/Subscribe";
 import Landing from "./pages/Landing";
 import Goals from "./pages/Goals";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -86,6 +88,8 @@ const AppRoutes = () => (
     <Routes>
       <Route path="/auth" element={<PublicRoute><Auth /></PublicRoute>} />
       <Route path="/cadastro" element={<Navigate to="/auth?signup=1" replace />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/" element={<RootRoute />} />
       <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
       <Route path="/transactions" element={<ProtectedRoute><Transactions /></ProtectedRoute>} />
