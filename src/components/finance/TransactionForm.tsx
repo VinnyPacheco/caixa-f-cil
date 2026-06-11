@@ -254,14 +254,14 @@ export function TransactionForm({
 
         <div className="flex flex-col gap-5 py-4">
           {/* Type Toggle */}
-          <div className="grid grid-cols-2 gap-2 bg-secondary p-1.5 rounded-full">
+          <div className="grid grid-cols-2 gap-2 bg-card p-1.5 rounded-full shadow-sm border border-border/50">
             <button
               type="button"
               onClick={() => setType('expense')}
               className={`flex items-center justify-center gap-2 py-2.5 rounded-full font-bold text-sm transition-all ${
                 type === 'expense'
                   ? 'bg-destructive/10 text-destructive shadow-sm border border-destructive/20'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
               }`}
             >
               <span className="material-symbols-outlined text-[18px]">arrow_downward</span>
@@ -273,7 +273,7 @@ export function TransactionForm({
               className={`flex items-center justify-center gap-2 py-2.5 rounded-full font-bold text-sm transition-all ${
                 type === 'income'
                   ? 'bg-success/10 text-success shadow-sm border border-success/20'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
               }`}
             >
               <span className="material-symbols-outlined text-[18px]">arrow_upward</span>
@@ -282,228 +282,218 @@ export function TransactionForm({
           </div>
 
           {/* Amount Input */}
-          <div className="flex flex-col items-center justify-center py-2">
+          <div className="flex flex-col items-center justify-center py-4">
             <p className="text-muted-foreground text-sm font-medium mb-1">Valor do lançamento</p>
             <div className="flex items-center justify-center w-full">
-              <span className={`text-2xl font-bold mr-1 self-center pb-1 ${type === 'expense' ? 'text-destructive' : 'text-success'}`}>R$</span>
+              <span className={`text-3xl font-bold mr-1 self-center pb-1 ${type === 'expense' ? 'text-destructive' : 'text-success'}`}>R$</span>
               <input
                 type="text"
                 inputMode="decimal"
                 value={formatAmountDisplay(amountCents)}
                 onChange={handleAmountChange}
-                className={`w-full max-w-[200px] bg-transparent border-none p-0 text-4xl font-bold text-center focus:ring-0 focus:outline-none leading-tight cursor-text ${type === 'expense' ? 'text-destructive' : 'text-success'}`}
+                className={`w-full max-w-[280px] bg-transparent border-none p-0 text-5xl font-bold text-center focus:ring-0 focus:outline-none leading-tight cursor-text ${type === 'expense' ? 'text-destructive' : 'text-success'}`}
               />
             </div>
           </div>
 
-          {/* Description */}
-          <div className="space-y-2">
-            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">
-              Descrição
-            </label>
-            <div className="flex items-center gap-3 bg-secondary p-4 rounded-xl">
-              <span className="material-symbols-outlined text-muted-foreground">edit</span>
-              <input
-                type="text"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Ex: Compras no mercado"
-                className="w-full bg-transparent border-none p-0 focus:ring-0 focus:outline-none text-foreground placeholder-muted-foreground text-base font-medium"
-              />
-            </div>
-          </div>
+          {/* Form Fields */}
+          <div className="flex flex-col gap-5 bg-card p-6 rounded-3xl shadow-sm border border-border/50">
+            {/* Description + Category + Account (left) and Date (right) on md+ */}
+            <div className="flex flex-col md:flex-row md:gap-4">
+              {/* Description, Category and Account - stacked on left */}
+              <div className="flex flex-col gap-4 md:flex-1">
+                {/* Description */}
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">
+                    Descrição
+                  </label>
+                  <div className="input-gold p-4">
+                    <div className="flex items-center gap-3">
+                      <span className="material-symbols-outlined text-muted-foreground">edit</span>
+                      <input
+                        type="text"
+                        value={description}
+                        onChange={(e) => setDescription(e.target.value)}
+                        placeholder="Ex: Compras no mercado"
+                        className="w-full bg-transparent border-none p-0 focus:ring-0 focus:outline-none text-foreground placeholder-muted-foreground text-base font-medium"
+                      />
+                    </div>
+                  </div>
+                </div>
 
-          {/* Date + Category + Account
-              Mobile: stacked. Tablet/Web: Category+Account on left, Date on right */}
-          <div className="flex flex-col md:flex-row md:gap-4">
-            {/* Category and Account - left side on tablet/web */}
-            <div className="flex flex-col gap-4 md:flex-1">
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">
-                  Categoria
-                </label>
-                <div className="bg-secondary p-4 rounded-xl">
-                  <select
-                    value={categoryId}
-                    onChange={(e) => setCategoryId(e.target.value)}
-                    className="w-full bg-transparent border-none p-0 focus:ring-0 focus:outline-none text-foreground text-sm font-medium appearance-none cursor-pointer"
-                  >
-                    <option value="">Selecione</option>
-                    {filteredCategories.map((cat) => (
-                      <option key={cat.id} value={cat.id}>
-                        {cat.name}
-                      </option>
-                    ))}
-                  </select>
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">
+                    Categoria
+                  </label>
+                  <div className="input-gold p-4">
+                    <select
+                      value={categoryId}
+                      onChange={(e) => setCategoryId(e.target.value)}
+                      className="w-full bg-transparent border-none p-0 focus:ring-0 focus:outline-none text-foreground text-base font-medium appearance-none cursor-pointer"
+                    >
+                      <option value="">Selecione</option>
+                      {filteredCategories.map((cat) => (
+                        <option key={cat.id} value={cat.id}>
+                          {cat.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">
+                    Conta
+                  </label>
+                  <div className="input-gold p-4">
+                    <select
+                      value={accountId}
+                      onChange={(e) => setAccountId(e.target.value)}
+                      className="w-full bg-transparent border-none p-0 focus:ring-0 focus:outline-none text-foreground text-base font-medium appearance-none cursor-pointer"
+                    >
+                      <option value="">Selecione</option>
+                      {accounts.map((acc) => (
+                        <option key={acc.id} value={acc.id}>
+                          {acc.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
               </div>
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">
-                  Conta
+
+              {/* Date - right on md+, below on mobile */}
+              <div className="space-y-2 mt-4 md:mt-0 md:flex-1">
+                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider block text-center">
+                  Data
                 </label>
-                <div className="bg-secondary p-4 rounded-xl">
-                  <select
-                    value={accountId}
-                    onChange={(e) => setAccountId(e.target.value)}
-                    className="w-full bg-transparent border-none p-0 focus:ring-0 focus:outline-none text-foreground text-sm font-medium appearance-none cursor-pointer"
-                  >
-                    {accounts.map((acc) => (
-                      <option key={acc.id} value={acc.id}>
-                        {acc.name}
-                      </option>
-                    ))}
-                  </select>
+                <div className="flex justify-center">
+                  <Calendar
+                    mode="single"
+                    selected={date}
+                    onSelect={(d) => d && setDate(d)}
+                    month={calendarMonth}
+                    onMonthChange={setCalendarMonth}
+                    locale={ptBR}
+                    className="rounded-xl border border-border/50 bg-card p-3 pointer-events-auto"
+                  />
                 </div>
               </div>
             </div>
 
-            {/* Date - right side on tablet/web, below on mobile */}
-            <div className="space-y-2 mt-4 md:mt-0 md:flex-1">
+            {/* Número de Parcelas */}
+            <div className="space-y-2">
               <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">
-                Data
+                Número de Parcelas
               </label>
-              <div className="flex justify-center bg-secondary p-3 rounded-xl">
-                <Calendar
-                  mode="single"
-                  selected={date}
-                  onSelect={(d) => d && setDate(d)}
-                  month={calendarMonth}
-                  onMonthChange={setCalendarMonth}
-                  locale={ptBR}
-                  className="rounded-md pointer-events-auto"
-                />
+              {isEditing ? (
+                <div className="bg-secondary/50 p-4 rounded-xl">
+                  <span className="text-foreground text-sm font-medium">
+                    {installmentCount}x
+                  </span>
+                </div>
+              ) : (
+                <div className="grid grid-cols-6 gap-2">
+                  {['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'].map((count) => (
+                    <button
+                      key={count}
+                      type="button"
+                      onClick={() => setInstallmentCount(count)}
+                      className={`py-3 px-2 rounded-xl font-semibold text-sm transition-all ${
+                        installmentCount === count
+                          ? 'bg-accent text-accent-foreground shadow-sm'
+                          : 'bg-secondary text-muted-foreground hover:bg-muted'
+                      }`}
+                    >
+                      {count}x
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Auto Settle + Notes side by side on md+ */}
+            <div className="flex flex-col md:flex-row md:gap-4 md:items-stretch">
+              <div className="flex flex-col gap-3 bg-secondary p-4 rounded-2xl md:flex-1">
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setAutoSettle(!autoSettle)}
+                    className={`p-2 rounded-full transition-colors ${autoSettle ? 'bg-accent/20 text-accent' : 'bg-muted text-muted-foreground'}`}
+                    title={autoSettle ? 'Desativar Baixa Automática' : 'Ativar Baixa Automática'}
+                  >
+                    <CalendarCheck className="w-5 h-5" />
+                  </button>
+                  <span className="text-base font-semibold text-foreground">Baixa Automática</span>
+                </div>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Quando ativada, este lançamento será marcado como <span className="font-semibold">Pago/Recebido</span> automaticamente no dia seguinte à sua data prevista.
+                </p>
+              </div>
+
+              <div className="space-y-2 mt-4 md:mt-0 md:flex-1">
+                <div className="flex items-center justify-between ml-1">
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                    Observações
+                  </label>
+                  {notes && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(notes);
+                        toast({
+                          title: 'Copiado!',
+                          description: 'Observações copiadas para a área de transferência.',
+                        });
+                      }}
+                      className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                      title="Copiar observações"
+                    >
+                      <Copy className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+                <div className="input-gold p-4 h-full">
+                  <textarea
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder="Adicione observações sobre este lançamento..."
+                    rows={3}
+                    className="w-full bg-transparent border-none p-0 focus:ring-0 focus:outline-none text-foreground placeholder-muted-foreground text-sm font-medium resize-none"
+                  />
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Installment Count - Always visible */}
-          <div className="space-y-2">
-            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">
-              Número de Parcelas
-            </label>
-            {isEditing ? (
-              <div className="bg-secondary/50 p-4 rounded-xl">
-                <span className="text-foreground text-sm font-medium">
-                  {installmentCount}x
-                </span>
-              </div>
-            ) : (
-              <div className="grid grid-cols-6 gap-2">
-                {['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'].map((count) => (
-                  <button
-                    key={count}
-                    type="button"
-                    onClick={() => setInstallmentCount(count)}
-                    className={`py-3 px-2 rounded-xl font-semibold text-sm transition-all ${
-                      installmentCount === count
-                        ? 'bg-accent text-accent-foreground shadow-sm'
-                        : 'bg-secondary text-muted-foreground hover:bg-muted'
-                    }`}
-                  >
-                    {count}x
-                  </button>
-                ))}
-              </div>
-            )}
-            {!isEditing && (
-              <div className="flex items-center gap-3 bg-secondary p-4 rounded-xl mt-2">
-                <span className="material-symbols-outlined text-muted-foreground">format_list_numbered</span>
-                <input
-                  type="number"
-                  min="1"
-                  max="60"
-                  value={installmentCount}
-                  onChange={(e) => setInstallmentCount(e.target.value)}
-                  placeholder="Ou digite..."
-                  className="w-full bg-transparent border-none p-0 focus:ring-0 focus:outline-none text-foreground placeholder-muted-foreground text-base font-medium"
-                />
-                <span className="text-muted-foreground text-sm">parcelas</span>
-              </div>
-            )}
-          </div>
-
-          {/* Auto Settle + Notes side by side on tablet/web, stacked on mobile */}
-          <div className="flex flex-col md:flex-row md:gap-4 md:items-stretch">
-            {/* Auto Settle Toggle - left on tablet/web */}
-            <div className="flex flex-col gap-3 bg-secondary p-4 rounded-2xl md:flex-1">
+            {/* Paid Status Toggle */}
+            <div className="flex items-center justify-between bg-secondary p-4 rounded-2xl">
               <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => setAutoSettle(!autoSettle)}
-                  className={`p-2 rounded-full transition-colors ${autoSettle ? 'bg-accent/20 text-accent' : 'bg-muted text-muted-foreground'}`}
-                  title={autoSettle ? 'Desativar Baixa Automática' : 'Ativar Baixa Automática'}
-                >
-                  <CalendarCheck className="w-5 h-5" />
-                </button>
-                <span className="text-base font-semibold text-foreground">Baixa Automática</span>
+                <div className="p-2 rounded-full bg-card text-accent">
+                  <span className="material-symbols-outlined text-[20px]">task_alt</span>
+                </div>
+                <span className="text-base font-semibold text-foreground">Pago/Recebido</span>
               </div>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                Quando ativada, este lançamento será marcado como <span className="font-semibold">Pago/Recebido</span> automaticamente no dia seguinte à sua data prevista.
-              </p>
-            </div>
-
-            {/* Notes - right on tablet/web, below on mobile */}
-            <div className="space-y-2 mt-4 md:mt-0 md:flex-1">
-              <div className="flex items-center justify-between ml-1">
-                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-                  Observações
-                </label>
-                {notes && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      navigator.clipboard.writeText(notes);
-                      toast({
-                        title: 'Copiado!',
-                        description: 'Observações copiadas para a área de transferência.',
-                      });
-                    }}
-                    className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                    title="Copiar observações"
-                  >
-                    <Copy className="w-4 h-4" />
-                  </button>
-                )}
-              </div>
-              <div className="bg-secondary p-4 rounded-xl h-full">
-                <textarea
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Adicione observações sobre este lançamento..."
-                  rows={3}
-                  className="w-full bg-transparent border-none p-0 focus:ring-0 focus:outline-none text-foreground placeholder-muted-foreground text-sm font-medium resize-none"
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={isPaid}
+                  onChange={(e) => setIsPaid(e.target.checked)}
+                  className="sr-only peer"
                 />
-              </div>
+                <div className="w-11 h-6 bg-muted peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-border after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent"></div>
+              </label>
             </div>
+
+            {/* Tags */}
+            <TagSelector
+              selectedTags={selectedTags}
+              availableTags={availableTags}
+              onAddTag={handleAddTag}
+              onRemoveTag={handleRemoveTag}
+              onCreateTag={handleCreateTag}
+            />
           </div>
 
-          {/* Paid Status Toggle */}
-          <div className="flex items-center justify-between bg-secondary p-4 rounded-2xl">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-full bg-card text-accent">
-                <span className="material-symbols-outlined text-[20px]">task_alt</span>
-              </div>
-              <span className="text-base font-semibold text-foreground">Pago/Recebido</span>
-            </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={isPaid}
-                onChange={(e) => setIsPaid(e.target.checked)}
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-muted peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-border after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent"></div>
-            </label>
-          </div>
-
-          {/* Tags */}
-          <TagSelector
-            selectedTags={selectedTags}
-            availableTags={availableTags}
-            onAddTag={handleAddTag}
-            onRemoveTag={handleRemoveTag}
-            onCreateTag={handleCreateTag}
-          />
 
           {/* Submit Button */}
           <button
