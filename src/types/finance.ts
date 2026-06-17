@@ -14,6 +14,8 @@ export interface Account {
   dueDay?: number | null;
   statementClosingDay?: number | null;
   creditLimit?: number | null;
+  /** Account ID where the credit card invoice is debited (required for credit_card type). */
+  creditCardDebitAccountId?: string | null;
 }
 
 export interface Category {
@@ -46,6 +48,10 @@ export interface Transaction {
   startDate?: string;
   // End date for recurring transactions (when "this and future" is used)
   endDate?: string;
+  /** Synthetic virtual row: monthly credit-card invoice payment in the debit account. */
+  isCreditCardInvoice?: boolean;
+  /** ID of the credit-card account this invoice belongs to (when isCreditCardInvoice = true). */
+  creditCardId?: string;
 }
 
 export interface MonthlyBalance {
