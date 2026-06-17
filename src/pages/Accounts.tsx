@@ -6,7 +6,8 @@ import { useProfile } from '@/hooks/useProfile';
 import { Account, AccountType } from '@/types/finance';
 import { Button } from '@/components/ui/button';
 import { AccountForm } from '@/components/finance/AccountForm';
-import { Plus } from 'lucide-react';
+import { Plus, Receipt } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 const accountTypeLabels: Record<AccountType, string> = {
   checking: 'Conta Corrente',
@@ -79,38 +80,54 @@ export default function Accounts() {
 
           <div className="bg-card rounded-2xl border border-border/50 overflow-hidden divide-y divide-border/50">
             {accounts.map((account) => (
-              <button
-                key={account.id}
-                onClick={() => handleEditAccount(account)}
-                className="w-full flex items-center gap-4 p-4 hover:bg-secondary/50 transition-colors"
-              >
-                <div
-                  className="size-12 rounded-xl flex items-center justify-center"
-                  style={{ backgroundColor: `${account.color}20` }}
+              <div key={account.id} className="flex items-center hover:bg-secondary/50 transition-colors">
+                <button
+                  onClick={() => handleEditAccount(account)}
+                  className="flex-1 flex items-center gap-4 p-4 text-left"
                 >
-                  <span
-                    className="material-symbols-outlined"
-                    style={{ color: account.color }}
+                  <div
+                    className="size-12 rounded-xl flex items-center justify-center"
+                    style={{ backgroundColor: `${account.color}20` }}
                   >
-                    {account.icon || accountTypeIcons[account.type]}
-                  </span>
-                </div>
-                <div className="flex-1 text-left">
-                  <p className="font-semibold text-foreground">{account.name}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {accountTypeLabels[account.type]}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="font-bold text-foreground">
-                    {formatCurrency(account.initialBalance)}
-                  </p>
-                  <p className="text-xs text-muted-foreground">Saldo inicial</p>
-                </div>
-                <span className="material-symbols-outlined text-muted-foreground">
-                  chevron_right
-                </span>
-              </button>
+                    <span
+                      className="material-symbols-outlined"
+                      style={{ color: account.color }}
+                    >
+                      {account.icon || accountTypeIcons[account.type]}
+                    </span>
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-semibold text-foreground">{account.name}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {accountTypeLabels[account.type]}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-bold text-foreground">
+                      {formatCurrency(account.initialBalance)}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {account.type === 'credit_card' ? 'Saldo inicial fatura' : 'Saldo inicial'}
+                    </p>
+                  </div>
+                </button>
+                {account.type === 'credit_card' && (
+                  <Link
+                    to={`/cartoes/${account.id}`}
+                    className="px-3 text-accent hover:text-accent/80"
+                    title="Ver faturas"
+                  >
+                    <Receipt className="size-5" />
+                  </Link>
+                )}
+                <button
+                  onClick={() => handleEditAccount(account)}
+                  className="pr-4 text-muted-foreground"
+                  aria-label="Editar conta"
+                >
+                  <span className="material-symbols-outlined">chevron_right</span>
+                </button>
+              </div>
             ))}
           </div>
         </div>
@@ -140,6 +157,7 @@ export default function Accounts() {
         onOpenChange={setFormOpen}
         account={editingAccount}
         onSave={handleSaveAccount}
+        allAccounts={accounts}
       />
     </AppLayout>
   );

@@ -21,34 +21,42 @@ import { useToast } from '@/hooks/use-toast';
 import { calculateRunningBalances } from '@/lib/format';
 import { FilterType } from '@/components/finance/FilterPills';
 import { format, startOfMonth, endOfMonth, isWithinInterval, parseISO, addMonths, isBefore } from 'date-fns';
+import { buildInvoiceTransactions, toggleInvoicePaid } from '@/lib/creditCard';
 import { useState } from 'react';
 import { RecurringUpdateAction } from '@/components/finance/TransactionForm';
 
-// Helper function to get transactions for a specific month (all are real DB records now)
+// Helper: filter (real + invoice) transactions to a month and compute running balance.
+// CC-account real txs are kept in the list for display but do NOT contribute to balance.
 function getTransactionsForMonth(
   transactions: Transaction[],
+  invoiceTxs: Transaction[],
   targetDate: Date,
   categories: Category[],
   accounts: Account[],
-  openingBalance: number
+  openingBalance: number,
+  ccAccountIds: Set<string>,
 ): TransactionWithBalance[] {
   const start = startOfMonth(targetDate);
   const end = endOfMonth(targetDate);
 
-  const monthTransactions = transactions.filter((t) => {
-    const transactionDate = parseISO(t.date);
-    return isWithinInterval(transactionDate, { start, end });
-  });
+  const monthReal = transactions.filter((t) =>
+    isWithinInterval(parseISO(t.date), { start, end }),
+  );
+  const monthInvoices = invoiceTxs.filter((t) =>
+    isWithinInterval(parseISO(t.date), { start, end }),
+  );
 
-  // Add category and account info
-  const withRelations = monthTransactions.map((t) => ({
+  const withRelations = [...monthReal, ...monthInvoices].map((t) => ({
     ...t,
     category: categories.find((c) => c.id === t.categoryId),
     account: accounts.find((a) => a.id === t.accountId),
     runningBalance: 0,
   }));
 
-  return calculateRunningBalances(withRelations, openingBalance);
+  const balanceItems = withRelations.filter((t) => !ccAccountIds.has(t.accountId));
+  const ccItems = withRelations.filter((t) => ccAccountIds.has(t.accountId));
+  const balanced = calculateRunningBalances(balanceItems, openingBalance);
+  return [...balanced, ...ccItems];
 }
 
 export interface MonthData {
@@ -91,9 +99,21 @@ export function useMultiMonthTransactions(selectedDate: Date, additionalMonths: 
   const accounts = accountsQuery.data || [];
   const categories = categoriesQuery.data || [];
 
-  // Calculate opening balance from accounts
+  const ccAccountIds = useMemo(
+    () => new Set(accounts.filter((a) => a.type === 'credit_card').map((a) => a.id)),
+    [accounts],
+  );
+
+  const invoiceTransactions = useMemo(
+    () => buildInvoiceTransactions(transactions, accounts),
+    [transactions, accounts],
+  );
+
+  // Calculate opening balance from accounts (credit cards excluded).
   const openingBalance = useMemo(() => {
-    return accounts.reduce((sum, acc) => sum + acc.initialBalance, 0);
+    return accounts
+      .filter((a) => a.type !== 'credit_card')
+      .reduce((sum, acc) => sum + acc.initialBalance, 0);
   }, [accounts]);
 
   // Helper to calculate month summary
@@ -101,12 +121,21 @@ export function useMultiMonthTransactions(selectedDate: Date, additionalMonths: 
     monthDate: Date,
     monthOpeningBalance: number
   ): { expanded: TransactionWithBalance[]; summary: MonthSummary } => {
-    const expanded = getTransactionsForMonth(transactions, monthDate, categories, accounts, monthOpeningBalance);
-    
-    const totalIncome = expanded
+    const expanded = getTransactionsForMonth(
+      transactions,
+      invoiceTransactions,
+      monthDate,
+      categories,
+      accounts,
+      monthOpeningBalance,
+      ccAccountIds,
+    );
+
+    const cashTxs = expanded.filter((t) => !ccAccountIds.has(t.accountId));
+    const totalIncome = cashTxs
       .filter((t) => t.type === 'income')
       .reduce((sum, t) => sum + t.amount, 0);
-    const totalExpense = expanded
+    const totalExpense = cashTxs
       .filter((t) => t.type === 'expense')
       .reduce((sum, t) => sum + t.amount, 0);
     const closingBalance = monthOpeningBalance + totalIncome - totalExpense;
@@ -121,7 +150,7 @@ export function useMultiMonthTransactions(selectedDate: Date, additionalMonths: 
         closingBalance,
       },
     };
-  }, [transactions, categories, accounts]);
+  }, [transactions, invoiceTransactions, categories, accounts, ccAccountIds]);
 
   // Generate data for multiple months with cascading balances
   const monthsData = useMemo(() => {
@@ -130,9 +159,13 @@ export function useMultiMonthTransactions(selectedDate: Date, additionalMonths: 
     // Calculate the opening balance for the selected month
     let currentOpeningBalance = openingBalance;
     const selectedMonthStart = startOfMonth(selectedDate);
-    
-    // Sum all transactions before the selected month
-    transactions.forEach((t) => {
+
+    // Sum all cash transactions + virtual invoices that occur before the selected month.
+    const priorCash = [
+      ...transactions.filter((t) => !ccAccountIds.has(t.accountId)),
+      ...invoiceTransactions,
+    ];
+    priorCash.forEach((t) => {
       const transactionDate = parseISO(t.date);
       if (isBefore(transactionDate, selectedMonthStart)) {
         currentOpeningBalance += t.type === 'income' ? t.amount : -t.amount;
@@ -175,7 +208,7 @@ export function useMultiMonthTransactions(selectedDate: Date, additionalMonths: 
     }
 
     return result;
-  }, [selectedDate, additionalMonths, transactions, filter, openingBalance, calculateMonthSummary]);
+  }, [selectedDate, additionalMonths, transactions, invoiceTransactions, ccAccountIds, filter, openingBalance, calculateMonthSummary]);
 
   // Mutations
   const createMutation = useMutation({
@@ -292,11 +325,16 @@ export function useMultiMonthTransactions(selectedDate: Date, additionalMonths: 
 
   // Toggle paid status
   const togglePaid = useCallback((id: string) => {
+    if (id.startsWith('invoice:')) {
+      toggleInvoicePaid(id);
+      queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      return;
+    }
     const transaction = transactions.find(t => t.id === id);
     if (transaction) {
       togglePaidMutation.mutate({ id, isPaid: !transaction.isPaid });
     }
-  }, [transactions, togglePaidMutation]);
+  }, [transactions, togglePaidMutation, queryClient]);
 
   // Add new transaction with optional tags
   const addTransaction = useCallback(async (transaction: Omit<Transaction, 'id' | 'orderIndex'>, tagIds?: string[]) => {

@@ -24,6 +24,8 @@ interface AccountFormProps {
   onOpenChange: (open: boolean) => void;
   account?: Account | null;
   onSave: (account: Omit<Account, 'id'> & { id?: string }) => void;
+  /** All accounts (used to pick the debit account for credit cards). */
+  allAccounts?: Account[];
 }
 
 const accountTypes: { value: AccountType; label: string }[] = [
@@ -57,7 +59,7 @@ const accountColors = [
   '#64748B', // Gray
 ];
 
-export function AccountForm({ open, onOpenChange, account, onSave }: AccountFormProps) {
+export function AccountForm({ open, onOpenChange, account, onSave, allAccounts = [] }: AccountFormProps) {
   const [name, setName] = useState('');
   const [type, setType] = useState<AccountType>('checking');
   const [initialBalance, setInitialBalance] = useState('');
@@ -68,6 +70,7 @@ export function AccountForm({ open, onOpenChange, account, onSave }: AccountForm
   const [dueDay, setDueDay] = useState('');
   const [statementClosingDay, setStatementClosingDay] = useState('');
   const [creditLimit, setCreditLimit] = useState('');
+  const [debitAccountId, setDebitAccountId] = useState<string>('');
 
   const isEditing = !!account;
   const isCreditCard = type === 'credit_card';
@@ -83,6 +86,7 @@ export function AccountForm({ open, onOpenChange, account, onSave }: AccountForm
       setDueDay(account.dueDay != null ? account.dueDay.toString() : '');
       setStatementClosingDay(account.statementClosingDay != null ? account.statementClosingDay.toString() : '');
       setCreditLimit(account.creditLimit != null ? account.creditLimit.toString() : '');
+      setDebitAccountId(account.creditCardDebitAccountId ?? '');
     } else {
       setName('');
       setType('checking');
@@ -93,12 +97,18 @@ export function AccountForm({ open, onOpenChange, account, onSave }: AccountForm
       setDueDay('');
       setStatementClosingDay('');
       setCreditLimit('');
+      setDebitAccountId('');
     }
   }, [account, open]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
+    if (type === 'credit_card' && !debitAccountId) {
+      // Browser validation will fire on the select, but guard here too.
+      return;
+    }
+
     onSave({
       ...(account?.id && { id: account.id }),
       name: name.trim(),
@@ -110,10 +120,15 @@ export function AccountForm({ open, onOpenChange, account, onSave }: AccountForm
       dueDay: isCreditCard && dueDay ? parseInt(dueDay) : null,
       statementClosingDay: isCreditCard && statementClosingDay ? parseInt(statementClosingDay) : null,
       creditLimit: isCreditCard && creditLimit ? parseFloat(creditLimit) : null,
+      creditCardDebitAccountId: isCreditCard ? debitAccountId : null,
     });
     
     onOpenChange(false);
   };
+
+  const debitAccountOptions = allAccounts.filter(
+    a => a.type !== 'credit_card' && a.id !== account?.id,
+  );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -204,6 +219,32 @@ export function AccountForm({ open, onOpenChange, account, onSave }: AccountForm
                   onChange={(e) => setCreditLimit(e.target.value)}
                   placeholder="0,00"
                 />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="debitAccount">
+                  Conta para débito da fatura <span className="text-destructive">*</span>
+                </Label>
+                <Select value={debitAccountId} onValueChange={setDebitAccountId}>
+                  <SelectTrigger id="debitAccount">
+                    <SelectValue placeholder="Selecione a conta" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-card border border-border z-50">
+                    {debitAccountOptions.length === 0 && (
+                      <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                        Crie uma conta corrente antes de configurar o cartão.
+                      </div>
+                    )}
+                    {debitAccountOptions.map((a) => (
+                      <SelectItem key={a.id} value={a.id}>
+                        {a.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Conta onde a fatura mensal será debitada no dia de vencimento.
+                </p>
               </div>
             </div>
           )}

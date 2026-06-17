@@ -18,6 +18,7 @@ export type Database = {
         Row: {
           color: string
           created_at: string
+          credit_card_debit_account_id: string | null
           credit_limit: number | null
           due_day: number | null
           icon: string
@@ -33,6 +34,7 @@ export type Database = {
         Insert: {
           color?: string
           created_at?: string
+          credit_card_debit_account_id?: string | null
           credit_limit?: number | null
           due_day?: number | null
           icon?: string
@@ -48,6 +50,7 @@ export type Database = {
         Update: {
           color?: string
           created_at?: string
+          credit_card_debit_account_id?: string | null
           credit_limit?: number | null
           due_day?: number | null
           icon?: string
@@ -60,7 +63,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "accounts_credit_card_debit_account_id_fkey"
+            columns: ["credit_card_debit_account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       categories: {
         Row: {

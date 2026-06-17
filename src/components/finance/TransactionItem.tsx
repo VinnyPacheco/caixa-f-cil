@@ -8,7 +8,7 @@ import { differenceInDays, format, parseISO, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { TagDots } from './TagSelector';
-import { CalendarCheck } from 'lucide-react';
+import { CalendarCheck, CreditCard, Receipt } from 'lucide-react';
 
 type DueStatus = 'overdue' | 'due-soon' | 'normal';
 
@@ -42,6 +42,9 @@ export const TransactionItem = forwardRef<HTMLDivElement, TransactionItemProps>(
     const isIncome = transaction.type === 'income';
     const category = transaction.category;
     const dueStatus = getDueStatus(transaction);
+    const isCardTx = transaction.account?.type === 'credit_card';
+    const isInvoice = !!transaction.isCreditCardInvoice;
+    const hideBalance = isCardTx; // CC-account purchases don't affect running balance
 
     return (
       <div
@@ -52,6 +55,7 @@ export const TransactionItem = forwardRef<HTMLDivElement, TransactionItemProps>(
           isReadOnly && "opacity-75",
           dueStatus === 'overdue' && "border-l-4 border-l-destructive",
           dueStatus === 'due-soon' && "border-l-4 border-l-amber-500",
+          isInvoice && "bg-accent/5 border-l-4 border-l-accent",
         )}
         onClick={!isReadOnly ? onClick : undefined}
       >
@@ -91,6 +95,7 @@ export const TransactionItem = forwardRef<HTMLDivElement, TransactionItemProps>(
         {/* Middle: description + category */}
         <div className="flex flex-col justify-center flex-1 min-w-0">
           <div className="flex items-center gap-1.5">
+            {isInvoice && <Receipt className="w-3.5 h-3.5 text-accent shrink-0" />}
             <p className="text-foreground text-sm font-bold line-clamp-1">
               {transaction.description}
             </p>
@@ -98,9 +103,15 @@ export const TransactionItem = forwardRef<HTMLDivElement, TransactionItemProps>(
             {transaction.autoSettle && (
               <span title="Baixa Automática ativa"><CalendarCheck className="w-3.5 h-3.5 text-accent shrink-0" /></span>
             )}
+            {isCardTx && !isInvoice && (
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-secondary text-muted-foreground shrink-0">
+                <CreditCard className="w-3 h-3" />
+                {transaction.account?.name || 'Cartão'}
+              </span>
+            )}
           </div>
           <p className="text-muted-foreground text-xs font-normal">
-            {category?.name || 'Sem categoria'}
+            {isInvoice ? 'Fatura do cartão' : (category?.name || 'Sem categoria')}
           </p>
           {showDate && (
             <p className="text-muted-foreground text-xs font-normal mt-0.5">
@@ -115,10 +126,13 @@ export const TransactionItem = forwardRef<HTMLDivElement, TransactionItemProps>(
             {isIncome ? '+ ' : '- '}
             {formatCurrency(transaction.amount)}
           </p>
-          {showBalance && (
+          {showBalance && !hideBalance && (
             <p className="text-xs text-muted-foreground">
               Saldo: <span className={transaction.runningBalance < 0 ? "text-destructive" : ""}>{formatCurrency(transaction.runningBalance)}</span>
             </p>
+          )}
+          {hideBalance && (
+            <p className="text-[10px] text-muted-foreground/60 italic">Na fatura</p>
           )}
         </div>
       </div>
@@ -155,6 +169,9 @@ export function SortableTransactionItem({
   const isIncome = transaction.type === 'income';
   const category = transaction.category;
   const dueStatus = getDueStatus(transaction);
+  const isCardTx = transaction.account?.type === 'credit_card';
+  const isInvoice = !!transaction.isCreditCardInvoice;
+  const hideBalance = isCardTx;
 
   return (
     <div
@@ -165,6 +182,7 @@ export function SortableTransactionItem({
         isDragging ? 'shadow-xl scale-[1.02]' : '',
         dueStatus === 'overdue' && "border-l-4 border-l-destructive",
         dueStatus === 'due-soon' && "border-l-4 border-l-amber-500",
+        isInvoice && "bg-accent/5 border-l-4 border-l-accent",
       )}
       onClick={onClick}
     >
@@ -193,6 +211,7 @@ export function SortableTransactionItem({
         {/* Middle: description + category */}
         <div className="flex flex-col justify-center flex-1 min-w-0">
           <div className="flex items-center gap-1.5">
+            {isInvoice && <Receipt className="w-3.5 h-3.5 text-accent shrink-0" />}
             <p className="text-foreground text-sm font-bold line-clamp-1">
               {transaction.description}
             </p>
@@ -200,9 +219,15 @@ export function SortableTransactionItem({
             {transaction.autoSettle && (
               <span title="Baixa Automática ativa"><CalendarCheck className="w-3.5 h-3.5 text-accent shrink-0" /></span>
             )}
+            {isCardTx && !isInvoice && (
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-secondary text-muted-foreground shrink-0">
+                <CreditCard className="w-3 h-3" />
+                {transaction.account?.name || 'Cartão'}
+              </span>
+            )}
           </div>
           <p className="text-muted-foreground text-xs font-normal">
-            {category?.name || 'Sem categoria'}
+            {isInvoice ? 'Fatura do cartão' : (category?.name || 'Sem categoria')}
           </p>
         </div>
       
@@ -212,10 +237,13 @@ export function SortableTransactionItem({
           {isIncome ? '+ ' : '- '}
           {formatCurrency(transaction.amount)}
         </p>
-        {showBalance && (
+        {showBalance && !hideBalance && (
             <p className="text-xs text-muted-foreground">
               Saldo: <span className={transaction.runningBalance < 0 ? "text-destructive" : ""}>{formatCurrency(transaction.runningBalance)}</span>
             </p>
+        )}
+        {hideBalance && (
+          <p className="text-[10px] text-muted-foreground/60 italic">Na fatura</p>
         )}
       </div>
     </div>

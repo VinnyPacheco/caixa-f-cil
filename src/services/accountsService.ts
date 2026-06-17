@@ -27,6 +27,7 @@ export function dbToAccount(dbAccount: DbAccount): Account {
     dueDay: (dbAccount as any).due_day ?? null,
     statementClosingDay: (dbAccount as any).statement_closing_day ?? null,
     creditLimit: (dbAccount as any).credit_limit != null ? Number((dbAccount as any).credit_limit) : null,
+    creditCardDebitAccountId: (dbAccount as any).credit_card_debit_account_id ?? null,
   };
 }
 
@@ -44,6 +45,7 @@ export function accountToDb(account: Omit<Account, 'id'>, userId: string): any {
     due_day: account.type === 'credit_card' ? (account.dueDay ?? null) : null,
     statement_closing_day: account.type === 'credit_card' ? (account.statementClosingDay ?? null) : null,
     credit_limit: account.type === 'credit_card' ? (account.creditLimit ?? null) : null,
+    credit_card_debit_account_id: account.type === 'credit_card' ? (account.creditCardDebitAccountId ?? null) : null,
   };
 }
 
@@ -80,6 +82,7 @@ export async function updateAccount(id: string, account: Partial<Omit<Account, '
   updates.due_day = account.type === 'credit_card' ? (account.dueDay ?? null) : null;
   updates.statement_closing_day = account.type === 'credit_card' ? (account.statementClosingDay ?? null) : null;
   updates.credit_limit = account.type === 'credit_card' ? (account.creditLimit ?? null) : null;
+  updates.credit_card_debit_account_id = account.type === 'credit_card' ? (account.creditCardDebitAccountId ?? null) : null;
 
   const { data, error } = await supabase
     .from('accounts')

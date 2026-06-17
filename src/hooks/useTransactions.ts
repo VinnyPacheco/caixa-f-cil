@@ -21,6 +21,7 @@ import { useToast } from '@/hooks/use-toast';
 import { calculateRunningBalances } from '@/lib/format';
 import { FilterType } from '@/components/finance/FilterPills';
 import { startOfMonth, endOfMonth, isWithinInterval, parseISO } from 'date-fns';
+import { buildInvoiceTransactions, toggleInvoicePaid } from '@/lib/creditCard';
 import { useState } from 'react';
 import { RecurringUpdateAction } from '@/components/finance/TransactionForm';
 
@@ -59,21 +60,36 @@ export function useTransactions(selectedDate: Date) {
   const accounts = accountsQuery.data || [];
   const categories = categoriesQuery.data || [];
 
-  // Calculate opening balance from accounts
+  // Credit cards are liabilities — their initial balance is excluded from cash totals.
   const openingBalance = useMemo(() => {
-    return accounts.reduce((sum, acc) => sum + acc.initialBalance, 0);
+    return accounts
+      .filter((a) => a.type !== 'credit_card')
+      .reduce((sum, acc) => sum + acc.initialBalance, 0);
   }, [accounts]);
 
-  // Filter transactions for the selected month (all transactions are now real DB records)
+  const ccAccountIds = useMemo(
+    () => new Set(accounts.filter((a) => a.type === 'credit_card').map((a) => a.id)),
+    [accounts],
+  );
+
+  const invoiceTransactions = useMemo(
+    () => buildInvoiceTransactions(transactions, accounts),
+    [transactions, accounts],
+  );
+
+  // Real transactions for the month + virtual invoice rows due in the month.
   const monthTransactions = useMemo(() => {
     const start = startOfMonth(selectedDate);
     const end = endOfMonth(selectedDate);
 
-    return transactions.filter((t) => {
-      const transactionDate = parseISO(t.date);
-      return isWithinInterval(transactionDate, { start, end });
-    });
-  }, [transactions, selectedDate]);
+    const realMonth = transactions.filter((t) =>
+      isWithinInterval(parseISO(t.date), { start, end }),
+    );
+    const invoiceMonth = invoiceTransactions.filter((t) =>
+      isWithinInterval(parseISO(t.date), { start, end }),
+    );
+    return [...realMonth, ...invoiceMonth];
+  }, [transactions, invoiceTransactions, selectedDate]);
 
   // Apply filter
   const filteredTransactions = useMemo(() => {
@@ -102,16 +118,20 @@ export function useTransactions(selectedDate: Date) {
       runningBalance: 0,
     }));
 
-    return calculateRunningBalances(withRelations, openingBalance);
-  }, [filteredTransactions, categories, accounts, openingBalance]);
+    // CC-account real transactions do NOT contribute to the running balance.
+    const balanceItems = withRelations.filter((t) => !ccAccountIds.has(t.accountId));
+    const ccItems = withRelations.filter((t) => ccAccountIds.has(t.accountId));
+    const balanced = calculateRunningBalances(balanceItems, openingBalance);
+    return [...balanced, ...ccItems];
+  }, [filteredTransactions, categories, accounts, openingBalance, ccAccountIds]);
 
   // Calculate month summary
   const monthSummary: MonthSummary = useMemo(() => {
-    const totalIncome = monthTransactions
+    const cashTxs = monthTransactions.filter((t) => !ccAccountIds.has(t.accountId));
+    const totalIncome = cashTxs
       .filter((t) => t.type === 'income')
       .reduce((sum, t) => sum + t.amount, 0);
-
-    const totalExpense = monthTransactions
+    const totalExpense = cashTxs
       .filter((t) => t.type === 'expense')
       .reduce((sum, t) => sum + t.amount, 0);
 
@@ -124,7 +144,7 @@ export function useTransactions(selectedDate: Date) {
       openingBalance,
       closingBalance,
     };
-  }, [monthTransactions, openingBalance]);
+  }, [monthTransactions, openingBalance, ccAccountIds]);
 
   // Mutations
   const createMutation = useMutation({
@@ -296,11 +316,16 @@ export function useTransactions(selectedDate: Date) {
 
   // Toggle paid status
   const togglePaid = useCallback((id: string) => {
+    if (id.startsWith('invoice:')) {
+      toggleInvoicePaid(id);
+      queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      return;
+    }
     const transaction = transactions.find(t => t.id === id);
     if (transaction) {
       togglePaidMutation.mutate({ id, isPaid: !transaction.isPaid });
     }
-  }, [transactions, togglePaidMutation]);
+  }, [transactions, togglePaidMutation, queryClient]);
 
   // Add new transaction with optional tags
   const addTransaction = useCallback(async (transaction: Omit<Transaction, 'id' | 'orderIndex'>, tagIds?: string[]) => {
