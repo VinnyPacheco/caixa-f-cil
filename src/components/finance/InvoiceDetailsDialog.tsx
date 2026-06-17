@@ -1,30 +1,44 @@
 import { Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Account, Transaction, Category } from '@/types/finance';
 import { formatCurrency } from '@/lib/format';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { groupTransactionsByInvoice } from '@/lib/creditCard';
+import { fetchTransactions } from '@/services/transactionsService';
+import { fetchAccounts } from '@/services/accountsService';
+import { fetchCategories } from '@/services/categoriesService';
+import { useAuth } from '@/contexts/AuthContext';
 import { Receipt, ExternalLink } from 'lucide-react';
 
 interface InvoiceDetailsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   invoiceId: string | null;
-  transactions: Transaction[];
-  accounts: Account[];
-  categories: Category[];
 }
 
 export function InvoiceDetailsDialog({
   open,
   onOpenChange,
   invoiceId,
-  transactions,
-  accounts,
-  categories,
 }: InvoiceDetailsDialogProps) {
+  const { user } = useAuth();
+  const { data: transactions = [] } = useQuery({
+    queryKey: ['transactions'],
+    queryFn: fetchTransactions,
+    enabled: !!user && open,
+  });
+  const { data: accounts = [] } = useQuery({
+    queryKey: ['accounts'],
+    queryFn: fetchAccounts,
+    enabled: !!user && open,
+  });
+  const { data: categories = [] } = useQuery({
+    queryKey: ['categories'],
+    queryFn: fetchCategories,
+    enabled: !!user && open,
+  });
   const grouped = groupTransactionsByInvoice(transactions, accounts);
   const invoice = invoiceId ? grouped.get(invoiceId) : null;
 

@@ -444,9 +444,6 @@ export default function Transactions() {
         open={!!invoiceDialogId}
         onOpenChange={(o) => !o && setInvoiceDialogId(null)}
         invoiceId={invoiceDialogId}
-        transactions={allVisibleTransactions.filter((t) => !t.isCreditCardInvoice)}
-        accounts={accounts}
-        categories={categories}
       />
     </AppLayout>
   );
