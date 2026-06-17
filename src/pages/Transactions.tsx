@@ -8,6 +8,7 @@ import { TransactionList } from '@/components/finance/TransactionList';
 import { TransactionForm } from '@/components/finance/TransactionForm';
 import { TransactionListContent } from '@/components/finance/TransactionListContent';
 import { TransactionItem } from '@/components/finance/TransactionItem';
+import { InvoiceDetailsDialog } from '@/components/finance/InvoiceDetailsDialog';
 import { LeftSidePanel, RightSidePanel } from '@/components/finance/TransactionsSidePanels';
 import { useMultiMonthTransactions } from '@/hooks/useMultiMonthTransactions';
 import { useDeviceType } from '@/hooks/use-responsive';
@@ -53,6 +54,7 @@ export default function Transactions() {
   });
   const [editingTransaction, setEditingTransaction] = useState<TransactionWithBalance | null>(null);
   const [formOpen, setFormOpen] = useState(false);
+  const [invoiceDialogId, setInvoiceDialogId] = useState<string | null>(null);
   const [activeTransaction, setActiveTransaction] = useState<TransactionWithBalance | null>(null);
   const [leftExpanded, setLeftExpanded] = useState(true);
   const [rightExpanded, setRightExpanded] = useState(true);
@@ -142,6 +144,10 @@ export default function Transactions() {
   };
 
   const handleTransactionClick = (transaction: TransactionWithBalance) => {
+    if (transaction.isCreditCardInvoice) {
+      setInvoiceDialogId(transaction.id);
+      return;
+    }
     setEditingTransaction(transaction);
     setFormOpen(true);
   };
@@ -432,6 +438,15 @@ export default function Transactions() {
         onSave={addTransaction}
         onUpdate={updateTransaction}
         onDelete={deleteTransaction}
+      />
+
+      <InvoiceDetailsDialog
+        open={!!invoiceDialogId}
+        onOpenChange={(o) => !o && setInvoiceDialogId(null)}
+        invoiceId={invoiceDialogId}
+        transactions={allVisibleTransactions.filter((t) => !t.isCreditCardInvoice)}
+        accounts={accounts}
+        categories={categories}
       />
     </AppLayout>
   );
