@@ -22,6 +22,7 @@ import Plans from "./pages/Plans";
 import Subscribe from "./pages/Subscribe";
 import Landing from "./pages/Landing";
 import Goals from "./pages/Goals";
+import CreditCardInvoices from "./pages/CreditCardInvoices";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
@@ -101,6 +102,7 @@ const AppRoutes = () => (
       <Route path="/import-transactions" element={<ProtectedRoute><ImportTransactions /></ProtectedRoute>} />
       <Route path="/planos" element={<ProtectedRoute><Plans /></ProtectedRoute>} />
       <Route path="/metas" element={<ProtectedRoute><Goals /></ProtectedRoute>} />
+      <Route path="/cartoes/:accountId" element={<ProtectedRoute><CreditCardInvoices /></ProtectedRoute>} />
       <Route path="/assinar" element={<Subscribe />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
