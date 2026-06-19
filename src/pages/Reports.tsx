@@ -25,6 +25,13 @@ import {
 } from '@/components/ui/collapsible';
 import { TagFilter } from '@/components/finance/TagFilter';
 import { Tag } from '@/types/tag';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { exportReportCSV, exportReportPDF } from '@/lib/exportReport';
 
 type TabType = 'budget' | 'categories';
 type FilterType = 'all' | 'income' | 'expense';
@@ -281,11 +288,59 @@ export default function Reports() {
     ? Math.round((budgetBalance / monthSummary.totalIncome) * 100) 
     : 0;
 
+  const handleExport = (kind: 'pdf' | 'csv') => {
+    const selectedCategory =
+      selectedCategoryId !== 'all'
+        ? categories.find((c) => c.id === selectedCategoryId)?.name
+        : undefined;
+    const tagNames =
+      activeTab === 'categories' && selectedTagIds.length
+        ? availableTagsInTransactions
+            .filter((t) => selectedTagIds.includes(t.id))
+            .map((t) => t.name)
+        : undefined;
+    const meta = {
+      monthLabel: `${capitalizedMonth} ${format(selectedDate, 'yyyy')}`,
+      tab: activeTab === 'budget' ? 'Orçamento' : 'Categorias',
+      filterType:
+        filterType === 'all' ? 'Todos' : filterType === 'income' ? 'Receita' : 'Despesa',
+      categoryName: selectedCategory,
+      tagNames,
+    };
+    if (kind === 'csv') exportReportCSV(filteredTransactions, meta);
+    else exportReportPDF(filteredTransactions, meta);
+  };
+
   return (
     <AppLayout>
       <Header showAvatar showNotification userName={displayName} />
 
       <main className="flex flex-col gap-6 p-6">
+        {/* Export Button */}
+        <div className="flex justify-end">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                className="flex items-center gap-2 px-4 py-2 rounded-full bg-accent text-accent-foreground text-xs font-bold shadow-md shadow-accent/20 transition-all active:scale-95 hover:opacity-90"
+                aria-label="Exportar relatório"
+              >
+                <span className="material-symbols-outlined text-[18px]">download</span>
+                Exportar Relatório
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => handleExport('pdf')}>
+                <span className="material-symbols-outlined text-[18px] mr-2">picture_as_pdf</span>
+                Exportar PDF
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport('csv')}>
+                <span className="material-symbols-outlined text-[18px] mr-2">table_view</span>
+                Exportar CSV
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+
         {/* Tabs */}
         <div className="w-full bg-card p-1.5 rounded-2xl shadow-sm border border-border/50 flex">
           <button
