@@ -189,6 +189,27 @@ export default function Reports() {
 
   const maxCategoryValue = allCategoriesSortedByValue[0]?.total || 1;
 
+  // Transactions used to build the multi-month chart. In the categories tab we
+  // apply the same type/category/tag filters as the current-month list so the
+  // chart reflects the selected filters across all months.
+  const chartSourceTransactions = useMemo(() => {
+    if (activeTab !== 'categories') return allTransactions;
+    let f = allTransactions;
+    if (filterType === 'income') f = f.filter((t) => t.type === 'income');
+    else if (filterType === 'expense') f = f.filter((t) => t.type === 'expense');
+    if (selectedCategoryId !== 'all') f = f.filter((t) => t.categoryId === selectedCategoryId);
+    if (selectedTagIds.length > 0 || includeNoTags) {
+      f = f.filter((t) => {
+        const tags = transactionTagsMap?.[t.id] || [];
+        const hasTags = tags.length > 0;
+        if (includeNoTags && !hasTags) return true;
+        if (selectedTagIds.length > 0) return tags.some((tag) => selectedTagIds.includes(tag.id));
+        return false;
+      });
+    }
+    return f;
+  }, [activeTab, allTransactions, filterType, selectedCategoryId, selectedTagIds, includeNoTags, transactionTagsMap]);
+
   // Compute monthly aggregates for the 7 months window shown in the chart (-3..+3)
   const monthlyAggregates = useMemo(() => {
     const result: Array<{
@@ -201,7 +222,7 @@ export default function Reports() {
       const monthDate = addMonths(selectedDate, i);
       const start = startOfMonth(monthDate);
       const end = endOfMonth(monthDate);
-      const monthTx = allTransactions.filter((t) =>
+      const monthTx = chartSourceTransactions.filter((t) =>
         isWithinInterval(parseISO(t.date), { start, end })
       );
       const agg = { income: 0, expense: 0, expenseByCat: {} as Record<string, number>, incomeByCat: {} as Record<string, number> };
@@ -217,7 +238,32 @@ export default function Reports() {
       result.push(agg);
     }
     return result;
-  }, [allTransactions, selectedDate]);
+  }, [chartSourceTransactions, selectedDate]);
+
+  // Category lines shown on the chart. Derived from the 7-month window so a
+  // category with no data in the current month still shows its history.
+  const chartCategoryLines = useMemo(() => {
+    if (activeTab !== 'categories') return { expense: [] as Array<{ id: string; category: typeof categories[0] | undefined; total: number }>, income: [] as Array<{ id: string; category: typeof categories[0] | undefined; total: number }> };
+    const expenseIds = new Set<string>();
+    const incomeIds = new Set<string>();
+    monthlyAggregates.forEach((m) => {
+      Object.keys(m.expenseByCat).forEach((id) => expenseIds.add(id));
+      Object.keys(m.incomeByCat).forEach((id) => incomeIds.add(id));
+    });
+    const totalExp = (id: string) => monthlyAggregates.reduce((s, m) => s + (m.expenseByCat[id] || 0), 0);
+    const totalInc = (id: string) => monthlyAggregates.reduce((s, m) => s + (m.incomeByCat[id] || 0), 0);
+    const findCat = (id: string) => categories.find((c) => c.id === id);
+    return {
+      expense: Array.from(expenseIds)
+        .map((id) => ({ id, category: findCat(id), total: totalExp(id) }))
+        .sort((a, b) => b.total - a.total)
+        .slice(0, 6),
+      income: Array.from(incomeIds)
+        .map((id) => ({ id, category: findCat(id), total: totalInc(id) }))
+        .sort((a, b) => b.total - a.total)
+        .slice(0, 6),
+    };
+  }, [activeTab, monthlyAggregates, categories]);
 
   // Dynamic chart scale based on actual data across the 7-month window
   const chartMaxValue = useMemo(() => {
@@ -227,8 +273,8 @@ export default function Reports() {
         maxVal = Math.max(maxVal, m.income, m.expense);
       });
     } else {
-      const topExpenseIds = expensesByCategory.slice(0, 6).map((e) => e.category?.id).filter(Boolean) as string[];
-      const topIncomeIds = incomeByCategory.slice(0, 6).map((e) => e.category?.id).filter(Boolean) as string[];
+      const topExpenseIds = chartCategoryLines.expense.map((e) => e.id);
+      const topIncomeIds = chartCategoryLines.income.map((e) => e.id);
       monthlyAggregates.forEach((m) => {
         if (filterType !== 'income') topExpenseIds.forEach((id) => { maxVal = Math.max(maxVal, m.expenseByCat[id] || 0); });
         if (filterType !== 'expense') topIncomeIds.forEach((id) => { maxVal = Math.max(maxVal, m.incomeByCat[id] || 0); });
@@ -238,7 +284,7 @@ export default function Reports() {
     // Round up to a nice number
     const magnitude = Math.pow(10, Math.floor(Math.log10(maxVal)));
     return Math.ceil(maxVal / magnitude) * magnitude;
-  }, [activeTab, monthlyAggregates, expensesByCategory, incomeByCategory, filterType]);
+  }, [activeTab, monthlyAggregates, chartCategoryLines, filterType]);
 
   // Build a smooth SVG path from a series of 7 values (one per month) within viewBox 0 0 100 50
   const buildPath = (values: number[]) => {
