@@ -462,7 +462,7 @@ export default function Reports() {
                 <button
                   onClick={() => {
                     setFilterType('all');
-                    setSelectedCategoryId('all');
+                    setSelectedCategoryIds([]);
                   }}
                   className={`flex-1 py-2 rounded-lg text-xs font-medium transition-all ${
                     filterType === 'all'
@@ -475,7 +475,7 @@ export default function Reports() {
                 <button
                   onClick={() => {
                     setFilterType('expense');
-                    setSelectedCategoryId('all');
+                    setSelectedCategoryIds([]);
                   }}
                   className={`flex-1 py-2 rounded-lg text-xs font-medium transition-all ${
                     filterType === 'expense'
@@ -488,7 +488,7 @@ export default function Reports() {
                 <button
                   onClick={() => {
                     setFilterType('income');
-                    setSelectedCategoryId('all');
+                    setSelectedCategoryIds([]);
                   }}
                   className={`flex-1 py-2 rounded-lg text-xs font-medium transition-all ${
                     filterType === 'income'
@@ -500,31 +500,15 @@ export default function Reports() {
                 </button>
               </div>
               <div className="flex gap-2">
-                <Select value={selectedCategoryId} onValueChange={setSelectedCategoryId}>
-                  <SelectTrigger className="flex-1 py-2.5 px-4 bg-secondary rounded-xl border border-border/50 text-xs font-medium hover:border-accent/30 transition-colors">
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <span className="material-symbols-outlined text-[18px]">category</span>
-                      <SelectValue placeholder="Todas as categorias" />
-                    </div>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todas as categorias</SelectItem>
-                    {categories
-                      .filter((cat) => filterType === 'all' || cat.type === filterType)
-                      .map((cat) => ({
-                        ...cat,
-                        displayText: cat.isSystem && cat.name === 'Outros'
-                          ? `Outros (${cat.type === 'expense' ? 'Despesa' : 'Receita'})`
-                          : cat.name
-                      }))
-                      .sort((a, b) => a.displayText.localeCompare(b.displayText, 'pt-BR'))
-                      .map((cat) => (
-                        <SelectItem key={cat.id} value={cat.id}>
-                          {cat.displayText}
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
+                <div className="flex-1">
+                  <CategoryFilter
+                    availableCategories={categories.filter(
+                      (cat) => filterType === 'all' || cat.type === filterType,
+                    )}
+                    selectedCategoryIds={selectedCategoryIds}
+                    onSelectionChange={setSelectedCategoryIds}
+                  />
+                </div>
                 <div className="flex-1">
                   <TagFilter
                     availableTags={availableTagsInTransactions}
