@@ -379,6 +379,9 @@ export function useTransactions(selectedDate: Date) {
 
         case 'this_and_future':
         case 'all':
+          // When updating siblings, never propagate the date field — each
+          // installment keeps its own scheduled date.
+          const { date: _omitDate, ...siblingUpdates } = updates as Partial<Transaction>;
           if (isSimulation) {
             // In simulation, update cache directly for all related installments
             const simSeriesParentId = originalTransaction.parentId || id;
@@ -387,7 +390,10 @@ export function useTransactions(selectedDate: Date) {
                 const isRelated = t.id === id || t.id === simSeriesParentId || t.parentId === simSeriesParentId;
                 if (!isRelated) return t;
                 if (recurringAction.type === 'this_and_future' && t.date < originalTransaction.date) return t;
-                return { ...t, ...updates };
+                // The reference installment keeps the (possibly changed) date;
+                // siblings keep their own date.
+                if (t.id === id) return { ...t, ...updates };
+                return { ...t, ...siblingUpdates };
               })
             );
             toast({
@@ -399,7 +405,7 @@ export function useTransactions(selectedDate: Date) {
           } else {
             const seriesParentId = originalTransaction.parentId || id;
             if (seriesParentId !== id) {
-              await updateTransaction(seriesParentId, updates);
+              await updateTransaction(seriesParentId, siblingUpdates);
             }
             await updateTransaction(id, updates);
             const siblings = transactions.filter(t => t.parentId === seriesParentId);
@@ -407,13 +413,13 @@ export function useTransactions(selectedDate: Date) {
               const currentDate = originalTransaction.date;
               for (const sibling of siblings) {
                 if (sibling.date >= currentDate && sibling.id !== id) {
-                  await updateTransaction(sibling.id, updates);
+                  await updateTransaction(sibling.id, siblingUpdates);
                 }
               }
             } else {
               for (const sibling of siblings) {
                 if (sibling.id !== id) {
-                  await updateTransaction(sibling.id, updates);
+                  await updateTransaction(sibling.id, siblingUpdates);
                 }
               }
             }
