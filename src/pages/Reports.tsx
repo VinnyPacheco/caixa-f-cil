@@ -12,18 +12,12 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useSimulation } from '@/contexts/SimulationContext';
 import { fetchTransactions } from '@/services/transactionsService';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import { TagFilter } from '@/components/finance/TagFilter';
+import { CategoryFilter } from '@/components/finance/CategoryFilter';
 import { Tag } from '@/types/tag';
 import {
   DropdownMenu,
@@ -40,7 +34,7 @@ export default function Reports() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [activeTab, setActiveTab] = useState<TabType>('budget');
   const [filterType, setFilterType] = useState<FilterType>('all');
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string>('all');
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [includeNoTags, setIncludeNoTags] = useState(false);
   const [openItems, setOpenItems] = useState<string[]>(['budget']);
@@ -80,13 +74,13 @@ export default function Reports() {
       filtered = filtered.filter((t) => t.type === 'expense');
     }
     
-    // Filter by category
-    if (selectedCategoryId !== 'all') {
-      filtered = filtered.filter((t) => t.categoryId === selectedCategoryId);
+    // Filter by categories (multi-select)
+    if (selectedCategoryIds.length > 0) {
+      filtered = filtered.filter((t) => selectedCategoryIds.includes(t.categoryId));
     }
     
     return filtered;
-  }, [transactions, filterType, selectedCategoryId]);
+  }, [transactions, filterType, selectedCategoryIds]);
 
   // Extract unique tags from chart base transactions (dynamic based on current filters)
   const availableTagsInTransactions = useMemo(() => {
@@ -117,9 +111,9 @@ export default function Reports() {
       filtered = filtered.filter((t) => t.type === 'expense');
     }
     
-    // Filter by category
-    if (selectedCategoryId !== 'all') {
-      filtered = filtered.filter((t) => t.categoryId === selectedCategoryId);
+    // Filter by categories (multi-select)
+    if (selectedCategoryIds.length > 0) {
+      filtered = filtered.filter((t) => selectedCategoryIds.includes(t.categoryId));
     }
     
     // Filter by tags (only when in categories tab and filters are active)
@@ -141,7 +135,7 @@ export default function Reports() {
     }
     
     return filtered;
-  }, [transactions, filterType, selectedCategoryId, activeTab, selectedTagIds, includeNoTags, transactionTagsMap]);
+  }, [transactions, filterType, selectedCategoryIds, activeTab, selectedTagIds, includeNoTags, transactionTagsMap]);
 
   // Group expenses by category (using filteredTransactions for categories tab)
   const expensesByCategory = useMemo(() => {
@@ -197,7 +191,7 @@ export default function Reports() {
     let f = allTransactions;
     if (filterType === 'income') f = f.filter((t) => t.type === 'income');
     else if (filterType === 'expense') f = f.filter((t) => t.type === 'expense');
-    if (selectedCategoryId !== 'all') f = f.filter((t) => t.categoryId === selectedCategoryId);
+    if (selectedCategoryIds.length > 0) f = f.filter((t) => selectedCategoryIds.includes(t.categoryId));
     if (selectedTagIds.length > 0 || includeNoTags) {
       f = f.filter((t) => {
         const tags = transactionTagsMap?.[t.id] || [];
@@ -208,7 +202,7 @@ export default function Reports() {
       });
     }
     return f;
-  }, [activeTab, allTransactions, filterType, selectedCategoryId, selectedTagIds, includeNoTags, transactionTagsMap]);
+  }, [activeTab, allTransactions, filterType, selectedCategoryIds, selectedTagIds, includeNoTags, transactionTagsMap]);
 
   // Compute monthly aggregates for the 7 months window shown in the chart (-3..+3)
   const monthlyAggregates = useMemo(() => {
@@ -335,9 +329,12 @@ export default function Reports() {
     : 0;
 
   const handleExport = (kind: 'pdf' | 'csv') => {
-    const selectedCategory =
-      selectedCategoryId !== 'all'
-        ? categories.find((c) => c.id === selectedCategoryId)?.name
+    const selectedCategoryNames =
+      selectedCategoryIds.length > 0
+        ? categories
+            .filter((c) => selectedCategoryIds.includes(c.id))
+            .map((c) => c.name)
+            .join(', ')
         : undefined;
     const tagNames =
       activeTab === 'categories' && selectedTagIds.length
@@ -350,7 +347,7 @@ export default function Reports() {
       tab: activeTab === 'budget' ? 'Orçamento' : 'Categorias',
       filterType:
         filterType === 'all' ? 'Todos' : filterType === 'income' ? 'Receita' : 'Despesa',
-      categoryName: selectedCategory,
+      categoryName: selectedCategoryNames,
       tagNames,
     };
     if (kind === 'csv') exportReportCSV(filteredTransactions, meta);
