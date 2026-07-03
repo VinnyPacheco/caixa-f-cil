@@ -49,6 +49,21 @@ export default function Home() {
   const categories = categoriesQuery.data || [];
   const accounts = accountsQuery.data || [];
 
+  // "Saldo Total" = sum of the current balance of every non-credit-card
+  // account (initial balance + settled/paid transactions).
+  const totalCurrentBalance = useMemo(() => {
+    const cashAccounts = accounts.filter((a) => a.type !== 'credit_card');
+    const base = cashAccounts.reduce((sum, a) => sum + a.initialBalance, 0);
+    const cashIds = new Set(cashAccounts.map((a) => a.id));
+    const delta = allTransactions
+      .filter((t) => t.isPaid && cashIds.has(t.accountId))
+      .reduce(
+        (sum, t) => sum + (t.type === 'income' ? t.amount : -t.amount),
+        0,
+      );
+    return base + delta;
+  }, [accounts, allTransactions]);
+
   // Filter pending transactions that are overdue or due within 3 days across ALL months
   const pendingUrgent: TransactionWithBalance[] = useMemo(() => {
     const today = startOfDay(new Date());
@@ -92,7 +107,7 @@ export default function Home() {
       
       <main className="flex flex-col gap-6 p-6">
         <BalanceCard
-          balance={monthSummary.closingBalance}
+          balance={totalCurrentBalance}
           percentChange={percentChange}
           onViewStatement={() => navigate('/transactions')}
         />
