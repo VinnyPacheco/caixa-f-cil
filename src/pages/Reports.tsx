@@ -648,8 +648,7 @@ export default function Reports() {
                 ) : (
                   <>
                     {/* Category lines - expenses */}
-                    {(filterType === 'all' || filterType === 'expense') && expensesByCategory.slice(0, 6).map(({ category, total }, index) => {
-                      const catId = category?.id;
+                    {(filterType === 'all' || filterType === 'expense') && chartCategoryLines.expense.map(({ id: catId, category }, index) => {
                       const series = monthlyAggregates.map((m) => (catId ? (m.expenseByCat[catId] || 0) : 0));
                       return (
                         <path
@@ -665,9 +664,8 @@ export default function Reports() {
                       );
                     })}
                     {/* Category lines - income */}
-                    {(filterType === 'all' || filterType === 'income') && incomeByCategory.slice(0, 6).map(({ category, total }, index) => {
-                      const delayOffset = filterType !== 'income' ? expensesByCategory.slice(0, 6).length : 0;
-                      const catId = category?.id;
+                    {(filterType === 'all' || filterType === 'income') && chartCategoryLines.income.map(({ id: catId, category }, index) => {
+                      const delayOffset = filterType !== 'income' ? chartCategoryLines.expense.length : 0;
                       const series = monthlyAggregates.map((m) => (catId ? (m.incomeByCat[catId] || 0) : 0));
                       return (
                         <path
