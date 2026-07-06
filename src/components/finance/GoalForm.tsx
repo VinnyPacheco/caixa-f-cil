@@ -19,6 +19,8 @@ import {
 import { Goal } from '@/types/goal';
 import { Account, Category } from '@/types/finance';
 import { cn } from '@/lib/utils';
+import { Checkbox } from '@/components/ui/checkbox';
+import { format, startOfMonth } from 'date-fns';
 
 interface Props {
   open: boolean;
@@ -57,6 +59,7 @@ export function GoalForm({
   const [categoryId, setCategoryId] = useState<string>('');
   const [accountId, setAccountId] = useState<string>('');
   const [amountInput, setAmountInput] = useState('');
+  const [createMonthlyPlaceholder, setCreateMonthlyPlaceholder] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -66,12 +69,14 @@ export function GoalForm({
         setCategoryId(goal.categoryId || '');
         setAccountId(goal.accountId || '');
         setAmountInput(formatAmountDisplay(goal.targetAmount));
+        setCreateMonthlyPlaceholder(!!goal.createMonthlyPlaceholder);
       } else {
         setName('');
         setGoalType('category');
         setCategoryId('');
         setAccountId('');
         setAmountInput('');
+        setCreateMonthlyPlaceholder(false);
       }
     }
   }, [open, goal]);
@@ -84,17 +89,29 @@ export function GoalForm({
 
   const handleSave = () => {
     if (!canSave) return;
+    const selectedCategory =
+      goalType === 'category' ? categories.find((c) => c.id === categoryId) : undefined;
+    const isExpenseCategory = selectedCategory?.type === 'expense';
     const payload: Omit<Goal, 'id'> = {
       name: name.trim(),
       goalType,
       categoryId: goalType === 'category' ? categoryId : null,
       accountId: goalType === 'account' ? accountId : null,
       targetAmount,
+      createMonthlyPlaceholder: isExpenseCategory ? createMonthlyPlaceholder : false,
+      startMonth:
+        isExpenseCategory && createMonthlyPlaceholder && !goal?.startMonth
+          ? format(startOfMonth(new Date()), 'yyyy-MM-dd')
+          : goal?.startMonth ?? null,
     };
     if (goal) onUpdate(goal.id, payload);
     else onSave(payload);
     onOpenChange(false);
   };
+
+  const selectedCategory =
+    goalType === 'category' ? categories.find((c) => c.id === categoryId) : undefined;
+  const showPlaceholderOption = goalType === 'category' && selectedCategory?.type === 'expense';
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
