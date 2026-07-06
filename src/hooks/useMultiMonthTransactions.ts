@@ -236,7 +236,7 @@ export function useMultiMonthTransactions(selectedDate: Date, additionalMonths: 
     }
 
     return result;
-  }, [selectedDate, additionalMonths, transactions, invoiceTransactions, ccAccountIds, filter, openingBalance, calculateMonthSummary]);
+  }, [selectedDate, additionalMonths, transactions, invoiceTransactions, goalPlaceholderTransactions, ccAccountIds, filter, openingBalance, calculateMonthSummary]);
 
   // Mutations
   const createMutation = useMutation({
