@@ -148,6 +148,9 @@ export default function Transactions() {
       setInvoiceDialogId(transaction.id);
       return;
     }
+    if (transaction.isGoalPlaceholder) {
+      return;
+    }
     setEditingTransaction(transaction);
     setFormOpen(true);
   };
