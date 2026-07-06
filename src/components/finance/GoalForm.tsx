@@ -213,6 +213,26 @@ export function GoalForm({
               placeholder="0,00"
             />
           </div>
+
+          {showPlaceholderOption && (
+            <label className="flex items-start gap-2 rounded-xl border border-border p-3 cursor-pointer hover:border-accent/40 transition-colors">
+              <Checkbox
+                checked={createMonthlyPlaceholder}
+                onCheckedChange={(v) => setCreateMonthlyPlaceholder(!!v)}
+                className="mt-0.5"
+              />
+              <div className="flex flex-col gap-0.5">
+                <span className="text-sm font-bold text-foreground">
+                  Criar Lançamento Mensal automático
+                </span>
+                <span className="text-[11px] text-muted-foreground">
+                  Um lançamento virtual será exibido no último dia de cada mês com o valor
+                  restante da meta (meta − soma dos lançamentos da categoria). Nunca fica
+                  abaixo de zero.
+                </span>
+              </div>
+            </label>
+          )}
         </div>
 
         <DialogFooter className="gap-2 sm:gap-2">
