@@ -113,6 +113,7 @@ export type Database = {
         Row: {
           account_id: string | null
           category_id: string | null
+          create_monthly_placeholder: boolean
           created_at: string
           goal_type: string
           id: string
@@ -126,6 +127,7 @@ export type Database = {
         Insert: {
           account_id?: string | null
           category_id?: string | null
+          create_monthly_placeholder?: boolean
           created_at?: string
           goal_type: string
           id?: string
@@ -139,6 +141,7 @@ export type Database = {
         Update: {
           account_id?: string | null
           category_id?: string | null
+          create_monthly_placeholder?: boolean
           created_at?: string
           goal_type?: string
           id?: string

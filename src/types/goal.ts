@@ -11,6 +11,8 @@ export interface Goal {
   targetAmount: number;
   startMonth?: string | null; // ISO date (first day of month)
   notes?: string | null;
+  /** Only meaningful for expense-category goals: injects a virtual "Lançamento Mensal" per month. */
+  createMonthlyPlaceholder?: boolean;
 }
 
 export interface GoalProgress {

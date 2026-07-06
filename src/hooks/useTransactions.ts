@@ -22,6 +22,8 @@ import { calculateRunningBalances } from '@/lib/format';
 import { FilterType } from '@/components/finance/FilterPills';
 import { startOfMonth, endOfMonth, isWithinInterval, parseISO } from 'date-fns';
 import { buildInvoiceTransactions, toggleInvoicePaid } from '@/lib/creditCard';
+import { buildGoalPlaceholderTransactions } from '@/lib/goalPlaceholder';
+import { fetchGoals } from '@/services/goalsService';
 import { useState } from 'react';
 import { RecurringUpdateAction } from '@/components/finance/TransactionForm';
 
@@ -56,9 +58,17 @@ export function useTransactions(selectedDate: Date) {
     staleTime: isSimulation ? Infinity : 0,
   });
 
+  const goalsQuery = useQuery({
+    queryKey: ['goals'],
+    queryFn: fetchGoals,
+    enabled: !!user,
+    staleTime: isSimulation ? Infinity : 0,
+  });
+
   const transactions = transactionsQuery.data || [];
   const accounts = accountsQuery.data || [];
   const categories = categoriesQuery.data || [];
+  const goals = goalsQuery.data || [];
 
   // Credit cards are liabilities — their initial balance is excluded from cash totals.
   const openingBalance = useMemo(() => {
@@ -77,6 +87,11 @@ export function useTransactions(selectedDate: Date) {
     [transactions, accounts],
   );
 
+  const goalPlaceholderTransactions = useMemo(
+    () => buildGoalPlaceholderTransactions(transactions, goals, categories, accounts, selectedDate),
+    [transactions, goals, categories, accounts, selectedDate],
+  );
+
   // Real transactions for the month + virtual invoice rows due in the month.
   const monthTransactions = useMemo(() => {
     const start = startOfMonth(selectedDate);
@@ -88,8 +103,11 @@ export function useTransactions(selectedDate: Date) {
     const invoiceMonth = invoiceTransactions.filter((t) =>
       isWithinInterval(parseISO(t.date), { start, end }),
     );
-    return [...realMonth, ...invoiceMonth];
-  }, [transactions, invoiceTransactions, selectedDate]);
+    const placeholderMonth = goalPlaceholderTransactions.filter((t) =>
+      isWithinInterval(parseISO(t.date), { start, end }),
+    );
+    return [...realMonth, ...invoiceMonth, ...placeholderMonth];
+  }, [transactions, invoiceTransactions, goalPlaceholderTransactions, selectedDate]);
 
   // Apply filter
   const filteredTransactions = useMemo(() => {

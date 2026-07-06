@@ -1,0 +1,1 @@
+ALTER TABLE public.goals ADD COLUMN IF NOT EXISTS create_monthly_placeholder BOOLEAN NOT NULL DEFAULT false;

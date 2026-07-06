@@ -11,6 +11,7 @@ interface DbGoal {
   target_amount: number;
   start_month: string | null;
   notes: string | null;
+  create_monthly_placeholder?: boolean | null;
 }
 
 function dbToGoal(g: DbGoal): Goal {
@@ -23,6 +24,7 @@ function dbToGoal(g: DbGoal): Goal {
     targetAmount: Number(g.target_amount),
     startMonth: g.start_month,
     notes: g.notes,
+    createMonthlyPlaceholder: !!g.create_monthly_placeholder,
   };
 }
 
@@ -51,6 +53,7 @@ export async function createGoal(
         target_amount: goal.targetAmount,
         start_month: goal.startMonth ?? null,
         notes: goal.notes ?? null,
+        create_monthly_placeholder: goal.createMonthlyPlaceholder ?? false,
       },
     ])
     .select()
@@ -71,6 +74,8 @@ export async function updateGoal(
   if (goal.targetAmount !== undefined) updates.target_amount = goal.targetAmount;
   if (goal.startMonth !== undefined) updates.start_month = goal.startMonth;
   if (goal.notes !== undefined) updates.notes = goal.notes;
+  if (goal.createMonthlyPlaceholder !== undefined)
+    updates.create_monthly_placeholder = goal.createMonthlyPlaceholder;
 
   const { data, error } = await supabase
     .from('goals')

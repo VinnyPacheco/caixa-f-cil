@@ -8,7 +8,7 @@ import { differenceInDays, format, parseISO, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { TagDots } from './TagSelector';
-import { CalendarCheck, CreditCard, Receipt } from 'lucide-react';
+import { CalendarCheck, CreditCard, Receipt, Target } from 'lucide-react';
 
 type DueStatus = 'overdue' | 'due-soon' | 'normal';
 
@@ -44,6 +44,7 @@ export const TransactionItem = forwardRef<HTMLDivElement, TransactionItemProps>(
     const dueStatus = getDueStatus(transaction);
     const isCardTx = transaction.account?.type === 'credit_card';
     const isInvoice = !!transaction.isCreditCardInvoice;
+    const isGoalPlaceholder = !!transaction.isGoalPlaceholder;
     const hideBalance = isCardTx; // CC-account purchases don't affect running balance
 
     return (
@@ -51,13 +52,15 @@ export const TransactionItem = forwardRef<HTMLDivElement, TransactionItemProps>(
         ref={ref}
         className={cn(
           "transaction-card",
-          !isReadOnly && "cursor-pointer",
+          !isReadOnly && !isGoalPlaceholder && "cursor-pointer",
+          isGoalPlaceholder && "cursor-default",
           isReadOnly && "opacity-75",
           dueStatus === 'overdue' && "border-l-4 border-l-destructive",
           dueStatus === 'due-soon' && "border-l-4 border-l-amber-500",
           isInvoice && "bg-accent/5 border-l-4 border-l-accent",
+          isGoalPlaceholder && "bg-accent/5 border-l-4 border-l-accent border-dashed",
         )}
-        onClick={!isReadOnly ? onClick : undefined}
+        onClick={!isReadOnly && !isGoalPlaceholder ? onClick : undefined}
       >
         {/* Left column: check + drag handle */}
         {showDragHandle && (
@@ -65,15 +68,16 @@ export const TransactionItem = forwardRef<HTMLDivElement, TransactionItemProps>(
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                onTogglePaid?.(transaction.id);
+                if (!isGoalPlaceholder) onTogglePaid?.(transaction.id);
               }}
+              disabled={isGoalPlaceholder}
               className={transaction.isPaid ? 'status-paid' : 'status-pending'}
             >
               {transaction.isPaid && (
                 <span className="material-symbols-outlined text-sm font-bold">check</span>
               )}
             </button>
-            <span className="material-symbols-outlined text-muted-foreground/40 drag-handle text-lg">
+            <span className={cn("material-symbols-outlined text-muted-foreground/40 drag-handle text-lg", isGoalPlaceholder && "invisible")}>
               drag_indicator
             </span>
           </div>
@@ -96,6 +100,7 @@ export const TransactionItem = forwardRef<HTMLDivElement, TransactionItemProps>(
         <div className="flex flex-col justify-center flex-1 min-w-0">
           <div className="flex items-center gap-1.5">
             {isInvoice && <Receipt className="w-3.5 h-3.5 text-accent shrink-0" />}
+            {isGoalPlaceholder && <Target className="w-3.5 h-3.5 text-accent shrink-0" />}
             <p className="text-foreground text-sm font-bold line-clamp-1">
               {transaction.description}
             </p>
@@ -111,7 +116,7 @@ export const TransactionItem = forwardRef<HTMLDivElement, TransactionItemProps>(
             )}
           </div>
           <p className="text-muted-foreground text-xs font-normal">
-            {isInvoice ? 'Fatura do cartão' : (category?.name || 'Sem categoria')}
+            {isInvoice ? 'Fatura do cartão' : isGoalPlaceholder ? 'Meta mensal · restante' : (category?.name || 'Sem categoria')}
           </p>
           {showDate && (
             <p className="text-muted-foreground text-xs font-normal mt-0.5">
@@ -171,6 +176,7 @@ export function SortableTransactionItem({
   const dueStatus = getDueStatus(transaction);
   const isCardTx = transaction.account?.type === 'credit_card';
   const isInvoice = !!transaction.isCreditCardInvoice;
+  const isGoalPlaceholder = !!transaction.isGoalPlaceholder;
   const hideBalance = isCardTx;
 
   return (
@@ -183,35 +189,42 @@ export function SortableTransactionItem({
         dueStatus === 'overdue' && "border-l-4 border-l-destructive",
         dueStatus === 'due-soon' && "border-l-4 border-l-amber-500",
         isInvoice && "bg-accent/5 border-l-4 border-l-accent",
+        isGoalPlaceholder && "bg-accent/5 border-l-4 border-l-accent border-dashed cursor-default",
       )}
-      onClick={onClick}
+      onClick={isGoalPlaceholder ? undefined : onClick}
     >
       {/* Left column: check + drag handle */}
       <div className="flex flex-col items-center justify-between gap-1 shrink-0 mr-3">
         <button
           onClick={(e) => {
             e.stopPropagation();
-            onTogglePaid?.(transaction.id);
+            if (!isGoalPlaceholder) onTogglePaid?.(transaction.id);
           }}
+          disabled={isGoalPlaceholder}
           className={transaction.isPaid ? 'status-paid' : 'status-pending'}
         >
           {transaction.isPaid && (
             <span className="material-symbols-outlined text-sm font-bold">check</span>
           )}
         </button>
-        <span
-          {...attributes}
-          {...listeners}
-          className="material-symbols-outlined text-muted-foreground/40 drag-handle touch-none text-lg"
-        >
-          drag_indicator
-        </span>
+        {isGoalPlaceholder ? (
+          <span className="material-symbols-outlined text-lg invisible">drag_indicator</span>
+        ) : (
+          <span
+            {...attributes}
+            {...listeners}
+            className="material-symbols-outlined text-muted-foreground/40 drag-handle touch-none text-lg"
+          >
+            drag_indicator
+          </span>
+        )}
       </div>
       
         {/* Middle: description + category */}
         <div className="flex flex-col justify-center flex-1 min-w-0">
           <div className="flex items-center gap-1.5">
             {isInvoice && <Receipt className="w-3.5 h-3.5 text-accent shrink-0" />}
+            {isGoalPlaceholder && <Target className="w-3.5 h-3.5 text-accent shrink-0" />}
             <p className="text-foreground text-sm font-bold line-clamp-1">
               {transaction.description}
             </p>
@@ -227,7 +240,7 @@ export function SortableTransactionItem({
             )}
           </div>
           <p className="text-muted-foreground text-xs font-normal">
-            {isInvoice ? 'Fatura do cartão' : (category?.name || 'Sem categoria')}
+            {isInvoice ? 'Fatura do cartão' : isGoalPlaceholder ? 'Meta mensal · restante' : (category?.name || 'Sem categoria')}
           </p>
         </div>
       
