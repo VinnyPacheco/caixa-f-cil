@@ -22,6 +22,8 @@ import { calculateRunningBalances } from '@/lib/format';
 import { FilterType } from '@/components/finance/FilterPills';
 import { format, startOfMonth, endOfMonth, isWithinInterval, parseISO, addMonths, isBefore } from 'date-fns';
 import { buildInvoiceTransactions, toggleInvoicePaid } from '@/lib/creditCard';
+import { buildGoalPlaceholderTransactions } from '@/lib/goalPlaceholder';
+import { fetchGoals } from '@/services/goalsService';
 import { useState } from 'react';
 import { RecurringUpdateAction } from '@/components/finance/TransactionForm';
 
@@ -30,6 +32,7 @@ import { RecurringUpdateAction } from '@/components/finance/TransactionForm';
 function getTransactionsForMonth(
   transactions: Transaction[],
   invoiceTxs: Transaction[],
+  placeholderTxs: Transaction[],
   targetDate: Date,
   categories: Category[],
   accounts: Account[],
@@ -45,8 +48,11 @@ function getTransactionsForMonth(
   const monthInvoices = invoiceTxs.filter((t) =>
     isWithinInterval(parseISO(t.date), { start, end }),
   );
+  const monthPlaceholders = placeholderTxs.filter((t) =>
+    isWithinInterval(parseISO(t.date), { start, end }),
+  );
 
-  const withRelations = [...monthReal, ...monthInvoices].map((t) => ({
+  const withRelations = [...monthReal, ...monthInvoices, ...monthPlaceholders].map((t) => ({
     ...t,
     category: categories.find((c) => c.id === t.categoryId),
     account: accounts.find((a) => a.id === t.accountId),
@@ -95,9 +101,17 @@ export function useMultiMonthTransactions(selectedDate: Date, additionalMonths: 
     staleTime: isSimulation ? Infinity : 0,
   });
 
+  const goalsQuery = useQuery({
+    queryKey: ['goals'],
+    queryFn: fetchGoals,
+    enabled: !!user,
+    staleTime: isSimulation ? Infinity : 0,
+  });
+
   const transactions = transactionsQuery.data || [];
   const accounts = accountsQuery.data || [];
   const categories = categoriesQuery.data || [];
+  const goals = goalsQuery.data || [];
 
   const ccAccountIds = useMemo(
     () => new Set(accounts.filter((a) => a.type === 'credit_card').map((a) => a.id)),
@@ -107,6 +121,18 @@ export function useMultiMonthTransactions(selectedDate: Date, additionalMonths: 
   const invoiceTransactions = useMemo(
     () => buildInvoiceTransactions(transactions, accounts),
     [transactions, accounts],
+  );
+
+  const goalPlaceholderTransactions = useMemo(
+    () =>
+      buildGoalPlaceholderTransactions(
+        transactions,
+        goals,
+        categories,
+        accounts,
+        addMonths(selectedDate, additionalMonths),
+      ),
+    [transactions, goals, categories, accounts, selectedDate, additionalMonths],
   );
 
   // Calculate opening balance from accounts (credit cards excluded).
@@ -124,6 +150,7 @@ export function useMultiMonthTransactions(selectedDate: Date, additionalMonths: 
     const expanded = getTransactionsForMonth(
       transactions,
       invoiceTransactions,
+      goalPlaceholderTransactions,
       monthDate,
       categories,
       accounts,
@@ -150,7 +177,7 @@ export function useMultiMonthTransactions(selectedDate: Date, additionalMonths: 
         closingBalance,
       },
     };
-  }, [transactions, invoiceTransactions, categories, accounts, ccAccountIds]);
+  }, [transactions, invoiceTransactions, goalPlaceholderTransactions, categories, accounts, ccAccountIds]);
 
   // Generate data for multiple months with cascading balances
   const monthsData = useMemo(() => {
@@ -164,6 +191,7 @@ export function useMultiMonthTransactions(selectedDate: Date, additionalMonths: 
     const priorCash = [
       ...transactions.filter((t) => !ccAccountIds.has(t.accountId)),
       ...invoiceTransactions,
+      ...goalPlaceholderTransactions,
     ];
     priorCash.forEach((t) => {
       const transactionDate = parseISO(t.date);
