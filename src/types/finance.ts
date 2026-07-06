@@ -52,6 +52,10 @@ export interface Transaction {
   isCreditCardInvoice?: boolean;
   /** ID of the credit-card account this invoice belongs to (when isCreditCardInvoice = true). */
   creditCardId?: string;
+  /** Synthetic virtual row: monthly placeholder tied to an expense-category goal. */
+  isGoalPlaceholder?: boolean;
+  /** ID of the goal this placeholder belongs to (when isGoalPlaceholder = true). */
+  goalId?: string;
 }
 
 export interface MonthlyBalance {
