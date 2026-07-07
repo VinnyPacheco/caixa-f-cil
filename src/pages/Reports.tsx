@@ -715,6 +715,50 @@ export default function Reports() {
             </div>
           </div>
 
+          {/* Compact legend — identifies each line without cluttering the chart */}
+          <div className="-mt-4 mb-6 flex flex-wrap gap-x-3 gap-y-1.5 justify-center">
+            {activeTab === 'budget' ? (
+              <>
+                <span className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                  <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: 'hsl(var(--success))' }} />
+                  Receita <span className="font-semibold text-foreground">{formatCurrency(monthSummary.totalIncome)}</span>
+                </span>
+                <span className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                  <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: 'hsl(var(--destructive))' }} />
+                  Despesa <span className="font-semibold text-foreground">{formatCurrency(monthSummary.totalExpense)}</span>
+                </span>
+                <span className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                  <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: 'hsl(var(--accent))' }} />
+                  Orçamento <span className="font-semibold text-foreground">{formatCurrency(Math.max(0, budgetBalance))}</span>
+                </span>
+              </>
+            ) : (
+              <>
+                {(filterType === 'all' || filterType === 'expense') && chartCategoryLines.expense.map(({ id, category }) => {
+                  const v = monthlyAggregates[3]?.expenseByCat[id] || 0;
+                  return (
+                    <span key={`lg-e-${id}`} className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                      <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: category?.color || '#F43F5E' }} />
+                      {category?.name || 'Categoria'} <span className="font-semibold text-foreground">{formatCurrency(v)}</span>
+                    </span>
+                  );
+                })}
+                {(filterType === 'all' || filterType === 'income') && chartCategoryLines.income.map(({ id, category }) => {
+                  const v = monthlyAggregates[3]?.incomeByCat[id] || 0;
+                  return (
+                    <span key={`lg-i-${id}`} className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                      <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: category?.color || '#10B981' }} />
+                      {category?.name || 'Categoria'} <span className="font-semibold text-foreground">{formatCurrency(v)}</span>
+                    </span>
+                  );
+                })}
+                {chartCategoryLines.expense.length === 0 && chartCategoryLines.income.length === 0 && (
+                  <span className="text-[11px] text-muted-foreground">Sem dados no período</span>
+                )}
+              </>
+            )}
+          </div>
+
           {/* Details Section */}
           <div className="flex flex-col gap-5 pt-4 border-t border-border/50">
             {activeTab === 'budget' ? (
