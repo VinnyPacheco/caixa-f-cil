@@ -663,6 +663,40 @@ export default function Reports() {
                     })}
                   </>
                 )}
+                {/* Current-month markers (index 3 = current month in the -3..+3 window) */}
+                {(() => {
+                  const currentIdx = 3;
+                  const cx = (currentIdx / 6) * 100;
+                  const toY = (v: number) => 50 - Math.max(0, Math.min(1, v / chartMaxValue)) * 50;
+                  if (activeTab === 'budget') {
+                    const dots = [
+                      { v: monthlyAggregates[currentIdx]?.income || 0, color: 'hsl(var(--success))', label: 'Receita' },
+                      { v: monthlyAggregates[currentIdx]?.expense || 0, color: 'hsl(var(--destructive))', label: 'Despesa' },
+                      { v: Math.max(0, (monthlyAggregates[currentIdx]?.income || 0) - (monthlyAggregates[currentIdx]?.expense || 0)), color: 'hsl(var(--accent))', label: 'Orçamento' },
+                    ];
+                    return dots.map((d, i) => (
+                      <circle key={`dot-b-${i}`} cx={cx} cy={toY(d.v)} r={1.4} fill={d.color} stroke="hsl(var(--card))" strokeWidth={0.6} vectorEffect="non-scaling-stroke">
+                        <title>{`${d.label}: ${formatCurrency(d.v)}`}</title>
+                      </circle>
+                    ));
+                  }
+                  const items: Array<{ v: number; color: string; label: string }> = [];
+                  if (filterType === 'all' || filterType === 'expense') {
+                    chartCategoryLines.expense.forEach(({ id, category }) => {
+                      items.push({ v: monthlyAggregates[currentIdx]?.expenseByCat[id] || 0, color: category?.color || '#F43F5E', label: category?.name || 'Categoria' });
+                    });
+                  }
+                  if (filterType === 'all' || filterType === 'income') {
+                    chartCategoryLines.income.forEach(({ id, category }) => {
+                      items.push({ v: monthlyAggregates[currentIdx]?.incomeByCat[id] || 0, color: category?.color || '#10B981', label: category?.name || 'Categoria' });
+                    });
+                  }
+                  return items.map((d, i) => (
+                    <circle key={`dot-c-${i}`} cx={cx} cy={toY(d.v)} r={1.4} fill={d.color} stroke="hsl(var(--card))" strokeWidth={0.6} vectorEffect="non-scaling-stroke">
+                      <title>{`${d.label}: ${formatCurrency(d.v)}`}</title>
+                    </circle>
+                  ));
+                })()}
               </svg>
               {/* Month labels */}
               <div className="absolute bottom-0 w-full flex justify-between text-[10px] font-medium text-muted-foreground">
