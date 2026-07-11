@@ -319,6 +319,7 @@ export default function Transactions() {
               selectedDate={selectedDate}
               expanded={leftExpanded}
               onToggle={() => setLeftExpanded((v) => !v)}
+              activeFilter={filter}
               categoryFilter={{
                 selectedIds: selectedCategoryIds,
                 onToggle: toggleCategory,
@@ -421,6 +422,7 @@ export default function Transactions() {
               selectedDate={selectedDate}
               expanded={rightExpanded}
               onToggle={() => setRightExpanded((v) => !v)}
+              activeFilter={filter}
               accountFilter={{
                 selectedIds: selectedAccountIds,
                 onToggle: toggleAccount,
