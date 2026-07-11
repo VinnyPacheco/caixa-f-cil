@@ -38,6 +38,7 @@ export default function Reports() {
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [includeNoTags, setIncludeNoTags] = useState(false);
   const [openItems, setOpenItems] = useState<string[]>(['budget']);
+  const [selectedLegendKey, setSelectedLegendKey] = useState<string | null>(null);
 
   const { monthSummary, categories, transactions } = useTransactions(selectedDate);
   const { displayName } = useProfile();
@@ -62,6 +63,12 @@ export default function Reports() {
 
   const handlePrevMonth = () => setSelectedDate((prev) => subMonths(prev, 1));
   const handleNextMonth = () => setSelectedDate((prev) => addMonths(prev, 1));
+
+  // Reset selected legend when switching tabs/filters
+  useMemo(() => {
+    setSelectedLegendKey(null);
+    return null;
+  }, [activeTab, filterType]);
 
   // Base transactions for category charts (filtered by type and category, but NOT by tags)
   const chartBaseTransactions = useMemo(() => {
