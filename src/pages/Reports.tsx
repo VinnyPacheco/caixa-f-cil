@@ -4,7 +4,7 @@ import { useTransactions } from '@/hooks/useTransactions';
 import { useProfile } from '@/hooks/useProfile';
 import { useTransactionTagsBulk } from '@/hooks/useTags';
 import { formatCurrency } from '@/lib/format';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { format, addMonths, subMonths, startOfMonth, endOfMonth, parseISO, isWithinInterval } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useQuery } from '@tanstack/react-query';
@@ -65,9 +65,8 @@ export default function Reports() {
   const handleNextMonth = () => setSelectedDate((prev) => addMonths(prev, 1));
 
   // Reset selected legend when switching tabs/filters
-  useMemo(() => {
+  useEffect(() => {
     setSelectedLegendKey(null);
-    return null;
   }, [activeTab, filterType]);
 
   // Base transactions for category charts (filtered by type and category, but NOT by tags)
