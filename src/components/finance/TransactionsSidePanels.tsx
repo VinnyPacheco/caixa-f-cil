@@ -11,6 +11,7 @@ import { fetchCategories } from '@/services/categoriesService';
 import { TransactionItem } from './TransactionItem';
 import { GoalsWidget } from './GoalsWidget';
 import { TransactionWithBalance } from '@/types/finance';
+import type { FilterType } from './FilterPills';
 import { formatCurrency } from '@/lib/format';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -116,6 +117,23 @@ interface PanelsProps {
   accountFilter?: FilterState;
 }
 
+function applyActiveFilter(txs: TransactionWithBalance[], activeFilter?: FilterType) {
+  if (!activeFilter || activeFilter === 'all') return txs;
+  switch (activeFilter) {
+    case 'pending':
+    case 'scheduled':
+      return txs.filter((t) => !t.isPaid);
+    case 'paid':
+      return txs.filter((t) => t.isPaid);
+    case 'income':
+      return txs.filter((t) => t.type === 'income');
+    case 'expense':
+      return txs.filter((t) => t.type === 'expense');
+    default:
+      return txs;
+  }
+}
+
 function PendingPanelContent() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -212,7 +230,7 @@ function PendingPanelContent() {
   );
 }
 
-function CategoriesSummaryContent({ selectedDate, filter }: { selectedDate: Date; filter?: FilterState }) {
+function CategoriesSummaryContent({ selectedDate, filter, activeFilter }: { selectedDate: Date; filter?: FilterState; activeFilter?: FilterType }) {
   const { user } = useAuth();
   const { isSimulation } = useSimulation();
 
@@ -235,8 +253,11 @@ function CategoriesSummaryContent({ selectedDate, filter }: { selectedDate: Date
   const totals = useMemo(() => {
     const start = startOfMonth(selectedDate);
     const end = endOfMonth(selectedDate);
-    const monthTx = transactions.filter((t) =>
-      isWithinInterval(parseISO(t.date), { start, end })
+    const monthTx = applyActiveFilter(
+      transactions.filter((t) =>
+        isWithinInterval(parseISO(t.date), { start, end })
+      ) as TransactionWithBalance[],
+      activeFilter,
     );
     const map = new Map<string, number>();
     monthTx.forEach((t) => {
@@ -246,7 +267,7 @@ function CategoriesSummaryContent({ selectedDate, filter }: { selectedDate: Date
       .map((c) => ({ category: c, total: map.get(c.id) || 0 }))
       .filter((x) => x.total > 0)
       .sort((a, b) => b.total - a.total);
-  }, [transactions, categories, selectedDate]);
+  }, [transactions, categories, selectedDate, activeFilter]);
 
   if (totals.length === 0) {
     return <p className="text-xs text-muted-foreground text-center py-6">Sem lançamentos no mês</p>;
@@ -305,7 +326,7 @@ function CategoriesSummaryContent({ selectedDate, filter }: { selectedDate: Date
   );
 }
 
-function AccountsBalanceContent({ selectedDate, filter }: { selectedDate: Date; filter?: FilterState }) {
+function AccountsBalanceContent({ selectedDate, filter, activeFilter }: { selectedDate: Date; filter?: FilterState; activeFilter?: FilterType }) {
   const { user } = useAuth();
   const { isSimulation } = useSimulation();
 
@@ -326,18 +347,36 @@ function AccountsBalanceContent({ selectedDate, filter }: { selectedDate: Date; 
   const accounts = accountsQuery.data || [];
 
   const balances = useMemo(() => {
+    const start = startOfMonth(selectedDate);
     const end = endOfMonth(selectedDate);
+    const isFiltered = !!activeFilter && activeFilter !== 'all';
     return accounts.map((account) => {
+      if (isFiltered) {
+        // When a filter is active, show the signed sum of matching transactions in the current month.
+        const monthTx = applyActiveFilter(
+          transactions.filter(
+            (t) =>
+              t.accountId === account.id &&
+              isWithinInterval(parseISO(t.date), { start, end }),
+          ) as TransactionWithBalance[],
+          activeFilter,
+        );
+        const total = monthTx.reduce(
+          (sum, t) => sum + (t.type === 'income' ? t.amount : -t.amount),
+          0,
+        );
+        return { account, balance: total, isFiltered: true };
+      }
       const accountTx = transactions.filter(
-        (t) => t.accountId === account.id && t.isPaid && parseISO(t.date) <= end
+        (t) => t.accountId === account.id && t.isPaid && parseISO(t.date) <= end,
       );
       const delta = accountTx.reduce(
         (sum, t) => sum + (t.type === 'income' ? t.amount : -t.amount),
-        0
+        0,
       );
-      return { account, balance: account.initialBalance + delta };
+      return { account, balance: account.initialBalance + delta, isFiltered: false };
     });
-  }, [transactions, accounts, selectedDate]);
+  }, [transactions, accounts, selectedDate, activeFilter]);
 
   if (balances.length === 0) {
     return <p className="text-xs text-muted-foreground text-center py-6">Nenhuma conta cadastrada</p>;
@@ -355,7 +394,7 @@ function AccountsBalanceContent({ selectedDate, filter }: { selectedDate: Date; 
         </button>
       )}
       <div className="flex flex-col divide-y divide-border/50">
-        {balances.map(({ account, balance }) => {
+        {balances.map(({ account, balance, isFiltered }) => {
           const isSelected = filter?.selectedIds.includes(account.id);
           return (
             <div
@@ -376,7 +415,7 @@ function AccountsBalanceContent({ selectedDate, filter }: { selectedDate: Date; 
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-foreground truncate">{account.name}</p>
-                <p className="text-[10px] text-muted-foreground">Saldo atual</p>
+                <p className="text-[10px] text-muted-foreground">{isFiltered ? 'Total filtrado' : 'Saldo atual'}</p>
               </div>
               <p
                 className={cn(
@@ -403,7 +442,8 @@ export function LeftSidePanel({
   expanded,
   onToggle,
   categoryFilter,
-}: { selectedDate: Date; expanded: boolean; onToggle: () => void; categoryFilter?: FilterState }) {
+  activeFilter,
+}: { selectedDate: Date; expanded: boolean; onToggle: () => void; categoryFilter?: FilterState; activeFilter?: FilterType }) {
   return (
     <SidePanelShell
       side="left"
@@ -411,7 +451,7 @@ export function LeftSidePanel({
       onToggle={onToggle}
       topTitle="Categorias"
       topIcon={<Tags className="h-4 w-4 text-accent" />}
-      topContent={<CategoriesSummaryContent selectedDate={selectedDate} filter={categoryFilter} />}
+      topContent={<CategoriesSummaryContent selectedDate={selectedDate} filter={categoryFilter} activeFilter={activeFilter} />}
       bottomTitle="Pendentes"
       bottomIcon={<AlertTriangle className="h-4 w-4 text-amber-500" />}
       bottomContent={<PendingPanelContent />}
@@ -424,7 +464,8 @@ export function RightSidePanel({
   expanded,
   onToggle,
   accountFilter,
-}: { selectedDate: Date; expanded: boolean; onToggle: () => void; accountFilter?: FilterState }) {
+  activeFilter,
+}: { selectedDate: Date; expanded: boolean; onToggle: () => void; accountFilter?: FilterState; activeFilter?: FilterType }) {
   return (
     <SidePanelShell
       side="right"
@@ -432,7 +473,7 @@ export function RightSidePanel({
       onToggle={onToggle}
       topTitle="Contas"
       topIcon={<Wallet className="h-4 w-4 text-accent" />}
-      topContent={<AccountsBalanceContent selectedDate={selectedDate} filter={accountFilter} />}
+      topContent={<AccountsBalanceContent selectedDate={selectedDate} filter={accountFilter} activeFilter={activeFilter} />}
       bottomTitle="Metas"
       bottomIcon={<Target className="h-4 w-4 text-accent" />}
       bottomContent={<GoalsContent selectedDate={selectedDate} />}
