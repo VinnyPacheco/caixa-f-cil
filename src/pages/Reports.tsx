@@ -722,55 +722,149 @@ export default function Reports() {
           </div>
 
           {/* Compact legend — identifies each line without cluttering the chart */}
-          <div className="-mt-4 mb-6 flex flex-wrap gap-x-3 gap-y-1.5 justify-center">
-            {activeTab === 'budget' ? (
-              <>
-                {[
-                  { key: 'income', label: 'Receita', color: 'hsl(var(--success))', value: monthSummary.totalIncome },
-                  { key: 'expense', label: 'Despesa', color: 'hsl(var(--destructive))', value: monthSummary.totalExpense },
-                  { key: 'budget', label: 'Orçamento', color: 'hsl(var(--accent))', value: Math.max(0, budgetBalance) },
-                ]
-                  .sort((a, b) => b.value - a.value)
-                  .map((item) => (
-                    <span key={`lg-b-${item.key}`} className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                      <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: item.color }} />
-                      {item.label} <span className="font-semibold text-foreground">{formatCurrency(item.value)}</span>
-                    </span>
-                  ))}
-              </>
-            ) : (
-              <>
-                {[
-                  ...(filterType === 'all' || filterType === 'expense'
-                    ? chartCategoryLines.expense.map(({ id, category }) => ({
-                        key: `e-${id}`,
-                        label: category?.name || 'Categoria',
-                        color: category?.color || '#F43F5E',
-                        value: monthlyAggregates[3]?.expenseByCat[id] || 0,
-                      }))
-                    : []),
-                  ...(filterType === 'all' || filterType === 'income'
-                    ? chartCategoryLines.income.map(({ id, category }) => ({
-                        key: `i-${id}`,
-                        label: category?.name || 'Categoria',
-                        color: category?.color || '#10B981',
-                        value: monthlyAggregates[3]?.incomeByCat[id] || 0,
-                      }))
-                    : []),
-                ]
-                  .sort((a, b) => b.value - a.value)
-                  .map((item) => (
-                    <span key={`lg-c-${item.key}`} className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                      <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: item.color }} />
-                      {item.label} <span className="font-semibold text-foreground">{formatCurrency(item.value)}</span>
-                    </span>
-                  ))}
-                {chartCategoryLines.expense.length === 0 && chartCategoryLines.income.length === 0 && (
-                  <span className="text-[11px] text-muted-foreground">Sem dados no período</span>
+          {(() => {
+            type LegendItem = { key: string; label: string; color: string; value: number; series: number[] };
+            const legendItems: LegendItem[] =
+              activeTab === 'budget'
+                ? [
+                    {
+                      key: 'income',
+                      label: 'Receita',
+                      color: 'hsl(var(--success))',
+                      value: monthSummary.totalIncome,
+                      series: monthlyAggregates.map((m) => m.income),
+                    },
+                    {
+                      key: 'expense',
+                      label: 'Despesa',
+                      color: 'hsl(var(--destructive))',
+                      value: monthSummary.totalExpense,
+                      series: monthlyAggregates.map((m) => m.expense),
+                    },
+                    {
+                      key: 'budget',
+                      label: 'Orçamento',
+                      color: 'hsl(var(--accent))',
+                      value: Math.max(0, budgetBalance),
+                      series: monthlyAggregates.map((m) => Math.max(0, m.income - m.expense)),
+                    },
+                  ].sort((a, b) => b.value - a.value)
+                : [
+                    ...(filterType === 'all' || filterType === 'expense'
+                      ? chartCategoryLines.expense.map(({ id, category }) => ({
+                          key: `e-${id}`,
+                          label: category?.name || 'Categoria',
+                          color: category?.color || '#F43F5E',
+                          value: monthlyAggregates[3]?.expenseByCat[id] || 0,
+                          series: monthlyAggregates.map((m) => m.expenseByCat[id] || 0),
+                        }))
+                      : []),
+                    ...(filterType === 'all' || filterType === 'income'
+                      ? chartCategoryLines.income.map(({ id, category }) => ({
+                          key: `i-${id}`,
+                          label: category?.name || 'Categoria',
+                          color: category?.color || '#10B981',
+                          value: monthlyAggregates[3]?.incomeByCat[id] || 0,
+                          series: monthlyAggregates.map((m) => m.incomeByCat[id] || 0),
+                        }))
+                      : []),
+                  ].sort((a, b) => b.value - a.value);
+
+            const selectedItem = legendItems.find((i) => i.key === selectedLegendKey) || null;
+            const isEmpty =
+              activeTab === 'categories' &&
+              chartCategoryLines.expense.length === 0 &&
+              chartCategoryLines.income.length === 0;
+
+            return (
+              <div className="-mt-4 mb-6">
+                <div className="flex flex-wrap gap-x-3 gap-y-1.5 justify-center">
+                  {legendItems.map((item) => {
+                    const isSelected = selectedLegendKey === item.key;
+                    return (
+                      <button
+                        key={`lg-${item.key}`}
+                        type="button"
+                        onClick={() =>
+                          setSelectedLegendKey((prev) => (prev === item.key ? null : item.key))
+                        }
+                        className={`inline-flex items-center gap-1.5 text-[11px] rounded-full px-2 py-0.5 transition-colors cursor-pointer ${
+                          isSelected
+                            ? 'bg-secondary text-foreground ring-1 ring-border'
+                            : 'text-muted-foreground hover:bg-secondary/60'
+                        }`}
+                        aria-pressed={isSelected}
+                      >
+                        <span
+                          className="inline-block w-2.5 h-2.5 rounded-full"
+                          style={{ backgroundColor: item.color }}
+                        />
+                        {item.label}{' '}
+                        <span className="font-semibold text-foreground">
+                          {formatCurrency(item.value)}
+                        </span>
+                      </button>
+                    );
+                  })}
+                  {isEmpty && (
+                    <span className="text-[11px] text-muted-foreground">Sem dados no período</span>
+                  )}
+                </div>
+
+                {selectedItem && (
+                  <div className="mt-3 rounded-lg border border-border/60 bg-secondary/40 p-2.5 animate-in fade-in-0 slide-in-from-top-1 duration-200">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-foreground">
+                        <span
+                          className="inline-block w-2 h-2 rounded-full"
+                          style={{ backgroundColor: selectedItem.color }}
+                        />
+                        {selectedItem.label} — valor por mês
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedLegendKey(null)}
+                        className="text-[10px] text-muted-foreground hover:text-foreground"
+                        aria-label="Fechar detalhes"
+                      >
+                        ×
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-7 gap-1">
+                      {monthLabels.map((m, idx) => {
+                        const v = selectedItem.series[idx] || 0;
+                        return (
+                          <div
+                            key={`sel-${idx}`}
+                            className={`flex flex-col items-center gap-0.5 rounded-md py-1 px-0.5 ${
+                              m.isCurrent ? 'bg-background/70' : ''
+                            }`}
+                          >
+                            <span
+                              className={`text-[9px] uppercase tracking-wide ${
+                                m.isCurrent
+                                  ? 'text-foreground font-semibold'
+                                  : 'text-muted-foreground'
+                              }`}
+                            >
+                              {m.label.charAt(0).toUpperCase() + m.label.slice(1)}
+                            </span>
+                            <span
+                              className={`text-[10px] font-semibold leading-tight text-center ${
+                                v > 0 ? 'text-foreground' : 'text-muted-foreground'
+                              }`}
+                            >
+                              {formatCurrency(v)}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
                 )}
-              </>
-            )}
-          </div>
+              </div>
+            );
+          })()}
 
           {/* Details Section */}
           <div className="flex flex-col gap-5 pt-4 border-t border-border/50">
