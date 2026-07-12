@@ -18,6 +18,7 @@ import Settings from "./pages/Settings";
 import Accounts from "./pages/Accounts";
 import Categories from "./pages/Categories";
 import ImportTransactions from "./pages/ImportTransactions";
+import BulkTransactions from "./pages/BulkTransactions";
 import Plans from "./pages/Plans";
 import Subscribe from "./pages/Subscribe";
 import Landing from "./pages/Landing";
@@ -100,6 +101,7 @@ const AppRoutes = () => (
       <Route path="/accounts" element={<ProtectedRoute><Accounts /></ProtectedRoute>} />
       <Route path="/categories" element={<ProtectedRoute><Categories /></ProtectedRoute>} />
       <Route path="/import-transactions" element={<ProtectedRoute><ImportTransactions /></ProtectedRoute>} />
+      <Route path="/bulk-transactions" element={<ProtectedRoute><BulkTransactions /></ProtectedRoute>} />
       <Route path="/planos" element={<ProtectedRoute><Plans /></ProtectedRoute>} />
       <Route path="/metas" element={<ProtectedRoute><Goals /></ProtectedRoute>} />
       <Route path="/cartoes/:accountId" element={<ProtectedRoute><CreditCardInvoices /></ProtectedRoute>} />
