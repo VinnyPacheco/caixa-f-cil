@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { Loader2, Plus, Trash2, Copy } from 'lucide-react';
@@ -64,7 +64,7 @@ export default function BulkTransactions() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Initialize defaults once accounts/categories load
-  useMemo(() => {
+  useEffect(() => {
     if (!primaryAccountId || categories.length === 0) return;
     setRows((prev) =>
       prev.map((r) => ({
