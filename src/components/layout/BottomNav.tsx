@@ -27,6 +27,7 @@ const cadastrosSubmenu: SubMenuItem[] = [
   { path: '/accounts', icon: 'account_balance_wallet', label: 'Contas' },
   { path: '/categories', icon: 'category', label: 'Categorias' },
   { path: '/metas', icon: 'flag', label: 'Metas' },
+  { path: '/bulk-transactions', icon: 'playlist_add', label: 'Em Massa' },
   { path: '/import-transactions', icon: 'upload_file', label: 'Importar' },
 ];
 
@@ -105,7 +106,7 @@ export function BottomNav() {
 
   const isActive = (path: string) => {
     if (path === '/cadastros') {
-      return location.pathname === '/accounts' || location.pathname === '/categories' || location.pathname === '/metas' || location.pathname === '/import-transactions';
+      return location.pathname === '/accounts' || location.pathname === '/categories' || location.pathname === '/metas' || location.pathname === '/import-transactions' || location.pathname === '/bulk-transactions';
     }
     return location.pathname === path;
   };
