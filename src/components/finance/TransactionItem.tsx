@@ -25,6 +25,44 @@ function getDueStatus(transaction: TransactionWithBalance): DueStatus {
   return 'normal';
 }
 
+function CategoryAccountIcons({
+  transaction,
+  isCardTx,
+  isInvoice,
+  isGoalPlaceholder,
+}: {
+  transaction: TransactionWithBalance;
+  isCardTx: boolean;
+  isInvoice: boolean;
+  isGoalPlaceholder: boolean;
+}) {
+  if (isInvoice || isGoalPlaceholder) return null;
+  const category = transaction.category;
+  const account = transaction.account;
+  return (
+    <span className="inline-flex items-center gap-1 mr-1 shrink-0">
+      {category?.icon && (
+        <span
+          className="material-symbols-outlined text-[14px] leading-none"
+          style={{ color: category.color }}
+          title={category.name}
+        >
+          {category.icon}
+        </span>
+      )}
+      {account && (
+        <span
+          className="material-symbols-outlined text-[14px] leading-none"
+          style={{ color: account.color }}
+          title={account.name}
+        >
+          {isCardTx ? 'credit_card' : (account.icon || 'account_balance')}
+        </span>
+      )}
+    </span>
+  );
+}
+
 
 interface TransactionItemProps {
   transaction: TransactionWithBalance;
@@ -109,14 +147,27 @@ export const TransactionItem = forwardRef<HTMLDivElement, TransactionItemProps>(
               <span title="Baixa Automática ativa"><CalendarCheck className="w-3.5 h-3.5 text-accent shrink-0" /></span>
             )}
             {isCardTx && !isInvoice && (
-              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-secondary text-muted-foreground shrink-0">
-                <CreditCard className="w-3 h-3" />
-                {transaction.account?.name || 'Cartão'}
+              <span
+                title={transaction.account?.name || 'Cartão'}
+                className="inline-flex items-center shrink-0"
+              >
+                <CreditCard
+                  className="w-3.5 h-3.5"
+                  style={{ color: transaction.account?.color || 'currentColor' }}
+                />
               </span>
             )}
           </div>
-          <p className="text-muted-foreground text-xs font-normal">
-            {isInvoice ? 'Fatura do cartão' : isGoalPlaceholder ? 'Meta mensal · restante' : (category?.name || 'Sem categoria')}
+          <p className="text-muted-foreground text-xs font-normal flex items-center">
+            <CategoryAccountIcons
+              transaction={transaction}
+              isCardTx={isCardTx}
+              isInvoice={isInvoice}
+              isGoalPlaceholder={isGoalPlaceholder}
+            />
+            <span className="line-clamp-1">
+              {isInvoice ? 'Fatura do cartão' : isGoalPlaceholder ? 'Meta mensal · restante' : (category?.name || 'Sem categoria')}
+            </span>
           </p>
           {showDate && (
             <p className="text-muted-foreground text-xs font-normal mt-0.5">
@@ -233,14 +284,27 @@ export function SortableTransactionItem({
               <span title="Baixa Automática ativa"><CalendarCheck className="w-3.5 h-3.5 text-accent shrink-0" /></span>
             )}
             {isCardTx && !isInvoice && (
-              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-secondary text-muted-foreground shrink-0">
-                <CreditCard className="w-3 h-3" />
-                {transaction.account?.name || 'Cartão'}
+              <span
+                title={transaction.account?.name || 'Cartão'}
+                className="inline-flex items-center shrink-0"
+              >
+                <CreditCard
+                  className="w-3.5 h-3.5"
+                  style={{ color: transaction.account?.color || 'currentColor' }}
+                />
               </span>
             )}
           </div>
-          <p className="text-muted-foreground text-xs font-normal">
-            {isInvoice ? 'Fatura do cartão' : isGoalPlaceholder ? 'Meta mensal · restante' : (category?.name || 'Sem categoria')}
+          <p className="text-muted-foreground text-xs font-normal flex items-center">
+            <CategoryAccountIcons
+              transaction={transaction}
+              isCardTx={isCardTx}
+              isInvoice={isInvoice}
+              isGoalPlaceholder={isGoalPlaceholder}
+            />
+            <span className="line-clamp-1">
+              {isInvoice ? 'Fatura do cartão' : isGoalPlaceholder ? 'Meta mensal · restante' : (category?.name || 'Sem categoria')}
+            </span>
           </p>
         </div>
       
