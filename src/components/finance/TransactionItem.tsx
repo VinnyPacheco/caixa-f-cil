@@ -25,6 +25,44 @@ function getDueStatus(transaction: TransactionWithBalance): DueStatus {
   return 'normal';
 }
 
+function CategoryAccountIcons({
+  transaction,
+  isCardTx,
+  isInvoice,
+  isGoalPlaceholder,
+}: {
+  transaction: TransactionWithBalance;
+  isCardTx: boolean;
+  isInvoice: boolean;
+  isGoalPlaceholder: boolean;
+}) {
+  if (isInvoice || isGoalPlaceholder) return null;
+  const category = transaction.category;
+  const account = transaction.account;
+  return (
+    <span className="inline-flex items-center gap-1 mr-1 shrink-0">
+      {category?.icon && (
+        <span
+          className="material-symbols-outlined text-[14px] leading-none"
+          style={{ color: category.color }}
+          title={category.name}
+        >
+          {category.icon}
+        </span>
+      )}
+      {account && (
+        <span
+          className="material-symbols-outlined text-[14px] leading-none"
+          style={{ color: account.color }}
+          title={account.name}
+        >
+          {isCardTx ? 'credit_card' : (account.icon || 'account_balance')}
+        </span>
+      )}
+    </span>
+  );
+}
+
 
 interface TransactionItemProps {
   transaction: TransactionWithBalance;
