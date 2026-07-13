@@ -352,9 +352,8 @@ function AccountsBalanceContent({ selectedDate, filter, activeFilter }: { select
     const end = endOfMonth(selectedDate);
     const isFiltered = !!activeFilter && activeFilter !== 'all';
     // Virtual credit-card invoice payments debited into their linked account.
-    const invoiceTxs = buildInvoiceTransactions(
-      transactions as TransactionWithBalance[],
-      accounts,
+    const invoiceTxs = buildInvoiceTransactions(transactions, accounts).map(
+      (t) => ({ ...t, runningBalance: 0 }) as TransactionWithBalance,
     );
     return accounts.map((account) => {
       if (isFiltered) {
