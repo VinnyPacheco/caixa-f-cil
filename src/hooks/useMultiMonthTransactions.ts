@@ -414,6 +414,30 @@ export function useMultiMonthTransactions(selectedDate: Date, additionalMonths: 
 
         case 'this_and_future':
         case 'all':
+          // Build sibling updates: preserve each sibling's own date and its
+          // "(n/m)" suffix in the description so future parcels keep their
+          // original scheduling and installment numbering.
+          const stripInstallmentSuffix = (desc: string) =>
+            desc.replace(/\s*\(\d+\/\d+\)\s*$/, '');
+          const baseDescription =
+            updates.description !== undefined
+              ? stripInstallmentSuffix(updates.description)
+              : undefined;
+          const buildSiblingUpdates = (sibling: Transaction): Partial<Omit<Transaction, 'id'>> => {
+            const siblingUpdates: Partial<Omit<Transaction, 'id'>> = { ...updates };
+            // Never overwrite the sibling's own date.
+            delete siblingUpdates.date;
+            // Preserve each sibling's installment number in description.
+            if (baseDescription !== undefined) {
+              const total = sibling.installmentTotal ?? originalTransaction.installmentTotal;
+              const current = sibling.installmentCurrent;
+              siblingUpdates.description =
+                current && total
+                  ? `${baseDescription} (${current}/${total})`
+                  : baseDescription;
+            }
+            return siblingUpdates;
+          };
           if (isSimulation) {
             const simSeriesParentId = originalTransaction.parentId || id;
             queryClient.setQueryData(['transactions'], (old: Transaction[] | undefined) =>
@@ -421,7 +445,8 @@ export function useMultiMonthTransactions(selectedDate: Date, additionalMonths: 
                 const isRelated = t.id === id || t.id === simSeriesParentId || t.parentId === simSeriesParentId;
                 if (!isRelated) return t;
                 if (recurringAction.type === 'this_and_future' && t.date < originalTransaction.date) return t;
-                return { ...t, ...updates };
+                if (t.id === id) return { ...t, ...updates };
+                return { ...t, ...buildSiblingUpdates(t) };
               })
             );
             toast({
@@ -432,17 +457,24 @@ export function useMultiMonthTransactions(selectedDate: Date, additionalMonths: 
             });
           } else {
             const seriesParentId = originalTransaction.parentId || id;
-            if (seriesParentId !== id) await updateTransaction(seriesParentId, updates);
+            if (seriesParentId !== id) {
+              const parent = transactions.find(t => t.id === seriesParentId);
+              if (parent) await updateTransaction(seriesParentId, buildSiblingUpdates(parent));
+            }
             await updateTransaction(id, updates);
             const siblings = transactions.filter(t => t.parentId === seriesParentId);
             if (recurringAction.type === 'this_and_future') {
               const currentDate = originalTransaction.date;
               for (const sibling of siblings) {
-                if (sibling.date >= currentDate && sibling.id !== id) await updateTransaction(sibling.id, updates);
+                if (sibling.date >= currentDate && sibling.id !== id) {
+                  await updateTransaction(sibling.id, buildSiblingUpdates(sibling));
+                }
               }
             } else {
               for (const sibling of siblings) {
-                if (sibling.id !== id) await updateTransaction(sibling.id, updates);
+                if (sibling.id !== id) {
+                  await updateTransaction(sibling.id, buildSiblingUpdates(sibling));
+                }
               }
             }
             queryClient.invalidateQueries({ queryKey: ['transactions'] });
