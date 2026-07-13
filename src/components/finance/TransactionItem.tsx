@@ -147,14 +147,27 @@ export const TransactionItem = forwardRef<HTMLDivElement, TransactionItemProps>(
               <span title="Baixa Automática ativa"><CalendarCheck className="w-3.5 h-3.5 text-accent shrink-0" /></span>
             )}
             {isCardTx && !isInvoice && (
-              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-secondary text-muted-foreground shrink-0">
-                <CreditCard className="w-3 h-3" />
-                {transaction.account?.name || 'Cartão'}
+              <span
+                title={transaction.account?.name || 'Cartão'}
+                className="inline-flex items-center shrink-0"
+              >
+                <CreditCard
+                  className="w-3.5 h-3.5"
+                  style={{ color: transaction.account?.color || 'currentColor' }}
+                />
               </span>
             )}
           </div>
-          <p className="text-muted-foreground text-xs font-normal">
-            {isInvoice ? 'Fatura do cartão' : isGoalPlaceholder ? 'Meta mensal · restante' : (category?.name || 'Sem categoria')}
+          <p className="text-muted-foreground text-xs font-normal flex items-center">
+            <CategoryAccountIcons
+              transaction={transaction}
+              isCardTx={isCardTx}
+              isInvoice={isInvoice}
+              isGoalPlaceholder={isGoalPlaceholder}
+            />
+            <span className="line-clamp-1">
+              {isInvoice ? 'Fatura do cartão' : isGoalPlaceholder ? 'Meta mensal · restante' : (category?.name || 'Sem categoria')}
+            </span>
           </p>
           {showDate && (
             <p className="text-muted-foreground text-xs font-normal mt-0.5">
@@ -271,14 +284,27 @@ export function SortableTransactionItem({
               <span title="Baixa Automática ativa"><CalendarCheck className="w-3.5 h-3.5 text-accent shrink-0" /></span>
             )}
             {isCardTx && !isInvoice && (
-              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-secondary text-muted-foreground shrink-0">
-                <CreditCard className="w-3 h-3" />
-                {transaction.account?.name || 'Cartão'}
+              <span
+                title={transaction.account?.name || 'Cartão'}
+                className="inline-flex items-center shrink-0"
+              >
+                <CreditCard
+                  className="w-3.5 h-3.5"
+                  style={{ color: transaction.account?.color || 'currentColor' }}
+                />
               </span>
             )}
           </div>
-          <p className="text-muted-foreground text-xs font-normal">
-            {isInvoice ? 'Fatura do cartão' : isGoalPlaceholder ? 'Meta mensal · restante' : (category?.name || 'Sem categoria')}
+          <p className="text-muted-foreground text-xs font-normal flex items-center">
+            <CategoryAccountIcons
+              transaction={transaction}
+              isCardTx={isCardTx}
+              isInvoice={isInvoice}
+              isGoalPlaceholder={isGoalPlaceholder}
+            />
+            <span className="line-clamp-1">
+              {isInvoice ? 'Fatura do cartão' : isGoalPlaceholder ? 'Meta mensal · restante' : (category?.name || 'Sem categoria')}
+            </span>
           </p>
         </div>
       
