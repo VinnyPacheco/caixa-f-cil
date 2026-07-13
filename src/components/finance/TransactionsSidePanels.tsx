@@ -15,6 +15,7 @@ import type { FilterType } from './FilterPills';
 import { formatCurrency } from '@/lib/format';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { buildInvoiceTransactions } from '@/lib/creditCard';
 
 interface FilterState {
   selectedIds: string[];
@@ -350,15 +351,20 @@ function AccountsBalanceContent({ selectedDate, filter, activeFilter }: { select
     const start = startOfMonth(selectedDate);
     const end = endOfMonth(selectedDate);
     const isFiltered = !!activeFilter && activeFilter !== 'all';
+    // Virtual credit-card invoice payments debited into their linked account.
+    const invoiceTxs = buildInvoiceTransactions(transactions, accounts).map(
+      (t) => ({ ...t, runningBalance: 0 }) as TransactionWithBalance,
+    );
     return accounts.map((account) => {
       if (isFiltered) {
         // When a filter is active, show the signed sum of matching transactions in the current month.
+        const combined = [...(transactions as TransactionWithBalance[]), ...invoiceTxs];
         const monthTx = applyActiveFilter(
-          transactions.filter(
+          combined.filter(
             (t) =>
               t.accountId === account.id &&
               isWithinInterval(parseISO(t.date), { start, end }),
-          ) as TransactionWithBalance[],
+          ),
           activeFilter,
         );
         const total = monthTx.reduce(
@@ -367,7 +373,8 @@ function AccountsBalanceContent({ selectedDate, filter, activeFilter }: { select
         );
         return { account, balance: total, isFiltered: true };
       }
-      const accountTx = transactions.filter(
+      const combined = [...(transactions as TransactionWithBalance[]), ...invoiceTxs];
+      const accountTx = combined.filter(
         (t) => t.accountId === account.id && t.isPaid && parseISO(t.date) <= end,
       );
       const delta = accountTx.reduce(
@@ -375,7 +382,7 @@ function AccountsBalanceContent({ selectedDate, filter, activeFilter }: { select
         0,
       );
       return { account, balance: account.initialBalance + delta, isFiltered: false };
-    });
+    }).sort((a, b) => b.balance - a.balance);
   }, [transactions, accounts, selectedDate, activeFilter]);
 
   if (balances.length === 0) {
@@ -442,8 +449,9 @@ export function LeftSidePanel({
   expanded,
   onToggle,
   categoryFilter,
+  accountFilter,
   activeFilter,
-}: { selectedDate: Date; expanded: boolean; onToggle: () => void; categoryFilter?: FilterState; activeFilter?: FilterType }) {
+}: { selectedDate: Date; expanded: boolean; onToggle: () => void; categoryFilter?: FilterState; accountFilter?: FilterState; activeFilter?: FilterType }) {
   return (
     <SidePanelShell
       side="left"
@@ -452,9 +460,9 @@ export function LeftSidePanel({
       topTitle="Categorias"
       topIcon={<Tags className="h-4 w-4 text-accent" />}
       topContent={<CategoriesSummaryContent selectedDate={selectedDate} filter={categoryFilter} activeFilter={activeFilter} />}
-      bottomTitle="Pendentes"
-      bottomIcon={<AlertTriangle className="h-4 w-4 text-amber-500" />}
-      bottomContent={<PendingPanelContent />}
+      bottomTitle="Contas"
+      bottomIcon={<Wallet className="h-4 w-4 text-accent" />}
+      bottomContent={<AccountsBalanceContent selectedDate={selectedDate} filter={accountFilter} activeFilter={activeFilter} />}
     />
   );
 }
@@ -463,17 +471,16 @@ export function RightSidePanel({
   selectedDate,
   expanded,
   onToggle,
-  accountFilter,
   activeFilter,
-}: { selectedDate: Date; expanded: boolean; onToggle: () => void; accountFilter?: FilterState; activeFilter?: FilterType }) {
+}: { selectedDate: Date; expanded: boolean; onToggle: () => void; activeFilter?: FilterType }) {
   return (
     <SidePanelShell
       side="right"
       expanded={expanded}
       onToggle={onToggle}
-      topTitle="Contas"
-      topIcon={<Wallet className="h-4 w-4 text-accent" />}
-      topContent={<AccountsBalanceContent selectedDate={selectedDate} filter={accountFilter} activeFilter={activeFilter} />}
+      topTitle="Pendentes"
+      topIcon={<AlertTriangle className="h-4 w-4 text-amber-500" />}
+      topContent={<PendingPanelContent />}
       bottomTitle="Metas"
       bottomIcon={<Target className="h-4 w-4 text-accent" />}
       bottomContent={<GoalsContent selectedDate={selectedDate} />}

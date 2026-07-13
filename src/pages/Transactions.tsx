@@ -326,6 +326,12 @@ export default function Transactions() {
                 onClear: clearCategories,
                 hasSelection: selectedCategoryIds.length > 0,
               }}
+              accountFilter={{
+                selectedIds: selectedAccountIds,
+                onToggle: toggleAccount,
+                onClear: clearAccounts,
+                hasSelection: selectedAccountIds.length > 0,
+              }}
             />
 
             <DndContext
@@ -423,12 +429,6 @@ export default function Transactions() {
               expanded={rightExpanded}
               onToggle={() => setRightExpanded((v) => !v)}
               activeFilter={filter}
-              accountFilter={{
-                selectedIds: selectedAccountIds,
-                onToggle: toggleAccount,
-                onClear: clearAccounts,
-                hasSelection: selectedAccountIds.length > 0,
-              }}
             />
           </div>
         )}
