@@ -256,12 +256,10 @@ export default function Reports() {
     return {
       expense: Array.from(expenseIds)
         .map((id) => ({ id, category: findCat(id), total: totalExp(id) }))
-        .sort((a, b) => b.total - a.total)
-        .slice(0, 6),
+        .sort((a, b) => b.total - a.total),
       income: Array.from(incomeIds)
         .map((id) => ({ id, category: findCat(id), total: totalInc(id) }))
-        .sort((a, b) => b.total - a.total)
-        .slice(0, 6),
+        .sort((a, b) => b.total - a.total),
     };
   }, [activeTab, monthlyAggregates, categories]);
 
