@@ -27,8 +27,6 @@ import { extractTextFromPdf } from '@/services/importParsers/pdfText';
 import { createTransaction, toggleTransactionPaid } from '@/services/transactionsService';
 import { supabase } from '@/integrations/supabase/client';
 import { formatCurrency } from '@/lib/format';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useQueryClient } from '@tanstack/react-query';
 import { Badge } from '@/components/ui/badge';
@@ -63,6 +61,7 @@ export default function ImportTransactions() {
   const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set());
   const [transactionCategories, setTransactionCategories] = useState<Record<number, string>>({});
   const [transactionDescriptions, setTransactionDescriptions] = useState<Record<number, string>>({});
+  const [transactionDates, setTransactionDates] = useState<Record<number, string>>({});
   const [isImporting, setIsImporting] = useState(false);
   const [fileName, setFileName] = useState<string>('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -355,7 +354,7 @@ export default function ImportTransactions() {
                 categoryId,
                 description: transactionDescriptions[i] ?? parsed.description,
                 amount: parsed.amount,
-                date: parsed.date,
+                date: transactionDates[i] ?? parsed.date,
                 type: transactionType,
                 isPaid: true,
                 recurrenceType: 'once',
@@ -387,6 +386,7 @@ export default function ImportTransactions() {
         setSelectedItems(new Set());
         setTransactionCategories({});
         setTransactionDescriptions({});
+        setTransactionDates({});
         setMatchCandidates({});
         setImportActions({});
         setFileName('');
@@ -407,14 +407,6 @@ export default function ImportTransactions() {
       });
     } finally {
       setIsImporting(false);
-    }
-  };
-
-  const formatDate = (dateStr: string) => {
-    try {
-      return format(new Date(dateStr + 'T12:00:00'), "dd/MM/yyyy, EEEE", { locale: ptBR });
-    } catch {
-      return dateStr;
     }
   };
 
@@ -577,8 +569,18 @@ export default function ImportTransactions() {
                                   onCheckedChange={() => toggleItem(index)}
                                 />
                               </TableCell>
-                              <TableCell className="whitespace-nowrap text-sm">
-                                {formatDate(transaction.date)}
+                              <TableCell className="whitespace-nowrap">
+                                <input
+                                  type="date"
+                                  value={transactionDates[index] ?? transaction.date}
+                                  onChange={(e) => {
+                                    setTransactionDates((prev) => ({
+                                      ...prev,
+                                      [index]: e.target.value,
+                                    }));
+                                  }}
+                                  className="w-[150px] h-8 px-2 text-sm bg-background border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                                />
                               </TableCell>
                               <TableCell className="min-w-[200px]">
                                 <input
@@ -768,6 +770,7 @@ export default function ImportTransactions() {
                       setSelectedItems(new Set());
                       setTransactionCategories({});
                       setTransactionDescriptions({});
+                      setTransactionDates({});
                       setMatchCandidates({});
                       setImportActions({});
                       setFileName('');
