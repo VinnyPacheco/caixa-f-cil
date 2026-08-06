@@ -32,6 +32,7 @@ import { ptBR } from 'date-fns/locale';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useQueryClient } from '@tanstack/react-query';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { Transaction } from '@/types/finance';
 
 interface MatchCandidate {
@@ -64,6 +65,7 @@ export default function ImportTransactions() {
   const [transactionDescriptions, setTransactionDescriptions] = useState<Record<number, string>>({});
   const [isImporting, setIsImporting] = useState(false);
   const [fileName, setFileName] = useState<string>('');
+  const [filePassword, setFilePassword] = useState<string>('');
 
   // Duplicate detection state
   const [matchCandidates, setMatchCandidates] = useState<Record<number, MatchCandidate[]>>({});
@@ -204,7 +206,7 @@ export default function ImportTransactions() {
     try {
       let transactions: ParsedTransaction[];
       if (lowerName.endsWith('.pdf')) {
-        const text = await extractTextFromPdf(file);
+        const text = await extractTextFromPdf(file, filePassword.trim() || undefined);
         const pdfParser = selectedParser.parsePdf ?? selectedParser.parse;
         transactions = pdfParser(text);
       } else {
@@ -245,9 +247,14 @@ export default function ImportTransactions() {
       });
     } catch (error) {
       console.error('Error parsing file:', error);
+      const isPasswordError =
+        error instanceof Error &&
+        /password/i.test(`${error.name} ${error.message}`);
       toast({
-        title: 'Erro ao ler arquivo',
-        description: 'Não foi possível processar o arquivo selecionado.',
+        title: isPasswordError ? 'Senha do arquivo inválida' : 'Erro ao ler arquivo',
+        description: isPasswordError
+          ? 'O arquivo está protegido. Informe a senha correta e selecione o arquivo novamente.'
+          : 'Não foi possível processar o arquivo selecionado.',
         variant: 'destructive',
       });
     }
@@ -469,6 +476,23 @@ export default function ImportTransactions() {
                   Formato aceito: {acceptedExtensions.join(', ')}
                 </p>
               )}
+            </div>
+
+            {/* Optional file password (encrypted PDFs) */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">
+                Senha do arquivo (opcional)
+              </label>
+              <Input
+                type="password"
+                value={filePassword}
+                onChange={(e) => setFilePassword(e.target.value)}
+                placeholder="Informe a senha caso o arquivo seja protegido"
+                autoComplete="off"
+              />
+              <p className="text-xs text-muted-foreground">
+                Usada apenas para abrir o arquivo no seu dispositivo. Não é armazenada.
+              </p>
             </div>
 
             {/* Parsed Transactions Preview */}
