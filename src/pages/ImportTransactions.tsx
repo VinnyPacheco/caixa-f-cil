@@ -27,7 +27,6 @@ import { extractTextFromPdf } from '@/services/importParsers/pdfText';
 import { createTransaction, toggleTransactionPaid } from '@/services/transactionsService';
 import { supabase } from '@/integrations/supabase/client';
 import { formatCurrency } from '@/lib/format';
-import { formatCurrency } from '@/lib/format';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useQueryClient } from '@tanstack/react-query';
 import { Badge } from '@/components/ui/badge';
