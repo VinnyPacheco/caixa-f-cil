@@ -489,6 +489,12 @@ export default function ImportTransactions() {
                   Formato aceito: {acceptedExtensions.join(', ')}
                 </p>
               )}
+              {selectedFile && (
+                <p className="text-xs font-medium text-accent truncate">
+                  <span className="material-symbols-outlined align-middle text-base mr-1">description</span>
+                  {fileName}
+                </p>
+              )}
             </div>
 
             {/* Optional file password (encrypted PDFs) */}
@@ -507,6 +513,18 @@ export default function ImportTransactions() {
                 Usada apenas para abrir o arquivo no seu dispositivo. Não é armazenada.
               </p>
             </div>
+
+            {/* Read the selected file */}
+            <Button
+              className="w-full gap-2"
+              onClick={handleParseFile}
+              disabled={!selectedFile || isImporting}
+            >
+              <span className="material-symbols-outlined text-xl">
+                {isImporting ? 'progress_activity' : 'read_more'}
+              </span>
+              {isImporting ? 'Lendo arquivo...' : 'Ler arquivo'}
+            </Button>
 
             {/* Parsed Transactions Preview */}
             {parsedTransactions.length > 0 && (
