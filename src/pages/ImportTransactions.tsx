@@ -410,14 +410,6 @@ export default function ImportTransactions() {
     }
   };
 
-  const formatDate = (dateStr: string) => {
-    try {
-      return format(new Date(dateStr + 'T12:00:00'), "dd/MM/yyyy, EEEE", { locale: ptBR });
-    } catch {
-      return dateStr;
-    }
-  };
-
   const isLoading = accountsLoading || categoriesLoading;
 
   return (
