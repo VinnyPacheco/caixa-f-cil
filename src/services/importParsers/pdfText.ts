@@ -13,6 +13,43 @@ export interface PdfTextOptions {
   twoColumn?: boolean;
 }
 
+interface TextPart {
+  x: number;
+  width: number;
+  str: string;
+}
+
+type PageRows = Map<number, TextPart[]>;
+
+/**
+ * Finds the x coordinate that separates the two printed columns of a page by
+ * looking at the horizontal gaps of the rows that contain a DD/MM date (the
+ * entry rows). The gutter between columns is the right-most wide gap located
+ * around the middle of the page — gaps further left belong to the
+ * description/value split inside the same table.
+ */
+function detectColumnBoundary(rows: PageRows, pageWidth: number): number | null {
+  const intervals: [number, number][] = [];
+  for (const parts of rows.values()) {
+    const text = parts.map((p) => p.str).join(' ');
+    if (!/\d{2}\/\d{2}/.test(text)) continue;
+    for (const p of parts) intervals.push([p.x, p.x + p.width]);
+  }
+  if (intervals.length < 6) return null;
+
+  intervals.sort((a, b) => a[0] - b[0]);
+  let cursor = intervals[0][1];
+  let boundary: number | null = null;
+  for (const [start, end] of intervals) {
+    if (start - cursor >= 18) {
+      const center = (cursor + start) / 2;
+      if (center > pageWidth * 0.45 && center < pageWidth * 0.7) boundary = center;
+    }
+    cursor = Math.max(cursor, end);
+  }
+  return boundary;
+}
+
 /**
  * Extracts text from a PDF file, preserving line breaks by grouping text
  * items that share approximately the same vertical position on each page.
@@ -34,35 +71,48 @@ export async function extractTextFromPdf(
     const page = await pdf.getPage(pageNum);
     const textContent = await page.getTextContent();
     const pageWidth = page.getViewport({ scale: 1 }).width;
-    const midX = pageWidth / 2;
 
-    // One bucket per column (a single bucket when the page is single-column).
-    const columns: Map<number, { x: number; str: string }[]>[] = options.twoColumn
-      ? [new Map(), new Map()]
-      : [new Map()];
-
-    for (const item of textContent.items as Array<{ str: string; transform: number[] }>) {
-      if (!item.str) continue;
+    // Group items by their vertical position (y coordinate from transform[5]).
+    const rows: PageRows = new Map();
+    for (const item of textContent.items as Array<{
+      str: string;
+      width?: number;
+      transform: number[];
+    }>) {
+      if (!item.str || !item.str.trim()) continue;
       const y = Math.round(item.transform[5]);
-      const x = item.transform[4];
-      const rows = options.twoColumn && x >= midX ? columns[1] : columns[0];
+      const part: TextPart = { x: item.transform[4], width: item.width ?? 0, str: item.str };
       const existing = rows.get(y);
-      if (existing) {
-        existing.push({ x, str: item.str });
-      } else {
-        rows.set(y, [{ x, str: item.str }]);
-      }
+      if (existing) existing.push(part);
+      else rows.set(y, [part]);
     }
 
-    // Sort rows top-to-bottom (higher y is higher on page in PDF coords),
-    // emitting the left column entirely before the right one.
-    for (const rows of columns) {
-      const sortedYs = Array.from(rows.keys()).sort((a, b) => b - a);
-      for (const y of sortedYs) {
-        const parts = rows.get(y)!.sort((a, b) => a.x - b.x);
-        const line = parts.map((p) => p.str).join(' ').replace(/\s+/g, ' ').trim();
-        if (line) allLines.push(line);
-      }
+    const boundary = options.twoColumn ? detectColumnBoundary(rows, pageWidth) : null;
+
+    // Build one bucket per column so the left column is read entirely before
+    // the right one (entries continue from one column/page to the next).
+    const columns: { y: number; line: string }[][] = boundary === null ? [[]] : [[], []];
+    for (const [y, parts] of rows) {
+      const groups =
+        boundary === null
+          ? [parts]
+          : [parts.filter((p) => p.x < boundary), parts.filter((p) => p.x >= boundary)];
+      groups.forEach((group, index) => {
+        if (!group.length) return;
+        const line = [...group]
+          .sort((a, b) => a.x - b.x)
+          .map((p) => p.str)
+          .join(' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+        if (line) columns[index].push({ y, line });
+      });
+    }
+
+    // Sort rows top-to-bottom (higher y is higher on page in PDF coords).
+    for (const column of columns) {
+      column.sort((a, b) => b.y - a.y);
+      for (const { line } of column) allLines.push(line);
     }
   }
 
