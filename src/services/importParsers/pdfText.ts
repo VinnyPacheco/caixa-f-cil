@@ -8,9 +8,12 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
  * Extracts text from a PDF file, preserving line breaks by grouping text
  * items that share approximately the same vertical position on each page.
  */
-export async function extractTextFromPdf(file: File): Promise<string> {
+export async function extractTextFromPdf(file: File, password?: string): Promise<string> {
   const arrayBuffer = await file.arrayBuffer();
-  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  const pdf = await pdfjsLib.getDocument({
+    data: arrayBuffer,
+    ...(password ? { password } : {}),
+  }).promise;
 
   const allLines: string[] = [];
 
