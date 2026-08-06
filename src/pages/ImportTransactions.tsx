@@ -217,7 +217,8 @@ export default function ImportTransactions() {
       if (selectedFile.name.toLowerCase().endsWith('.pdf')) {
         const text = await extractTextFromPdf(
           selectedFile,
-          filePassword.trim() || undefined
+          filePassword.trim() || undefined,
+          { twoColumn: selectedParser.pdfTwoColumn }
         );
         const pdfParser = selectedParser.parsePdf ?? selectedParser.parse;
         transactions = pdfParser(text);
