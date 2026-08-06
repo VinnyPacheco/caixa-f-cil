@@ -578,8 +578,18 @@ export default function ImportTransactions() {
                                   onCheckedChange={() => toggleItem(index)}
                                 />
                               </TableCell>
-                              <TableCell className="whitespace-nowrap text-sm">
-                                {formatDate(transaction.date)}
+                              <TableCell className="whitespace-nowrap">
+                                <input
+                                  type="date"
+                                  value={transactionDates[index] ?? transaction.date}
+                                  onChange={(e) => {
+                                    setTransactionDates((prev) => ({
+                                      ...prev,
+                                      [index]: e.target.value,
+                                    }));
+                                  }}
+                                  className="w-[150px] h-8 px-2 text-sm bg-background border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                                />
                               </TableCell>
                               <TableCell className="min-w-[200px]">
                                 <input
