@@ -780,6 +780,7 @@ export default function ImportTransactions() {
                       setSelectedItems(new Set());
                       setTransactionCategories({});
                       setTransactionDescriptions({});
+                      setTransactionDates({});
                       setMatchCandidates({});
                       setImportActions({});
                       setFileName('');
