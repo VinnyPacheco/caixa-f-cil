@@ -235,6 +235,9 @@ export default function ImportTransactions() {
         return;
       }
 
+      // Sort by date ascending (YYYY-MM-DD strings sort lexicographically)
+      transactions.sort((a, b) => a.date.localeCompare(b.date));
+
       setParsedTransactions(transactions);
       setSelectedItems(new Set(transactions.map((_, index) => index)));
 
