@@ -63,6 +63,7 @@ export default function ImportTransactions() {
   const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set());
   const [transactionCategories, setTransactionCategories] = useState<Record<number, string>>({});
   const [transactionDescriptions, setTransactionDescriptions] = useState<Record<number, string>>({});
+  const [transactionDates, setTransactionDates] = useState<Record<number, string>>({});
   const [isImporting, setIsImporting] = useState(false);
   const [fileName, setFileName] = useState<string>('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
