@@ -65,6 +65,7 @@ export default function ImportTransactions() {
   const [transactionDescriptions, setTransactionDescriptions] = useState<Record<number, string>>({});
   const [isImporting, setIsImporting] = useState(false);
   const [fileName, setFileName] = useState<string>('');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [filePassword, setFilePassword] = useState<string>('');
 
   // Duplicate detection state
