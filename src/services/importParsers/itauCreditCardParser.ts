@@ -35,6 +35,7 @@ export const itauCreditCardParser: ImportParser = {
   name: 'Itaú - Cartão de Crédito',
   fileExtension: '.pdf',
   fileExtensions: ['.pdf'],
+  pdfTwoColumn: true,
   parse: (fileContent: string) => itauCreditCardParser.parsePdf!(fileContent),
   parsePdf: (extractedText: string): ParsedTransaction[] => {
     const dueDate = findDueDate(extractedText);

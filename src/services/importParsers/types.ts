@@ -22,4 +22,9 @@ export interface ImportParser {
    * then call this function. Falls back to `parse` if not provided.
    */
   parsePdf?: (extractedText: string) => ParsedTransaction[];
+  /**
+   * Set for statements printed in two columns, so the PDF text extraction
+   * reads each column separately instead of merging both into one line.
+   */
+  pdfTwoColumn?: boolean;
 }
