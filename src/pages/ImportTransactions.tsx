@@ -356,7 +356,7 @@ export default function ImportTransactions() {
                 categoryId,
                 description: transactionDescriptions[i] ?? parsed.description,
                 amount: parsed.amount,
-                date: parsed.date,
+                date: transactionDates[i] ?? parsed.date,
                 type: transactionType,
                 isPaid: true,
                 recurrenceType: 'once',
