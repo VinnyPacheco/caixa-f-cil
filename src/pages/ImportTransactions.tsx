@@ -185,7 +185,7 @@ export default function ImportTransactions() {
     fileInputRef.current?.click();
   };
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !selectedParser) return;
 
@@ -203,15 +203,27 @@ export default function ImportTransactions() {
     }
 
     setFileName(file.name);
+    setSelectedFile(file);
+
+    e.target.value = '';
+  };
+
+  const handleParseFile = async () => {
+    if (!selectedParser || !selectedFile) return;
+
+    setIsImporting(true);
 
     try {
       let transactions: ParsedTransaction[];
-      if (lowerName.endsWith('.pdf')) {
-        const text = await extractTextFromPdf(file, filePassword.trim() || undefined);
+      if (selectedFile.name.toLowerCase().endsWith('.pdf')) {
+        const text = await extractTextFromPdf(
+          selectedFile,
+          filePassword.trim() || undefined
+        );
         const pdfParser = selectedParser.parsePdf ?? selectedParser.parse;
         transactions = pdfParser(text);
       } else {
-        const content = await file.text();
+        const content = await selectedFile.text();
         transactions = selectedParser.parse(content);
       }
 
@@ -254,13 +266,13 @@ export default function ImportTransactions() {
       toast({
         title: isPasswordError ? 'Senha do arquivo inválida' : 'Erro ao ler arquivo',
         description: isPasswordError
-          ? 'O arquivo está protegido. Informe a senha correta e selecione o arquivo novamente.'
+          ? 'O arquivo está protegido. Informe a senha correta e clique em "Ler arquivo" novamente.'
           : 'Não foi possível processar o arquivo selecionado.',
         variant: 'destructive',
       });
+    } finally {
+      setIsImporting(false);
     }
-
-    e.target.value = '';
   };
 
   const toggleSelectAll = () => {
