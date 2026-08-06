@@ -1,5 +1,6 @@
 import { ImportParser } from './types';
 import { itauParser } from './itauParser';
+import { itauCreditCardParser } from './itauCreditCardParser';
 import { mercadoPagoParser } from './mercadoPagoParser';
 import { interParser } from './interParser';
 import { nubankParser } from './nubankParser';
@@ -8,6 +9,7 @@ import { bancoBrasilParser } from './bancoBrasilParser';
 // Registry of all available parsers
 export const importParsers: ImportParser[] = [
   itauParser,
+  itauCreditCardParser,
   mercadoPagoParser,
   interParser,
   nubankParser,
