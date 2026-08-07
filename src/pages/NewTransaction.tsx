@@ -381,7 +381,7 @@ export default function NewTransaction() {
         amount: numericAmount,
         date: date ? format(date, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
         type,
-        isPaid: false,
+        isPaid,
         recurrenceType: effectiveRecurrence,
         installmentTotal: effectiveRecurrence === 'installment' ? installmentCount : undefined,
         installmentCurrent: effectiveRecurrence === 'installment' ? 1 : undefined,
