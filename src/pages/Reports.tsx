@@ -344,9 +344,24 @@ export default function Reports() {
     return months;
   }, [selectedDate]);
 
-  const budgetBalance = monthSummary.totalIncome - monthSummary.totalExpense;
-  const budgetPercentage = monthSummary.totalIncome > 0 
-    ? Math.round((budgetBalance / monthSummary.totalIncome) * 100) 
+  // Summary respecting the account filter (falls back to the hook summary when no filter)
+  const filteredSummary = useMemo(() => {
+    if (selectedAccountIds.length === 0) {
+      return { totalIncome: monthSummary.totalIncome, totalExpense: monthSummary.totalExpense };
+    }
+    return transactions.reduce(
+      (acc, t) => {
+        if (t.type === 'income') acc.totalIncome += t.amount;
+        else acc.totalExpense += t.amount;
+        return acc;
+      },
+      { totalIncome: 0, totalExpense: 0 },
+    );
+  }, [transactions, selectedAccountIds, monthSummary]);
+
+  const budgetBalance = filteredSummary.totalIncome - filteredSummary.totalExpense;
+  const budgetPercentage = filteredSummary.totalIncome > 0 
+    ? Math.round((budgetBalance / filteredSummary.totalIncome) * 100) 
     : 0;
 
   const handleExport = (kind: 'pdf' | 'csv') => {
@@ -758,14 +773,14 @@ export default function Reports() {
                       key: 'income',
                       label: 'Receita',
                       color: 'hsl(var(--success))',
-                      value: monthSummary.totalIncome,
+                      value: filteredSummary.totalIncome,
                       series: monthlyAggregates.map((m) => m.income),
                     },
                     {
                       key: 'expense',
                       label: 'Despesa',
                       color: 'hsl(var(--destructive))',
-                      value: monthSummary.totalExpense,
+                      value: filteredSummary.totalExpense,
                       series: monthlyAggregates.map((m) => m.expense),
                     },
                     {
@@ -928,11 +943,11 @@ export default function Reports() {
                     <div className="pt-3 pl-3 pr-1 flex flex-col gap-2 border-l-2 border-accent/20 ml-1.5 mt-2">
                       <div className="flex justify-between items-center text-xs">
                         <span className="text-muted-foreground">Total Receitas</span>
-                        <span className="font-medium text-foreground">{formatCurrency(monthSummary.totalIncome)}</span>
+                        <span className="font-medium text-foreground">{formatCurrency(filteredSummary.totalIncome)}</span>
                       </div>
                       <div className="flex justify-between items-center text-xs">
                         <span className="text-muted-foreground">Total Despesas</span>
-                        <span className="font-medium text-foreground">{formatCurrency(monthSummary.totalExpense)}</span>
+                        <span className="font-medium text-foreground">{formatCurrency(filteredSummary.totalExpense)}</span>
                       </div>
                     </div>
                   </CollapsibleContent>
@@ -950,7 +965,7 @@ export default function Reports() {
                             <span className="material-symbols-outlined text-[16px] transition-transform data-[state=open]:rotate-180">expand_more</span>
                           </span>
                         </div>
-                        <span className="text-sm font-bold text-foreground">{formatCurrency(monthSummary.totalIncome)}</span>
+                        <span className="text-sm font-bold text-foreground">{formatCurrency(filteredSummary.totalIncome)}</span>
                       </div>
                       <div className="relative w-full bg-secondary rounded-full h-2.5 overflow-hidden">
                         <div className="absolute inset-0 bg-success/10"></div>
@@ -982,13 +997,13 @@ export default function Reports() {
                             <span className="material-symbols-outlined text-[16px] transition-transform data-[state=open]:rotate-180">expand_more</span>
                           </span>
                         </div>
-                        <span className="text-sm font-bold text-foreground">{formatCurrency(monthSummary.totalExpense)}</span>
+                        <span className="text-sm font-bold text-foreground">{formatCurrency(filteredSummary.totalExpense)}</span>
                       </div>
                       <div className="relative w-full bg-secondary rounded-full h-2.5 overflow-hidden">
                         <div className="absolute inset-0 bg-destructive/10"></div>
                         <div 
                           className="bg-destructive h-full rounded-full transition-all duration-1000 ease-out" 
-                          style={{ width: `${monthSummary.totalIncome > 0 ? Math.round((monthSummary.totalExpense / monthSummary.totalIncome) * 100) : 0}%` }}
+                          style={{ width: `${filteredSummary.totalIncome > 0 ? Math.round((filteredSummary.totalExpense / filteredSummary.totalIncome) * 100) : 0}%` }}
                         />
                       </div>
                     </div>
