@@ -454,7 +454,13 @@ export default function Reports() {
 
           {/* Filters based on active tab */}
           {activeTab === 'budget' ? (
-            <div className="flex gap-2 mb-8 overflow-x-auto no-scrollbar pb-1">
+            <div className="flex flex-col gap-3 mb-8">
+              <AccountFilter
+                availableAccounts={accounts}
+                selectedAccountIds={selectedAccountIds}
+                onSelectionChange={setSelectedAccountIds}
+              />
+              <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
               <button
                 onClick={() => setOpenItems((prev) => prev.includes('budget') ? prev : [...prev, 'budget'])}
                 className="flex-shrink-0 flex items-center gap-2 px-3 py-1.5 rounded-full bg-accent text-accent-foreground text-xs font-bold shadow-md shadow-accent/20 transition-all active:scale-95"
@@ -476,6 +482,7 @@ export default function Reports() {
                 <div className="size-2 rounded-full bg-destructive"></div>
                 Despesa
               </button>
+              </div>
             </div>
           ) : (
             <div className="flex flex-col gap-3 mb-8">
@@ -520,6 +527,11 @@ export default function Reports() {
                   Receita
                 </button>
               </div>
+              <AccountFilter
+                availableAccounts={accounts}
+                selectedAccountIds={selectedAccountIds}
+                onSelectionChange={setSelectedAccountIds}
+              />
               <div className="flex gap-2">
                 <div className="flex-1">
                   <CategoryFilter
