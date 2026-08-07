@@ -18,6 +18,8 @@ import {
 } from '@/components/ui/collapsible';
 import { TagFilter } from '@/components/finance/TagFilter';
 import { CategoryFilter } from '@/components/finance/CategoryFilter';
+import { AccountFilter } from '@/components/finance/AccountFilter';
+import { useAccounts } from '@/hooks/useAccounts';
 import { Tag } from '@/types/tag';
 import {
   DropdownMenu,
@@ -35,12 +37,23 @@ export default function Reports() {
   const [activeTab, setActiveTab] = useState<TabType>('budget');
   const [filterType, setFilterType] = useState<FilterType>('all');
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
+  const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([]);
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [includeNoTags, setIncludeNoTags] = useState(false);
   const [openItems, setOpenItems] = useState<string[]>(['budget']);
   const [selectedLegendKey, setSelectedLegendKey] = useState<string | null>(null);
 
-  const { monthSummary, categories, transactions } = useTransactions(selectedDate);
+  const { monthSummary, categories, transactions: allMonthTransactions } = useTransactions(selectedDate);
+  const { accounts } = useAccounts();
+
+  // Apply the account filter as the base scope for every chart/list below
+  const transactions = useMemo(
+    () =>
+      selectedAccountIds.length > 0
+        ? allMonthTransactions.filter((t) => selectedAccountIds.includes(t.accountId))
+        : allMonthTransactions,
+    [allMonthTransactions, selectedAccountIds],
+  );
   const { displayName } = useProfile();
   const { user } = useAuth();
   const { isSimulation } = useSimulation();
@@ -67,7 +80,7 @@ export default function Reports() {
   // Reset selected legend when switching tabs/filters
   useEffect(() => {
     setSelectedLegendKey(null);
-  }, [activeTab, filterType]);
+  }, [activeTab, filterType, selectedAccountIds]);
 
   // Base transactions for category charts (filtered by type and category, but NOT by tags)
   const chartBaseTransactions = useMemo(() => {
@@ -193,8 +206,12 @@ export default function Reports() {
   // apply the same type/category/tag filters as the current-month list so the
   // chart reflects the selected filters across all months.
   const chartSourceTransactions = useMemo(() => {
-    if (activeTab !== 'categories') return allTransactions;
-    let f = allTransactions;
+    let base = allTransactions;
+    if (selectedAccountIds.length > 0) {
+      base = base.filter((t) => selectedAccountIds.includes(t.accountId));
+    }
+    if (activeTab !== 'categories') return base;
+    let f = base;
     if (filterType === 'income') f = f.filter((t) => t.type === 'income');
     else if (filterType === 'expense') f = f.filter((t) => t.type === 'expense');
     if (selectedCategoryIds.length > 0) f = f.filter((t) => selectedCategoryIds.includes(t.categoryId));
@@ -208,7 +225,7 @@ export default function Reports() {
       });
     }
     return f;
-  }, [activeTab, allTransactions, filterType, selectedCategoryIds, selectedTagIds, includeNoTags, transactionTagsMap]);
+  }, [activeTab, allTransactions, selectedAccountIds, filterType, selectedCategoryIds, selectedTagIds, includeNoTags, transactionTagsMap]);
 
   // Compute monthly aggregates for the 7 months window shown in the chart (-3..+3)
   const monthlyAggregates = useMemo(() => {
@@ -437,7 +454,13 @@ export default function Reports() {
 
           {/* Filters based on active tab */}
           {activeTab === 'budget' ? (
-            <div className="flex gap-2 mb-8 overflow-x-auto no-scrollbar pb-1">
+            <div className="flex flex-col gap-3 mb-8">
+              <AccountFilter
+                availableAccounts={accounts}
+                selectedAccountIds={selectedAccountIds}
+                onSelectionChange={setSelectedAccountIds}
+              />
+              <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
               <button
                 onClick={() => setOpenItems((prev) => prev.includes('budget') ? prev : [...prev, 'budget'])}
                 className="flex-shrink-0 flex items-center gap-2 px-3 py-1.5 rounded-full bg-accent text-accent-foreground text-xs font-bold shadow-md shadow-accent/20 transition-all active:scale-95"
@@ -459,6 +482,7 @@ export default function Reports() {
                 <div className="size-2 rounded-full bg-destructive"></div>
                 Despesa
               </button>
+              </div>
             </div>
           ) : (
             <div className="flex flex-col gap-3 mb-8">
@@ -503,6 +527,11 @@ export default function Reports() {
                   Receita
                 </button>
               </div>
+              <AccountFilter
+                availableAccounts={accounts}
+                selectedAccountIds={selectedAccountIds}
+                onSelectionChange={setSelectedAccountIds}
+              />
               <div className="flex gap-2">
                 <div className="flex-1">
                   <CategoryFilter
