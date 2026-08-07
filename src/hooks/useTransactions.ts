@@ -82,9 +82,13 @@ export function useTransactions(selectedDate: Date) {
     [accounts],
   );
 
+  // Bumped whenever an invoice paid flag (localStorage) changes, to recompute virtual rows.
+  const [invoicePaidVersion, setInvoicePaidVersion] = useState(0);
+
   const invoiceTransactions = useMemo(
     () => buildInvoiceTransactions(transactions, accounts),
-    [transactions, accounts],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [transactions, accounts, invoicePaidVersion],
   );
 
   const goalPlaceholderTransactions = useMemo(
@@ -336,6 +340,7 @@ export function useTransactions(selectedDate: Date) {
   const togglePaid = useCallback((id: string) => {
     if (id.startsWith('invoice:')) {
       toggleInvoicePaid(id);
+      setInvoicePaidVersion((v) => v + 1);
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
       return;
     }
