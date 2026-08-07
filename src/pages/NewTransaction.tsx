@@ -60,6 +60,7 @@ export default function NewTransaction() {
   // Sempre exibir número de parcelas; 1x = lançamento único
   const [installmentCount, setInstallmentCount] = useState(1);
   const [autoPay, setAutoPay] = useState(false);
+  const [isPaid, setIsPaid] = useState(false);
   const [notes, setNotes] = useState('');
   const [selectedTags, setSelectedTags] = useState<Tag[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
