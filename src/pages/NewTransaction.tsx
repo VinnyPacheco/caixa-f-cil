@@ -60,6 +60,7 @@ export default function NewTransaction() {
   // Sempre exibir número de parcelas; 1x = lançamento único
   const [installmentCount, setInstallmentCount] = useState(1);
   const [autoPay, setAutoPay] = useState(false);
+  const [isPaid, setIsPaid] = useState(false);
   const [notes, setNotes] = useState('');
   const [selectedTags, setSelectedTags] = useState<Tag[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -80,6 +81,7 @@ export default function NewTransaction() {
     setDate(new Date());
     setInstallmentCount(1);
     setAutoPay(false);
+    setIsPaid(false);
     setNotes('');
     setSelectedTags([]);
     setCategoryInitialized(false);
@@ -379,7 +381,7 @@ export default function NewTransaction() {
         amount: numericAmount,
         date: date ? format(date, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
         type,
-        isPaid: false,
+        isPaid,
         recurrenceType: effectiveRecurrence,
         installmentTotal: effectiveRecurrence === 'installment' ? installmentCount : undefined,
         installmentCurrent: effectiveRecurrence === 'installment' ? 1 : undefined,
@@ -634,6 +636,25 @@ export default function NewTransaction() {
                 />
               </div>
             </div>
+          </div>
+
+          {/* Paid Status Toggle */}
+          <div className="flex items-center justify-between bg-secondary p-4 rounded-2xl">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-full bg-card text-accent">
+                <span className="material-symbols-outlined text-[20px]">task_alt</span>
+              </div>
+              <span className="text-base font-semibold text-foreground">Pago/Recebido</span>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={isPaid}
+                onChange={(e) => setIsPaid(e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-muted peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-border after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent"></div>
+            </label>
           </div>
 
           {/* Tags */}
