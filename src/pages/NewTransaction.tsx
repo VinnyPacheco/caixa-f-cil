@@ -81,6 +81,7 @@ export default function NewTransaction() {
     setDate(new Date());
     setInstallmentCount(1);
     setAutoPay(false);
+    setIsPaid(false);
     setNotes('');
     setSelectedTags([]);
     setCategoryInitialized(false);
