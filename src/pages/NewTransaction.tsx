@@ -638,6 +638,25 @@ export default function NewTransaction() {
             </div>
           </div>
 
+          {/* Paid Status Toggle */}
+          <div className="flex items-center justify-between bg-secondary p-4 rounded-2xl">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-full bg-card text-accent">
+                <span className="material-symbols-outlined text-[20px]">task_alt</span>
+              </div>
+              <span className="text-base font-semibold text-foreground">Pago/Recebido</span>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={isPaid}
+                onChange={(e) => setIsPaid(e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-muted peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-border after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent"></div>
+            </label>
+          </div>
+
           {/* Tags */}
           <TagSelector
             selectedTags={selectedTags}
