@@ -2,23 +2,26 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Account } from '@/types/finance';
 import { 
   fetchAccounts, 
+  fetchAllAccounts,
   createAccount, 
   updateAccount, 
-  deleteAccount 
+  deleteAccount,
+  countAccountTransactions,
 } from '@/services/accountsService';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSimulation } from '@/contexts/SimulationContext';
 import { useToast } from '@/hooks/use-toast';
 
-export function useAccounts() {
+export function useAccounts(options?: { includeInactive?: boolean }) {
+  const includeInactive = options?.includeInactive ?? false;
   const { user } = useAuth();
   const { isSimulation } = useSimulation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const accountsQuery = useQuery({
-    queryKey: ['accounts'],
-    queryFn: fetchAccounts,
+    queryKey: includeInactive ? ['accounts', 'all'] : ['accounts'],
+    queryFn: includeInactive ? fetchAllAccounts : fetchAccounts,
     enabled: !!user,
     staleTime: isSimulation ? Infinity : 0,
   });
@@ -69,6 +72,12 @@ export function useAccounts() {
           (old || []).filter(a => a.id !== id)
         );
         return;
+      }
+      const count = await countAccountTransactions(id);
+      if (count > 0) {
+        throw new Error(
+          `Não é possível excluir esta conta pois existem ${count} lançamento(s) vinculado(s) a ela. Você pode desativá-la.`,
+        );
       }
       return deleteAccount(id);
     },

@@ -6,8 +6,18 @@ import { useProfile } from '@/hooks/useProfile';
 import { Account, AccountType } from '@/types/finance';
 import { Button } from '@/components/ui/button';
 import { AccountForm } from '@/components/finance/AccountForm';
-import { Plus, Receipt } from 'lucide-react';
+import { Plus, Receipt, Trash2, EyeOff, Eye } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 const accountTypeLabels: Record<AccountType, string> = {
   checking: 'Conta Corrente',
@@ -24,10 +34,13 @@ const accountTypeIcons: Record<AccountType, string> = {
 };
 
 export default function Accounts() {
-  const { accounts, createAccount, updateAccount, isLoading } = useAccounts();
+  const { accounts, createAccount, updateAccount, deleteAccount, isLoading } = useAccounts({
+    includeInactive: true,
+  });
   const { displayName } = useProfile();
   const [formOpen, setFormOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
+  const [accountToDelete, setAccountToDelete] = useState<Account | null>(null);
 
   const formatCurrency = (value: number) => {
     return value.toLocaleString('pt-BR', {
@@ -56,6 +69,11 @@ export default function Accounts() {
     setFormOpen(true);
   };
 
+  const toggleActive = (account: Account) => {
+    const { id, ...rest } = account;
+    updateAccount({ id, data: { ...rest, isActive: account.isActive === false } });
+  };
+
   return (
     <AppLayout>
       <Header showAvatar showNotification userName={displayName} />
@@ -80,7 +98,12 @@ export default function Accounts() {
 
           <div className="bg-card rounded-2xl border border-border/50 overflow-hidden divide-y divide-border/50">
             {accounts.map((account) => (
-              <div key={account.id} className="flex items-center hover:bg-secondary/50 transition-colors">
+              <div
+                key={account.id}
+                className={`flex items-center hover:bg-secondary/50 transition-colors ${
+                  account.isActive === false ? 'opacity-60' : ''
+                }`}
+              >
                 <button
                   onClick={() => handleEditAccount(account)}
                   className="flex-1 flex items-center gap-4 p-4 text-left"
@@ -97,7 +120,14 @@ export default function Accounts() {
                     </span>
                   </div>
                   <div className="flex-1">
-                    <p className="font-semibold text-foreground">{account.name}</p>
+                    <p className="font-semibold text-foreground flex items-center gap-2">
+                      {account.name}
+                      {account.isActive === false && (
+                        <span className="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                          Inativa
+                        </span>
+                      )}
+                    </p>
                     <p className="text-sm text-muted-foreground">
                       {accountTypeLabels[account.type]}
                     </p>
@@ -120,6 +150,22 @@ export default function Accounts() {
                     <Receipt className="size-5" />
                   </Link>
                 )}
+                <button
+                  onClick={() => toggleActive(account)}
+                  className="px-2 text-muted-foreground hover:text-foreground"
+                  aria-label={account.isActive === false ? 'Ativar conta' : 'Desativar conta'}
+                  title={account.isActive === false ? 'Ativar conta' : 'Desativar conta'}
+                >
+                  {account.isActive === false ? <Eye className="size-5" /> : <EyeOff className="size-5" />}
+                </button>
+                <button
+                  onClick={() => setAccountToDelete(account)}
+                  className="px-2 text-muted-foreground hover:text-destructive"
+                  aria-label="Excluir conta"
+                  title="Excluir conta"
+                >
+                  <Trash2 className="size-5" />
+                </button>
                 <button
                   onClick={() => handleEditAccount(account)}
                   className="pr-4 text-muted-foreground"
@@ -157,8 +203,31 @@ export default function Accounts() {
         onOpenChange={setFormOpen}
         account={editingAccount}
         onSave={handleSaveAccount}
-        allAccounts={accounts}
+        allAccounts={accounts.filter((a) => a.isActive !== false)}
       />
+
+      <AlertDialog open={!!accountToDelete} onOpenChange={(o) => !o && setAccountToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir conta</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir a conta "{accountToDelete?.name}"? Contas com lançamentos
+              vinculados não podem ser excluídas — nesse caso, desative a conta.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (accountToDelete) deleteAccount(accountToDelete.id);
+                setAccountToDelete(null);
+              }}
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppLayout>
   );
 }

@@ -10,6 +10,8 @@ export interface Account {
   color: string;
   icon: string;
   isPrimary?: boolean;
+  /** Inactive accounts are hidden everywhere except the Accounts page. */
+  isActive?: boolean;
   // Credit card specific fields
   dueDay?: number | null;
   statementClosingDay?: number | null;
