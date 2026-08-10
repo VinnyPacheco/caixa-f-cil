@@ -203,7 +203,7 @@ export default function Accounts() {
         onOpenChange={setFormOpen}
         account={editingAccount}
         onSave={handleSaveAccount}
-        allAccounts={accounts}
+        allAccounts={accounts.filter((a) => a.isActive !== false)}
       />
 
       <AlertDialog open={!!accountToDelete} onOpenChange={(o) => !o && setAccountToDelete(null)}>
