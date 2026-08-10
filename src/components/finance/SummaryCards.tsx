@@ -8,9 +8,9 @@ interface SummaryCardsProps {
 export function SummaryCards({ income, expense }: SummaryCardsProps) {
   return (
     <section className="grid grid-cols-2 gap-4">
-      <div className="flex flex-col gap-3 rounded-2xl bg-card p-5 shadow-sm border border-border/50">
-        <div className="size-10 flex items-center justify-center rounded-full bg-success/10">
-          <span className="material-symbols-outlined text-success text-xl">arrow_downward</span>
+      <div className="flex flex-col gap-3 rounded-2xl bg-card p-5 shadow-sm border border-mint/25">
+        <div className="size-10 flex items-center justify-center rounded-full bg-mint/15">
+          <span className="material-symbols-outlined text-mint text-xl">arrow_downward</span>
         </div>
         <div>
           <p className="text-muted-foreground text-sm font-medium">Receitas</p>
@@ -19,9 +19,9 @@ export function SummaryCards({ income, expense }: SummaryCardsProps) {
           </p>
         </div>
       </div>
-      <div className="flex flex-col gap-3 rounded-2xl bg-card p-5 shadow-sm border border-border/50">
-        <div className="size-10 flex items-center justify-center rounded-full bg-destructive/10">
-          <span className="material-symbols-outlined text-destructive text-xl">arrow_upward</span>
+      <div className="flex flex-col gap-3 rounded-2xl bg-card p-5 shadow-sm border border-rose/25">
+        <div className="size-10 flex items-center justify-center rounded-full bg-rose/15">
+          <span className="material-symbols-outlined text-rose text-xl">arrow_upward</span>
         </div>
         <div>
           <p className="text-muted-foreground text-sm font-medium">Despesas</p>
