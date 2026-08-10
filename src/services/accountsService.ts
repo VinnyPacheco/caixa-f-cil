@@ -52,14 +52,8 @@ export function accountToDb(account: Omit<Account, 'id'>, userId: string): any {
 }
 
 export async function fetchAccounts(): Promise<Account[]> {
-  const { data, error } = await supabase
-    .from('accounts')
-    .select('*')
-    .eq('is_active' as any, true)
-    .order('created_at', { ascending: true });
-
-  if (error) throw error;
-  return (data || []).map(dbToAccount);
+  const all = await fetchAllAccounts();
+  return all.filter((a) => a.isActive !== false);
 }
 
 /** Includes inactive accounts — only for the Accounts management screen. */
