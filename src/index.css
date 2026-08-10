@@ -249,11 +249,11 @@
 
   /* Status badge */
   .status-paid {
-    @apply flex items-center justify-center rounded-full bg-transparent border-2 border-success size-6 text-success;
+    @apply flex items-center justify-center rounded-full bg-mint/10 border-2 border-mint size-6 text-mint;
   }
   
   .status-pending {
-    @apply flex items-center justify-center rounded-full border-2 border-muted-foreground/30 size-6 bg-transparent;
+    @apply flex items-center justify-center rounded-full border-2 border-tangerine/50 size-6 bg-tangerine/5;
   }
 
   /* Filter pill */
@@ -308,11 +308,11 @@
 
   /* Amount display */
   .amount-income {
-    @apply text-success font-bold;
+    @apply text-mint font-bold;
   }
   
   .amount-expense {
-    @apply text-destructive font-bold;
+    @apply text-rose font-bold;
   }
 
   /* Category icon container */
