@@ -45,6 +45,23 @@
     --destructive-foreground: 36 40% 98%;
     --success: 130 28% 38%;           /* green ink */
     --success-foreground: 36 40% 98%;
+
+    /* Soft accent family — subtle, muted hues for actions & icons */
+    --info: 210 55% 48%;              /* soft blue */
+    --info-foreground: 36 40% 98%;
+    --info-soft: 210 60% 94%;
+    --mint: 158 40% 40%;              /* soft green */
+    --mint-foreground: 36 40% 98%;
+    --mint-soft: 158 45% 93%;
+    --lilac: 265 40% 58%;             /* soft lilac */
+    --lilac-foreground: 36 40% 98%;
+    --lilac-soft: 265 55% 95%;
+    --tangerine: 26 65% 52%;          /* soft orange */
+    --tangerine-foreground: 36 40% 98%;
+    --tangerine-soft: 28 70% 94%;
+    --rose: 351 55% 52%;              /* soft red */
+    --rose-foreground: 36 40% 98%;
+    --rose-soft: 351 60% 95%;
     --border: 32 20% 82%;
     --input: 32 20% 82%;
     --ring: 29 24% 44%;
@@ -88,6 +105,21 @@
     --destructive-foreground: 36 30% 92%;
     --success: 130 26% 42%;
     --success-foreground: 36 30% 92%;
+    --info: 210 60% 66%;
+    --info-foreground: 29 18% 12%;
+    --info-soft: 210 30% 24%;
+    --mint: 158 40% 58%;
+    --mint-foreground: 29 18% 12%;
+    --mint-soft: 158 24% 22%;
+    --lilac: 265 45% 72%;
+    --lilac-foreground: 29 18% 12%;
+    --lilac-soft: 265 22% 26%;
+    --tangerine: 26 70% 64%;
+    --tangerine-foreground: 29 18% 12%;
+    --tangerine-soft: 26 28% 24%;
+    --rose: 351 60% 66%;
+    --rose-foreground: 29 18% 12%;
+    --rose-soft: 351 25% 26%;
     --border: 29 14% 26%;
     --input: 29 14% 26%;
     --ring: 35 32% 62%;
@@ -217,11 +249,11 @@
 
   /* Status badge */
   .status-paid {
-    @apply flex items-center justify-center rounded-full bg-transparent border-2 border-success size-6 text-success;
+    @apply flex items-center justify-center rounded-full bg-mint/10 border-2 border-mint size-6 text-mint;
   }
   
   .status-pending {
-    @apply flex items-center justify-center rounded-full border-2 border-muted-foreground/30 size-6 bg-transparent;
+    @apply flex items-center justify-center rounded-full border-2 border-tangerine/50 size-6 bg-tangerine/5;
   }
 
   /* Filter pill */
@@ -276,11 +308,11 @@
 
   /* Amount display */
   .amount-income {
-    @apply text-success font-bold;
+    @apply text-mint font-bold;
   }
   
   .amount-expense {
-    @apply text-destructive font-bold;
+    @apply text-rose font-bold;
   }
 
   /* Category icon container */

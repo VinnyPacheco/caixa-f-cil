@@ -8,27 +8,29 @@ interface NavItem {
   icon: string;
   label: string;
   hasSubmenu?: boolean;
+  color: string;
 }
 
 interface SubMenuItem {
   path: string;
   icon: string;
   label: string;
+  color: string;
 }
 
 const navItems: NavItem[] = [
-  { path: '/', icon: 'home', label: 'Início' },
-  { path: '/transactions', icon: 'receipt_long', label: 'Transações' },
-  { path: '/reports', icon: 'bar_chart', label: 'Relatórios' },
-  { path: '/cadastros', icon: 'folder', label: 'Cadastros', hasSubmenu: true },
+  { path: '/', icon: 'home', label: 'Início', color: 'text-info' },
+  { path: '/transactions', icon: 'receipt_long', label: 'Transações', color: 'text-mint' },
+  { path: '/reports', icon: 'bar_chart', label: 'Relatórios', color: 'text-lilac' },
+  { path: '/cadastros', icon: 'folder', label: 'Cadastros', hasSubmenu: true, color: 'text-tangerine' },
 ];
 
 const cadastrosSubmenu: SubMenuItem[] = [
-  { path: '/accounts', icon: 'account_balance_wallet', label: 'Contas' },
-  { path: '/categories', icon: 'category', label: 'Categorias' },
-  { path: '/metas', icon: 'flag', label: 'Metas' },
-  { path: '/bulk-transactions', icon: 'playlist_add', label: 'Em Massa' },
-  { path: '/import-transactions', icon: 'upload_file', label: 'Importar' },
+  { path: '/accounts', icon: 'account_balance_wallet', label: 'Contas', color: 'text-info' },
+  { path: '/categories', icon: 'category', label: 'Categorias', color: 'text-lilac' },
+  { path: '/metas', icon: 'flag', label: 'Metas', color: 'text-mint' },
+  { path: '/bulk-transactions', icon: 'playlist_add', label: 'Em Massa', color: 'text-tangerine' },
+  { path: '/import-transactions', icon: 'upload_file', label: 'Importar', color: 'text-rose' },
 ];
 
 export function HeaderNav() {
@@ -108,14 +110,14 @@ export function HeaderNav() {
       <>
         <span
           className={`material-symbols-outlined text-xl ${
-            active ? 'text-accent icon-filled' : 'text-muted-foreground'
+            active ? `${item.color} icon-filled` : 'text-muted-foreground'
           }`}
         >
           {item.icon}
         </span>
         <span
           className={`text-xs ${
-            active ? 'text-accent font-semibold' : 'text-muted-foreground font-medium'
+            active ? `${item.color} font-semibold` : 'text-muted-foreground font-medium'
           }`}
         >
           {item.label}
@@ -136,7 +138,7 @@ export function HeaderNav() {
                     location.pathname === subItem.path ? 'bg-accent/10 text-accent' : 'text-foreground'
                   }`}
                 >
-                  <span className="material-symbols-outlined text-xl">{subItem.icon}</span>
+                  <span className={`material-symbols-outlined text-xl ${subItem.color}`}>{subItem.icon}</span>
                   <span className="text-sm font-medium">{subItem.label}</span>
                 </button>
               ))}
