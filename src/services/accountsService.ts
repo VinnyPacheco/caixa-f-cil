@@ -24,6 +24,7 @@ export function dbToAccount(dbAccount: DbAccount): Account {
     color: dbAccount.color,
     icon: dbAccount.icon,
     isPrimary: dbAccount.is_primary,
+    isActive: (dbAccount as any).is_active ?? true,
     dueDay: (dbAccount as any).due_day ?? null,
     statementClosingDay: (dbAccount as any).statement_closing_day ?? null,
     creditLimit: (dbAccount as any).credit_limit != null ? Number((dbAccount as any).credit_limit) : null,
@@ -42,6 +43,7 @@ export function accountToDb(account: Omit<Account, 'id'>, userId: string): any {
     color: account.color,
     icon: account.icon,
     is_primary: account.isPrimary ?? false,
+    is_active: account.isActive ?? true,
     due_day: account.type === 'credit_card' ? (account.dueDay ?? null) : null,
     statement_closing_day: account.type === 'credit_card' ? (account.statementClosingDay ?? null) : null,
     credit_limit: account.type === 'credit_card' ? (account.creditLimit ?? null) : null,
@@ -53,10 +55,33 @@ export async function fetchAccounts(): Promise<Account[]> {
   const { data, error } = await supabase
     .from('accounts')
     .select('*')
+    .eq('is_active' as any, true)
     .order('created_at', { ascending: true });
 
   if (error) throw error;
   return (data || []).map(dbToAccount);
+}
+
+/** Includes inactive accounts — only for the Accounts management screen. */
+export async function fetchAllAccounts(): Promise<Account[]> {
+  const { data, error } = await supabase
+    .from('accounts')
+    .select('*')
+    .order('created_at', { ascending: true });
+
+  if (error) throw error;
+  return (data || []).map(dbToAccount);
+}
+
+/** Number of transactions linked to an account. */
+export async function countAccountTransactions(accountId: string): Promise<number> {
+  const { count, error } = await supabase
+    .from('transactions')
+    .select('id', { count: 'exact', head: true })
+    .eq('account_id', accountId);
+
+  if (error) throw error;
+  return count ?? 0;
 }
 
 export async function createAccount(account: Omit<Account, 'id'>, userId: string): Promise<Account> {
@@ -78,6 +103,7 @@ export async function updateAccount(id: string, account: Partial<Omit<Account, '
   if (account.color !== undefined) updates.color = account.color;
   if (account.icon !== undefined) updates.icon = account.icon;
   if (account.isPrimary !== undefined) updates.is_primary = account.isPrimary;
+  if (account.isActive !== undefined) updates.is_active = account.isActive;
   // Credit card specific fields - always update them (null clears when not credit_card)
   updates.due_day = account.type === 'credit_card' ? (account.dueDay ?? null) : null;
   updates.statement_closing_day = account.type === 'credit_card' ? (account.statementClosingDay ?? null) : null;
