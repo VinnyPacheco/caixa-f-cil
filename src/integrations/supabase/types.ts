@@ -24,6 +24,7 @@ export type Database = {
           icon: string
           id: string
           initial_balance: number
+          is_active: boolean
           is_primary: boolean
           name: string
           statement_closing_day: number | null
@@ -40,6 +41,7 @@ export type Database = {
           icon?: string
           id?: string
           initial_balance?: number
+          is_active?: boolean
           is_primary?: boolean
           name: string
           statement_closing_day?: number | null
@@ -56,6 +58,7 @@ export type Database = {
           icon?: string
           id?: string
           initial_balance?: number
+          is_active?: boolean
           is_primary?: boolean
           name?: string
           statement_closing_day?: number | null
