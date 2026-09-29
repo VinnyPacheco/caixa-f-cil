@@ -378,8 +378,10 @@ export function useMultiMonthTransactions(selectedDate: Date, additionalMonths: 
         await setTransactionTags(createdTransaction.id, tagIds, user.id);
         queryClient.invalidateQueries({ queryKey: ['transaction-tags-bulk'] });
       }
+      return createdTransaction;
     } catch (error) {
       // Error already handled by mutation
+      return undefined;
     }
   }, [createMutation, user, queryClient, isSimulation]);
 
