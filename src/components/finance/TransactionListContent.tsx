@@ -1,4 +1,5 @@
-import { useMemo } from 'react';
+import { Fragment, useMemo, useState } from 'react';
+import { QuickAddCard, QuickAddInsertLine, QuickAddData, QuickAddPosition } from './QuickAddTransaction';
 import {
   SortableContext,
   verticalListSortingStrategy,
@@ -18,7 +19,14 @@ interface DroppableDateGroupProps {
   onTogglePaid?: (id: string) => void;
   onTransactionClick?: (transaction: TransactionWithBalance) => void;
   isDraggable?: boolean;
+  onQuickAdd?: QuickAddHandler;
 }
+
+export type QuickAddHandler = (
+  anchor: TransactionWithBalance,
+  position: QuickAddPosition,
+  data: QuickAddData
+) => Promise<void>;
 
 function DroppableDateGroup({
   date,
@@ -28,7 +36,31 @@ function DroppableDateGroup({
   onTogglePaid,
   onTransactionClick,
   isDraggable = true,
+  onQuickAdd,
 }: DroppableDateGroupProps) {
+  const [draft, setDraft] = useState<{ index: number } | null>(null);
+  const quickEnabled = !!onQuickAdd && isDraggable && transactions.length > 0;
+
+  // Insertion slot i means "before transactions[i]" (i === length means after the last)
+  const renderSlot = (i: number) => {
+    if (!quickEnabled) return null;
+    if (draft?.index === i) {
+      const anchor = i < transactions.length ? transactions[i] : transactions[transactions.length - 1];
+      const position: QuickAddPosition = i < transactions.length ? 'before' : 'after';
+      return (
+        <div className="py-1">
+          <QuickAddCard
+            onCancel={() => setDraft(null)}
+            onSave={async (data) => {
+              await onQuickAdd!(anchor, position, data);
+              setDraft(null);
+            }}
+          />
+        </div>
+      );
+    }
+    return <QuickAddInsertLine onClick={() => setDraft({ index: i })} />;
+  };
   const { setNodeRef, isOver } = useDroppable({
     id: `date-${date}`,
     data: { date },
@@ -54,20 +86,25 @@ function DroppableDateGroup({
       <SortableContext items={transactionIds} strategy={verticalListSortingStrategy}>
         <div
           ref={setNodeRef}
-          className={`flex flex-col gap-1.5 min-h-[40px] rounded-lg transition-colors ${
+          className={`flex flex-col ${quickEnabled ? 'gap-0' : 'gap-1.5'} min-h-[40px] rounded-lg transition-colors ${
             isOver ? 'bg-primary/10 ring-2 ring-primary/30' : ''
           }`}
         >
           {isDraggable ? (
-            transactions.map((transaction) => (
-              <SortableTransactionItem
-                key={transaction.id}
-                transaction={transaction}
-                tags={getTagsForTransaction(transaction)}
-                onTogglePaid={onTogglePaid}
-                onClick={() => onTransactionClick?.(transaction)}
-              />
-            ))
+            <>
+              {transactions.map((transaction, i) => (
+                <Fragment key={transaction.id}>
+                  {renderSlot(i)}
+                  <SortableTransactionItem
+                    transaction={transaction}
+                    tags={getTagsForTransaction(transaction)}
+                    onTogglePaid={onTogglePaid}
+                    onClick={() => onTransactionClick?.(transaction)}
+                  />
+                </Fragment>
+              ))}
+              {renderSlot(transactions.length)}
+            </>
           ) : (
             transactions.map((transaction) => (
               <TransactionItem
@@ -97,6 +134,7 @@ interface TransactionListContentProps {
   onTransactionClick?: (transaction: TransactionWithBalance) => void;
   sortOrder?: 'asc' | 'desc';
   isDraggable?: boolean;
+  onQuickAdd?: QuickAddHandler;
 }
 
 export function TransactionListContent({
@@ -105,6 +143,7 @@ export function TransactionListContent({
   onTransactionClick,
   sortOrder = 'desc',
   isDraggable = true,
+  onQuickAdd,
 }: TransactionListContentProps) {
   const transactionIds = useMemo(() => {
     const ids = new Set<string>();
@@ -142,6 +181,7 @@ export function TransactionListContent({
           onTogglePaid={onTogglePaid}
           onTransactionClick={onTransactionClick}
           isDraggable={isDraggable}
+          onQuickAdd={onQuickAdd}
         />
       ))}
     </div>
