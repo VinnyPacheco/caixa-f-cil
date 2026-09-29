@@ -16,7 +16,7 @@ import {
 } from '@dnd-kit/sortable';
 import { TransactionWithBalance } from '@/types/finance';
 import { TransactionItem } from './TransactionItem';
-import { TransactionListContent } from './TransactionListContent';
+import { TransactionListContent, QuickAddHandler } from './TransactionListContent';
 
 interface TransactionListProps {
   transactions: TransactionWithBalance[];
@@ -24,6 +24,7 @@ interface TransactionListProps {
   onTogglePaid: (id: string) => void;
   onTransactionClick?: (transaction: TransactionWithBalance) => void;
   sortOrder?: 'asc' | 'desc';
+  onQuickAdd?: QuickAddHandler;
 }
 
 export function TransactionList({
@@ -32,6 +33,7 @@ export function TransactionList({
   onTogglePaid,
   onTransactionClick,
   sortOrder = 'desc',
+  onQuickAdd,
 }: TransactionListProps) {
   const [activeTransaction, setActiveTransaction] = useState<TransactionWithBalance | null>(null);
 
@@ -100,6 +102,7 @@ export function TransactionList({
         onTogglePaid={onTogglePaid}
         onTransactionClick={onTransactionClick}
         sortOrder={sortOrder}
+        onQuickAdd={onQuickAdd}
       />
       <DragOverlay>
         {activeTransaction && (

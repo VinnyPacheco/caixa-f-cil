@@ -6,7 +6,7 @@ import { MonthSelector } from '@/components/finance/MonthSelector';
 import { FilterPills } from '@/components/finance/FilterPills';
 import { TransactionList } from '@/components/finance/TransactionList';
 import { TransactionForm } from '@/components/finance/TransactionForm';
-import { TransactionListContent } from '@/components/finance/TransactionListContent';
+import { TransactionListContent, QuickAddHandler } from '@/components/finance/TransactionListContent';
 import { TransactionItem } from '@/components/finance/TransactionItem';
 import { InvoiceDetailsDialog } from '@/components/finance/InvoiceDetailsDialog';
 import { LeftSidePanel, RightSidePanel } from '@/components/finance/TransactionsSidePanels';
@@ -164,6 +164,36 @@ export default function Transactions() {
 
   const isMobile = deviceType === 'mobile';
 
+  // Quick inline add: creates a transaction with form defaults at an exact position
+  const handleQuickAdd: QuickAddHandler = async (anchor, position, data) => {
+    const typeCategories = categories.filter((c) => c.type === data.type);
+    const category = typeCategories.find((c) => c.isSystem) || typeCategories[0];
+    const account = accounts.find((a) => a.isPrimary) || accounts[0];
+    const created = await addTransaction({
+      type: data.type,
+      amount: data.amount,
+      description: data.description,
+      categoryId: category?.id || '',
+      accountId: account?.id || '',
+      date: anchor.date,
+      isPaid: false,
+      autoSettle: false,
+      recurrenceType: 'once',
+    });
+    if (!created) return;
+
+    const isVirtual = (t: TransactionWithBalance) => t.isCreditCardInvoice || t.isGoalPlaceholder;
+    const sameDay = allVisibleTransactions
+      .filter((t) => t.date === anchor.date && !isVirtual(t) && t.id !== created.id)
+      .sort((a, b) => a.orderIndex - b.orderIndex);
+    let idx = sameDay.findIndex((t) => t.id === anchor.id);
+    if (idx === -1) idx = position === 'before' ? 0 : sameDay.length - 1;
+    if (position === 'after') idx += 1;
+    const newTx = { ...created, runningBalance: 0 } as TransactionWithBalance;
+    const ordered = [...sameDay.slice(0, idx), newTx, ...sameDay.slice(idx)];
+    await reorderTransactions(ordered);
+  };
+
   const sideColumns = `${leftExpanded ? '20fr' : '40px'} ${
     leftExpanded && rightExpanded ? '60fr' : leftExpanded || rightExpanded ? '80fr' : '100fr'
   } ${rightExpanded ? '20fr' : '40px'}`;
@@ -306,6 +336,7 @@ export default function Transactions() {
             onTogglePaid={togglePaid}
             onTransactionClick={handleTransactionClick}
             sortOrder={sortOrder}
+            onQuickAdd={handleQuickAdd}
           />
         )}
 
@@ -407,6 +438,7 @@ export default function Transactions() {
                         onTogglePaid={togglePaid}
                         onTransactionClick={handleTransactionClick}
                         sortOrder={sortOrder}
+                        onQuickAdd={handleQuickAdd}
                       />
                     </div>
                   </div>
