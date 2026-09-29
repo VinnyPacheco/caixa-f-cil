@@ -56,7 +56,7 @@ export function buildGoalPlaceholderTransactions(
         id: `goal-placeholder:${goal.id}:${format(monthStart, 'yyyy-MM')}`,
         accountId: primaryAccount.id,
         categoryId: goal.categoryId,
-        description: `Lançamento Mensal ${category.name}`,
+        description: `${category.name} - Mensal`,
         amount: Number(remaining.toFixed(2)),
         date: lastDay,
         type: 'expense',
